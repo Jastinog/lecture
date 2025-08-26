@@ -12,7 +12,7 @@
         <a href="{% url 'lecture:lecturer_detail' course.lecturer.id %}" 
            class="text-orange-400 hover:text-orange-300 inline-flex items-center">
             <i class="fas fa-arrow-left mr-2"></i>
-            Назад к {{ course.lecturer.name }}
+            {{ "Назад к "|add:course.lecturer.name|truncatechars:40 }}
         </a>
     </div>
     
