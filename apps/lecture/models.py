@@ -1,4 +1,13 @@
+import uuid
+import os
 from django.db import models
+
+
+def lecture_upload_path(instance, filename):
+    """Generate short upload path for lecture files"""
+    ext = os.path.splitext(filename)[1].lower()
+    short_name = f"{uuid.uuid4().hex[:8]}{ext}"
+    return f"lectures/{short_name}"
 
 
 class Lecturer(models.Model):
@@ -42,7 +51,7 @@ class Lecture(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    audio_file = models.FileField(upload_to="lectures/")
+    audio_file = models.FileField(upload_to=lecture_upload_path)
     file_size = models.BigIntegerField(null=True, blank=True)
     duration = models.CharField(max_length=20, blank=True)
     order = models.PositiveIntegerField()

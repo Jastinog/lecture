@@ -3,50 +3,34 @@
 {% block title %}Import Lectures - {{ course.title }}{% endblock %}
 
 {% block content %}
-<div class="content">
-    <h1>Import Lectures</h1>
-    <h2>Course: {{ course.title }} ({{ course.lecturer.name }})</h2>
-
-    <form method="post" enctype="multipart/form-data">
+<div class="module">
+    <h2>Import Lectures for "{{ course.title }}"</h2>
+    
+    <form enctype="multipart/form-data" method="post">
         {% csrf_token %}
         
-        <fieldset class="module aligned">
-            <div class="form-row">
-                <div>
-                    <label for="lecture_files" class="required">Audio Files:</label>
-                    <input type="file" 
-                           id="lecture_files" 
-                           name="lecture_files" 
-                           multiple 
-                           accept=".mp3,.wav,.m4a,.flac,.ogg"
-                           required>
-                    <div class="help">
-                        Select multiple audio files (.mp3, .wav, .m4a, .flac, .ogg).<br>
-                        Files will be sorted naturally by filename and imported as lectures.
-                    </div>
-                    <div id="file-list" style="margin-top: 10px; color: #666;"></div>
-                </div>
-            </div>
-        </fieldset>
+        <div class="form-group">
+            <label for="lecture_files">Select Audio Files:</label>
+            <input type="file" name="lecture_files" id="lecture_files" 
+                   multiple accept=".mp3,.wav,.m4a,.flac,.ogg" required>
+            <p class="help">Supported formats: MP3, WAV, M4A, FLAC, OGG</p>
+        </div>
         
-        <div class="submit-row">
-            <input type="submit" value="Import Lectures" class="default">
-            <a href="../" class="button cancel-link">Cancel</a>
+        <div class="form-actions">
+            <input type="submit" value="Import Files" class="default">
+            <a href="../" class="button">Cancel</a>
         </div>
     </form>
-</div>
-
-<script>
-document.getElementById('lecture_files').addEventListener('change', function(e) {
-    const files = Array.from(e.target.files);
-    const fileList = document.getElementById('file-list');
     
-    if (files.length > 0) {
-        fileList.innerHTML = `<strong>Selected ${files.length} file(s):</strong><br>` + 
-            files.map(f => `• ${f.name}`).join('<br>');
-    } else {
-        fileList.innerHTML = '';
-    }
-});
-</script>
+    <div class="module">
+        <h3>Instructions:</h3>
+        <ul>
+            <li>Select multiple audio files to import</li>
+            <li>Files will be automatically sorted by name</li>
+            <li>Order numbers will be assigned automatically</li>
+            <li>Long filenames will be shortened automatically</li>
+            <li>Duplicate files will be skipped</li>
+        </ul>
+    </div>
+</div>
 {% endblock %}
