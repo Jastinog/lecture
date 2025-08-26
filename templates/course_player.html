@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ course.title }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/lectures.css' %}">
+
+<div class="lecture-player">
+    <!-- Back button -->
+    <div class="mb-4">
+        <a href="{% url 'lecture:lecturer_detail' course.lecturer.id %}" 
+           class="text-orange-400 hover:text-orange-300 inline-flex items-center">
+            <i class="fas fa-arrow-left mr-2"></i>
+            Назад к {{ course.lecturer.name }}
+        </a>
+    </div>
+    
+    <!-- Player header -->
+    <div class="player-header">
+        {% if course.lecturer.photo %}
+        <div class="header-cover">
+            <img src="{{ course.lecturer.photo.url }}" alt="{{ course.lecturer.name }}" class="w-12 h-12 rounded-full object-cover">
+        </div>
+        {% else %}
+        <div class="header-dot"></div>
+        {% endif %}
+        
+        <div>
+            <h1>{{ course.lecturer.name }}</h1>
+            <p class="header-subtitle">{{ course.title }}</p>
+        </div>
+        <div class="lecture-count">{{ lecture_count }} лекций</div>
+    </div>
+    
+    <!-- Audio Player -->
+    <div class="audio-player-container">
+        <audio id="audio-player"></audio>
+        
+        <div class="now-playing">
+            <span class="now-playing-title">- - -</span>
+        </div>
+        
+        <div class="player-controls">
+            <button class="btn-control" id="btn-prev" aria-label="Previous">
+                <i class="fas fa-step-backward"></i>
+            </button>
+
+            <button class="btn-control" id="btn-rewind" aria-label="Rewind 15s">
+                <i class="fas fa-rotate-left"></i>
+            </button>
+
+            <button class="btn-control btn-play-pause" id="btn-play-pause" aria-label="Play/Pause">
+                <i class="fas fa-play"></i>
+            </button>
+
+            <button class="btn-control" id="btn-forward" aria-label="Forward 15s">
+                <i class="fas fa-rotate-right"></i>
+            </button>
+
+            <button class="btn-control" id="btn-next" aria-label="Next">
+                <i class="fas fa-step-forward"></i>
+            </button>
+        </div>
+        
+        <div class="player-progress" role="slider" aria-label="Progress bar">
+            <span class="time-current">0:00</span>
+            <div class="progress-bar">
+                <div class="progress-filled"></div>
+            </div>
+            <span class="time-total">0:00</span>
+        </div>
+    </div>
+    
+    <!-- Playlist -->
+    <div class="lecture-list">
+        {% for lecture in lectures %}
+        <div class="lecture-card" 
+             data-id="{{ lecture.id }}"
+             data-url="{{ lecture.audio_file.url }}"
+             data-title="{{ lecture.title }}">
+            <div class="card-number">{{ lecture.order }}</div>
+            <div class="card-content">
+                <h3>{{ lecture.title }}</h3>
+                <div class="card-meta">{{ lecture.file_size_mb }} MB • {{ lecture.duration|default:"--:--" }}</div>
+            </div>
+            <div class="play-indicator hidden">
+                <div class="wave-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+            <div class="play-btn" aria-hidden="true">
+                <svg width="12" height="14" viewBox="0 0 12 14">
+                    <path d="M0 0v14l12-7L0 0z"/>
+                </svg>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/modules/player/player-module.js' %}"></script>
+{% endblock %}

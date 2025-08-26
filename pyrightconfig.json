@@ -1,0 +1,22 @@
+{
+  "venvPath": "/Users/jastinog/Library/Caches/pypoetry/virtualenvs",
+  "venv": "e-time-Hm7bl5T9-py3.12",
+  
+  "reportArgumentType": false,
+  "reportAttributeAccessIssue": false,
+  
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "autoSearchPaths": true,
+  
+  "extraPaths": [],
+  
+  "ignore": [
+    "**/node_modules",
+    "**/__pycache__",
+    "src/experimental",
+    "src/typestubs"
+  ],
+  
+  "strict": []
+}

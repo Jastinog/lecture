@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ lecturer.name }} - Курсы{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/lectures.css' %}">
+
+<div class="lecture-player">
+    <!-- Back button -->
+    <div class="mb-4">
+        <a href="{% url 'lecture:lecturers_list' %}" 
+           class="text-orange-400 hover:text-orange-300 inline-flex items-center">
+            <i class="fas fa-arrow-left mr-2"></i>
+            Назад к лекторам
+        </a>
+    </div>
+    
+    <div class="player-header">
+        {% if lecturer.photo %}
+        <div class="header-cover">
+            <img src="{{ lecturer.photo.url }}" alt="{{ lecturer.name }}" class="w-12 h-12 rounded-full object-cover">
+        </div>
+        {% else %}
+        <div class="header-dot"></div>
+        {% endif %}
+        
+        <div>
+            <h1>{{ lecturer.name }}</h1>
+            <p class="header-subtitle">Курсы лекций</p>
+        </div>
+        <div class="lecture-count">{{ courses.count }} курсов</div>
+    </div>
+    
+    <div class="lecture-list">
+        {% for course in courses %}
+        <a href="{% url 'lecture:course_player' course.id %}" class="lecture-card">
+            {% if course.cover %}
+            <div class="card-number series-cover">
+                <img src="{{ course.cover.url }}" alt="{{ course.title }}" class="w-full h-full object-cover rounded">
+            </div>
+            {% else %}
+            <div class="card-number">
+                <i class="fas fa-headphones"></i>
+            </div>
+            {% endif %}
+            
+            <div class="card-content">
+                <h3>{{ course.title }}</h3>
+                <div class="card-meta">
+                    {{ course.lectures.count }} лекций • {{ course.created_at|date:"M Y" }}
+                </div>
+            </div>
+            
+            <div class="play-btn" aria-hidden="true">
+                <svg width="12" height="14" viewBox="0 0 12 14">
+                    <path d="M0 0v14l12-7L0 0z"/>
+                </svg>
+            </div>
+        </a>
+        {% empty %}
+        <div class="text-center py-12">
+            <p class="text-gray-400">У этого лектора пока нет курсов</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
