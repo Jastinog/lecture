@@ -1,14 +1,12 @@
 import os
 import re
+import mutagen
+
 from django.db import transaction
+from django.conf import settings
+from django.utils.module_loading import import_string
 from apps.lecture.models import Lecture
 from apps.system.services import Logger
-
-try:
-    import mutagen
-    MUTAGEN_AVAILABLE = True
-except ImportError:
-    MUTAGEN_AVAILABLE = False
 
 logger = Logger(app_name="lecture_import")
 
@@ -129,26 +127,18 @@ class LectureImportService:
     def _create_lecture(self, uploaded_file, order):
         """Create lecture from uploaded file"""
         try:
-            # Используем отдельную транзакцию для каждого файла
             with transaction.atomic():
                 logger.debug(f"Creating lecture from file: {uploaded_file.name}")
+                
+                # Get storage to ensure we're using the correct one
+                storage_class = import_string(settings.DEFAULT_FILE_STORAGE)
+                storage = storage_class()
+                logger.debug(f"Using storage: {type(storage)}")
                 
                 title = self._extract_title(uploaded_file.name)
                 file_size = uploaded_file.size
                 
-                # Сокращаем слишком длинные имена файлов
-                original_name = uploaded_file.name
-                if len(original_name) > 100:
-                    name, ext = os.path.splitext(original_name)
-                    short_name = f"{name[:50]}...{name[-30:]}{ext}"
-                    uploaded_file.name = short_name
-                    logger.warning(f"File name too long, shortened to: {short_name}")
-                
-                logger.debug(f"Extracted title: {title}", 
-                            f"File size: {file_size}",
-                            f"Order: {order}")
-                
-                # Get duration with detailed logging
+                # Get duration before any file operations
                 duration = self._get_duration_from_file(uploaded_file)
                 logger.debug(f"Duration extracted: '{duration}'")
                 
@@ -161,7 +151,7 @@ class LectureImportService:
                     logger.error(f"Cannot create lecture - order '{order}' already exists")
                     return False
                 
-                # Create lecture
+                # Create lecture with explicit storage validation
                 logger.debug(f"About to create Lecture object...")
                 lecture = Lecture.objects.create(
                     course=self.course,
@@ -172,11 +162,21 @@ class LectureImportService:
                     order=order,
                 )
                 
+                # Verify the file was saved correctly
+                logger.debug(f"File saved to storage: {lecture.audio_file.name}")
+                logger.debug(f"File URL: {lecture.audio_file.url}")
+                
+                # Verify file exists in storage
+                if hasattr(storage, 'exists') and not storage.exists(lecture.audio_file.name):
+                    logger.error(f"File was not saved to storage: {lecture.audio_file.name}")
+                    return False
+                
                 logger.success(f"Lecture created successfully:",
                               f"ID: {lecture.id}",
                               f"Title: {lecture.title}",
                               f"Order: {lecture.order}",
-                              f"File: {lecture.audio_file.name}")
+                              f"File: {lecture.audio_file.name}",
+                              f"Storage: {type(storage)}")
                 return True
 
         except Exception as e:
@@ -191,7 +191,7 @@ class LectureImportService:
         title = os.path.splitext(filename)[0]
         cleaned_title = title.strip() or filename
         
-        # Ограничиваем длину заголовка
+        # Limit title length
         if len(cleaned_title) > 250:
             cleaned_title = cleaned_title[:250] + "..."
             logger.debug(f"Title too long, truncated to: {cleaned_title}")
@@ -201,10 +201,6 @@ class LectureImportService:
 
     def _get_duration_from_file(self, uploaded_file):
         """Get audio duration from uploaded file"""
-        if not MUTAGEN_AVAILABLE:
-            logger.warning("Mutagen not available, cannot extract duration")
-            return ""
-
         try:
             logger.debug(f"Extracting duration from: {uploaded_file.name}")
             

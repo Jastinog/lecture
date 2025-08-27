@@ -1,15 +1,18 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.core.files.base import ContentFile
+from django.conf import settings
 from PIL import Image, ImageOps
 import io
 import os
 from .models import Lecturer, Course
 
 
-def resize_image(image_field, size=(512, 512), quality=85):
+def resize_image(image_field, size=(512, 512), quality=80):
     """
     Resize image to specified size maintaining aspect ratio with center crop
+    Compatible with both local storage and S3
+    Converts all images to JPEG format
 
     Args:
         image_field: Django ImageField
@@ -17,16 +20,28 @@ def resize_image(image_field, size=(512, 512), quality=85):
         quality: JPEG quality (1-100)
 
     Returns:
-        ContentFile with resized image or None if error
+        ContentFile with resized JPEG image or None if error
     """
     if not image_field:
         return None
 
     try:
-        # Open the image
-        image = Image.open(image_field)
+        # For S3, we need to read the file content
+        if hasattr(image_field, 'read'):
+            # File is already open
+            image_field.seek(0)
+            image_data = image_field.read()
+            image_field.seek(0)  # Reset for any further operations
+        else:
+            # File needs to be opened
+            image_field.open()
+            image_data = image_field.read()
+            image_field.close()
 
-        # Convert to RGB if necessary (handles RGBA, P, etc.)
+        # Open the image from bytes
+        image = Image.open(io.BytesIO(image_data))
+
+        # Convert to RGB (required for JPEG)
         if image.mode in ("RGBA", "LA", "P"):
             # Create white background for transparency
             background = Image.new("RGB", image.size, (255, 255, 255))
@@ -45,23 +60,9 @@ def resize_image(image_field, size=(512, 512), quality=85):
             image, size, Image.Resampling.LANCZOS, centering=(0.5, 0.5)
         )
 
-        # Save to BytesIO
+        # Save to BytesIO as JPEG
         output = io.BytesIO()
-
-        # Determine format based on original file extension
-        original_format = "JPEG"
-        if hasattr(image_field, "name") and image_field.name:
-            ext = os.path.splitext(image_field.name)[1].lower()
-            if ext in [".png"]:
-                original_format = "PNG"
-                quality = None  # PNG doesn't use quality parameter
-
-        # Save with appropriate format and quality
-        if original_format == "PNG":
-            image.save(output, format="PNG", optimize=True)
-        else:
-            image.save(output, format="JPEG", quality=quality, optimize=True)
-
+        image.save(output, format="JPEG", quality=quality, optimize=True)
         output.seek(0)
 
         return ContentFile(output.getvalue())
@@ -71,105 +72,75 @@ def resize_image(image_field, size=(512, 512), quality=85):
         return None
 
 
-@receiver(post_save, sender=Lecturer)
-def resize_lecturer_photo(sender, instance, created, **kwargs):
+@receiver(pre_save, sender=Lecturer)
+def resize_lecturer_photo(sender, instance, **kwargs):
     """
-    Resize lecturer photo to 512x512 after saving
+    Resize lecturer photo to 512x512 before saving
+    Converts to JPEG format with quality 80
     """
-    if instance.photo and hasattr(instance.photo, "path"):
+    if instance.photo and hasattr(instance.photo, 'file'):
         try:
-            # Get original file name and extension
-            original_name = os.path.basename(instance.photo.name)
-            name, ext = os.path.splitext(original_name)
-
-            # Resize the image
-            resized_content = resize_image(instance.photo, size=(512, 512))
-
-            if resized_content:
-                # Save the resized image back to the field
-                # We need to prevent infinite recursion, so we disconnect the signal temporarily
-                post_save.disconnect(resize_lecturer_photo, sender=Lecturer)
-
+            # Check if this is a new upload (not just a model save)
+            if instance.pk:
+                # Get existing instance to compare
                 try:
-                    # Save the resized image
-                    instance.photo.save(original_name, resized_content, save=True)
-                finally:
-                    # Reconnect the signal
-                    post_save.connect(resize_lecturer_photo, sender=Lecturer)
+                    existing = Lecturer.objects.get(pk=instance.pk)
+                    if existing.photo == instance.photo:
+                        # Photo hasn't changed, skip processing
+                        return
+                except Lecturer.DoesNotExist:
+                    pass
 
+            resized_content = resize_image(instance.photo, size=(512, 512), quality=80)
+            if resized_content:
+                # Get original name and force .jpg extension
+                original_name = os.path.basename(instance.photo.name)
+                name, _ = os.path.splitext(original_name)
+                
+                # Force JPEG extension
+                new_name = f"{name}_resized.jpg"
+                
+                instance.photo.save(
+                    new_name,
+                    resized_content,
+                    save=False  # Don't save the model again
+                )
         except Exception as e:
             print(f"Error processing lecturer photo for {instance.name}: {e}")
 
 
-@receiver(post_save, sender=Course)
-def resize_course_cover(sender, instance, created, **kwargs):
+@receiver(pre_save, sender=Course)
+def resize_course_cover(sender, instance, **kwargs):
     """
-    Resize course cover to 512x512 after saving
+    Resize course cover to 512x512 before saving
+    Converts to JPEG format with quality 80
     """
-    if instance.cover and hasattr(instance.cover, "path"):
+    if instance.cover and hasattr(instance.cover, 'file'):
         try:
-            # Get original file name and extension
-            original_name = os.path.basename(instance.cover.name)
-            name, ext = os.path.splitext(original_name)
-
-            # Resize the image
-            resized_content = resize_image(instance.cover, size=(512, 512))
-
-            if resized_content:
-                # Save the resized image back to the field
-                # We need to prevent infinite recursion, so we disconnect the signal temporarily
-                post_save.disconnect(resize_course_cover, sender=Course)
-
+            # Check if this is a new upload (not just a model save)
+            if instance.pk:
+                # Get existing instance to compare
                 try:
-                    # Save the resized image
-                    instance.cover.save(original_name, resized_content, save=True)
-                finally:
-                    # Reconnect the signal
-                    post_save.connect(resize_course_cover, sender=Course)
+                    existing = Course.objects.get(pk=instance.pk)
+                    if existing.cover == instance.cover:
+                        # Cover hasn't changed, skip processing
+                        return
+                except Course.DoesNotExist:
+                    pass
 
+            resized_content = resize_image(instance.cover, size=(512, 512), quality=80)
+            if resized_content:
+                # Get original name and force .jpg extension
+                original_name = os.path.basename(instance.cover.name)
+                name, _ = os.path.splitext(original_name)
+                
+                # Force JPEG extension
+                new_name = f"{name}_resized.jpg"
+                
+                instance.cover.save(
+                    new_name,
+                    resized_content,
+                    save=False  # Don't save the model again
+                )
         except Exception as e:
             print(f"Error processing course cover for {instance.title}: {e}")
-
-
-# Alternative signal that works on pre_save to avoid double saving
-# Uncomment this and comment out the post_save signals above if you prefer
-
-# from django.db.models.signals import pre_save
-
-# @receiver(pre_save, sender=Lecturer)
-# def resize_lecturer_photo_pre_save(sender, instance, **kwargs):
-#     """
-#     Resize lecturer photo to 512x512 before saving
-#     """
-#     if instance.photo and hasattr(instance.photo, 'file'):
-#         try:
-#             resized_content = resize_image(instance.photo, size=(512, 512))
-#             if resized_content:
-#                 # Get original name
-#                 original_name = os.path.basename(instance.photo.name)
-#                 instance.photo.save(
-#                     original_name,
-#                     resized_content,
-#                     save=False  # Don't save the model again
-#                 )
-#         except Exception as e:
-#             print(f"Error processing lecturer photo for {instance.name}: {e}")
-
-# @receiver(pre_save, sender=Course)
-# def resize_course_cover_pre_save(sender, instance, **kwargs):
-#     """
-#     Resize course cover to 512x512 before saving
-#     """
-#     if instance.cover and hasattr(instance.cover, 'file'):
-#         try:
-#             resized_content = resize_image(instance.cover, size=(512, 512))
-#             if resized_content:
-#                 # Get original name
-#                 original_name = os.path.basename(instance.cover.name)
-#                 instance.cover.save(
-#                     original_name,
-#                     resized_content,
-#                     save=False  # Don't save the model again
-#                 )
-#         except Exception as e:
-#             print(f"Error processing course cover for {instance.title}: {e}")

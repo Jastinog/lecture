@@ -10,10 +10,24 @@ def lecture_upload_path(instance, filename):
     return f"lectures/{short_name}"
 
 
+def lecturer_photo_path(instance, filename):
+    """Upload path for lecturer photos"""
+    ext = os.path.splitext(filename)[1].lower()
+    short_name = f"{uuid.uuid4().hex[:8]}{ext}"
+    return f"lecturers/{short_name}"
+
+
+def course_cover_path(instance, filename):
+    """Upload path for course covers"""
+    ext = os.path.splitext(filename)[1].lower()
+    short_name = f"{uuid.uuid4().hex[:8]}{ext}"
+    return f"courses/{short_name}"
+
+
 class Lecturer(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    photo = models.ImageField(upload_to="lecturers/", blank=True, null=True)
+    photo = models.ImageField(upload_to=lecturer_photo_path, blank=True, null=True)
     order = models.PositiveIntegerField(
         default=0, help_text="Order for displaying lecturers"
     )
@@ -33,7 +47,7 @@ class Course(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    cover = models.ImageField(upload_to="courses/", blank=True, null=True)
+    cover = models.ImageField(upload_to=course_cover_path, blank=True, null=True)
     order = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -86,8 +86,9 @@ INSTALLED_APPS = [
     "crispy_forms",
     "corsheaders",
     "channels",
-    "storages",  # Added for AWS S3 integration
+    "storages",
     "apps.users",
+    "apps.system",
     "apps.websocket",
     "apps.lecture",
 ]
@@ -221,9 +222,6 @@ AWS_S3_OBJECT_PARAMETERS = {
 }
 
 # Optional: File overwrite
-AWS_S3_FILE_OVERWRITE = False
-
-AWS_DEFAULT_ACL = 'private'
 AWS_QUERYSTRING_AUTH = True
 AWS_QUERYSTRING_EXPIRE = 3600
 
@@ -236,11 +234,43 @@ STATICFILES_DIRS = [str(APPS_DIR / "static")]
 USE_S3_MEDIA = env.bool('USE_S3_MEDIA', default=False)
 
 if USE_S3_MEDIA:
-    # S3 Media files (uploaded by users)
-    DEFAULT_FILE_STORAGE = 'storage.PrivateMediaStorage'
+    print("DEBUG: Using S3 storage")
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "access_key": AWS_ACCESS_KEY_ID,
+                "secret_key": AWS_SECRET_ACCESS_KEY,
+                "bucket_name": AWS_STORAGE_BUCKET_NAME,
+                "region_name": AWS_S3_REGION_NAME,
+                "file_overwrite": False,
+                "querystring_auth": False,
+                "querystring_expire": 3600,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+    
 else:
-    # Local Media files - for development
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    print("DEBUG: Using local storage")
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {
+                "location": str(APPS_DIR / "media"),
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    
     MEDIA_ROOT = str(APPS_DIR / "media")
     MEDIA_URL = "/media/"
 
