@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ lecturer.name }} - Курсы{% endblock %}
+{% block title %}{{ lecturer.name }} - Темы{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/lectures.css' %}">
@@ -27,17 +27,17 @@
         
         <div>
             <h1>{{ lecturer.name }}</h1>
-            <p class="header-subtitle">Курсы лекций</p>
+            <p class="header-subtitle">Темы лекций</p>
         </div>
-        <div class="lecture-count">{{ courses.count }} курсов</div>
+        <div class="lecture-count">{{ topics.count }} тем</div>
     </div>
     
     <div class="lecture-list">
-        {% for course in courses %}
-        <a href="{% url 'lecture:course_player' course.id %}" class="lecture-card">
-            {% if course.cover %}
+        {% for topic in topics %}
+        <a href="{% url 'lecture:topic_player' topic.id %}" class="lecture-card">
+            {% if topic.cover %}
             <div class="card-number series-cover">
-                <img src="{{ course.cover.url }}" alt="{{ course.title }}" class="w-full h-full object-cover rounded">
+                <img src="{{ topic.cover.url }}" alt="{{ topic.title }}" class="w-full h-full object-cover rounded">
             </div>
             {% else %}
             <div class="card-number">
@@ -46,9 +46,9 @@
             {% endif %}
             
             <div class="card-content">
-                <h3>{{ course.title }}</h3>
+                <h3>{{ topic.title }}</h3>
                 <div class="card-meta">
-                    {{ course.lectures.count }} лекций • {{ course.created_at|date:"M Y" }}
+                    {{ topic.lectures.count }} лекций • {{ topic.created_at|date:"M Y" }}
                 </div>
             </div>
             
@@ -60,7 +60,7 @@
         </a>
         {% empty %}
         <div class="text-center py-12">
-            <p class="text-gray-400">У этого лектора пока нет курсов</p>
+            <p class="text-gray-400">У этого лектора пока нет тем</p>
         </div>
         {% endfor %}
     </div>

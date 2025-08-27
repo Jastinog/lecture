@@ -30,7 +30,7 @@
             <div class="card-content">
                 <h3>{{ lecturer.name }}</h3>
                 <div class="card-meta">
-                    {{ lecturer.courses.count }} {% if lecturer.courses.count == 1 %}курс{% elif lecturer.courses.count < 5 %}курса{% else %}курсов{% endif %}
+                    {{ lecturer.topics.count }} {% if lecturer.topics.count == 1 %}тема{% elif lecturer.topics.count < 5 %}темы{% else %}тем{% endif %}
                     {% if lecturer.description %} • {{ lecturer.description|truncatewords:10 }}{% endif %}
                 </div>
             </div>

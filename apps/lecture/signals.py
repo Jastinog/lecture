@@ -4,7 +4,7 @@ from django.core.files.base import ContentFile
 from PIL import Image, ImageOps
 import io
 import os
-from .models import Lecturer, Course
+from .models import Lecturer, Topic
 
 
 def resize_image(image_field, size=(512, 512), quality=80):
@@ -106,10 +106,10 @@ def resize_lecturer_photo(sender, instance, **kwargs):
             print(f"Error processing lecturer photo for {instance.name}: {e}")
 
 
-@receiver(pre_save, sender=Course)
-def resize_course_cover(sender, instance, **kwargs):
+@receiver(pre_save, sender=Topic)
+def resize_topic_cover(sender, instance, **kwargs):
     """
-    Resize course cover to 512x512 before saving
+    Resize topic cover to 512x512 before saving
     Converts to JPEG format with quality 80
     """
     if instance.cover and hasattr(instance.cover, "file"):
@@ -118,11 +118,11 @@ def resize_course_cover(sender, instance, **kwargs):
             if instance.pk:
                 # Get existing instance to compare
                 try:
-                    existing = Course.objects.get(pk=instance.pk)
+                    existing = Topic.objects.get(pk=instance.pk)
                     if existing.cover == instance.cover:
                         # Cover hasn't changed, skip processing
                         return
-                except Course.DoesNotExist:
+                except Topic.DoesNotExist:
                     pass
 
             resized_content = resize_image(instance.cover, size=(512, 512), quality=80)
@@ -138,4 +138,4 @@ def resize_course_cover(sender, instance, **kwargs):
                     new_name, resized_content, save=False  # Don't save the model again
                 )
         except Exception as e:
-            print(f"Error processing course cover for {instance.title}: {e}")
+            print(f"Error processing topic cover for {instance.title}: {e}")

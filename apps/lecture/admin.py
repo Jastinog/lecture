@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.utils.html import format_html
 from apps.system.services import Logger
-from apps.lecture.models import Lecturer, Course, Lecture
+from apps.lecture.models import Lecturer, Topic, Lecture
 from .services import LectureImportService
 
 logger = Logger(app_name="lecture_admin")
@@ -30,8 +30,8 @@ class LectureInline(admin.TabularInline):
     readonly_fields = ["file_size_mb"]
 
 
-@admin.register(Course)
-class CourseAdmin(admin.ModelAdmin):
+@admin.register(Topic)
+class TopicAdmin(admin.ModelAdmin):
     list_display = [
         "title",
         "lecturer",
@@ -52,7 +52,6 @@ class CourseAdmin(admin.ModelAdmin):
             count,
             obj.id,
         )
-
     lecture_count_with_import.short_description = "Lectures"
 
     def get_urls(self):
@@ -61,20 +60,20 @@ class CourseAdmin(admin.ModelAdmin):
             path(
                 "<int:object_id>/import-lectures/",
                 self.admin_site.admin_view(self.import_lectures_view),
-                name="lecture_course_import_lectures",
+                name="lecture_topic_import_lectures",
             ),
         ]
         return custom_urls + urls
 
     def import_lectures_view(self, request, object_id):
-        course = get_object_or_404(Course, id=object_id)
+        topic = get_object_or_404(Topic, id=object_id)
 
         if request.method == "POST":
             uploaded_files = request.FILES.getlist("lecture_files")
 
             if not uploaded_files:
                 messages.error(request, "Please select files to import")
-                return render(request, "admin/import_lectures.html", {"course": course})
+                return render(request, "admin/import_lectures.html", {"topic": topic})
 
             logger.info(
                 f"Files received for import: {len(uploaded_files)}",
@@ -82,7 +81,7 @@ class CourseAdmin(admin.ModelAdmin):
             )
 
             try:
-                service = LectureImportService(course)
+                service = LectureImportService(topic)
                 imported_count = service.import_files(uploaded_files)
 
                 messages.success(
@@ -94,22 +93,22 @@ class CourseAdmin(admin.ModelAdmin):
                 messages.error(request, f"Import failed: {str(e)}")
 
         # Всегда возвращаем response
-        return render(request, "admin/import_lectures.html", {"course": course})
+        return render(request, "admin/import_lectures.html", {"topic": topic})
 
 
 @admin.register(Lecture)
 class LectureAdmin(admin.ModelAdmin):
     list_display = [
         "title",
-        "course",
+        "topic",
         "order",
         "file_size_mb",
         "duration",
         "created_at",
     ]
-    list_filter = ["course__lecturer", "course", "created_at"]
-    search_fields = ["title", "course__title", "course__lecturer__name"]
-    ordering = ["course__lecturer__order", "course", "order"]
+    list_filter = ["topic__lecturer", "topic", "created_at"]
+    search_fields = ["title", "topic__title", "topic__lecturer__name"]
+    ordering = ["topic__lecturer__order", "topic", "order"]
     list_editable = ["order"]
 
     def file_size_mb(self, obj):

@@ -12,13 +12,13 @@ logger = Logger(app_name="lecture_import")
 
 class LectureImportService:
 
-    def __init__(self, course):
-        self.course = course
+    def __init__(self, topic):
+        self.topic = topic
 
     def import_files(self, uploaded_files):
         """Import lectures from uploaded files"""
         logger.info(
-            f"Starting import for course: {self.course.title}",
+            f"Starting import for topic: {self.topic.title}",
             f"Files count: {len(uploaded_files)}",
         )
 
@@ -93,14 +93,14 @@ class LectureImportService:
         ]
 
     def _get_next_order(self):
-        """Get next order number for lectures in course"""
+        """Get next order number for lectures in topic"""
         try:
             existing_orders = list(
-                self.course.lectures.values_list("order", flat=True).order_by("order")
+                self.topic.lectures.values_list("order", flat=True).order_by("order")
             )
 
             logger.debug(
-                f"Existing orders for course '{self.course.title}': {existing_orders}"
+                f"Existing orders for topic '{self.topic.title}': {existing_orders}"
             )
 
             if not existing_orders:
@@ -120,13 +120,13 @@ class LectureImportService:
         title = self._extract_title(filename)
 
         # Check by title
-        title_exists = self.course.lectures.filter(title=title).exists()
+        title_exists = self.topic.lectures.filter(title=title).exists()
         if title_exists:
             logger.warning(f"Lecture with title '{title}' already exists")
             return True
 
         # Check by order
-        order_exists = self.course.lectures.filter(order=order).exists()
+        order_exists = self.topic.lectures.filter(order=order).exists()
         if order_exists:
             logger.warning(f"Lecture with order '{order}' already exists")
             return True
@@ -150,13 +150,13 @@ class LectureImportService:
                 logger.debug(f"Duration extracted: '{duration}'")
 
                 # Double-check for duplicates before creating
-                if self.course.lectures.filter(title=title).exists():
+                if self.topic.lectures.filter(title=title).exists():
                     logger.error(
                         f"Cannot create lecture - title '{title}' already exists"
                     )
                     return False
 
-                if self.course.lectures.filter(order=order).exists():
+                if self.topic.lectures.filter(order=order).exists():
                     logger.error(
                         f"Cannot create lecture - order '{order}' already exists"
                     )
@@ -165,7 +165,7 @@ class LectureImportService:
                 # Create lecture
                 logger.debug("About to create Lecture object...")
                 lecture = Lecture.objects.create(
-                    course=self.course,
+                    topic=self.topic,
                     title=title,
                     audio_file=uploaded_file,
                     file_size=file_size,

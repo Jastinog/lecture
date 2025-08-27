@@ -14,7 +14,7 @@ from pathlib import Path
 
 import environ
 
-SITEM_NAME = "E-Time"
+SITEM_NAME = "Lectures"
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,9 +27,9 @@ env.read_env(str(BASE_DIR) + "/.env")
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.str("DEBUG")
 
-DJANGO_BACKEND_URL = env.str("DJANGO_BACKEND_URL", "http://127.0.0.1:8000")
+BACKEND_URL = env.str("BACKEND_URL", "http://127.0.0.1:8000")
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["127.0.0.1", "0.0.0.0"])
 ALLOWED_IMAGE_CONTENT_TYPES = env.list(

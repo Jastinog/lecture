@@ -2,13 +2,11 @@ import uuid
 import os
 from django.db import models
 
-
 def lecture_upload_path(instance, filename):
     """Generate nested upload path for lecture files"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{instance.course.lecturer.code}/courses/{instance.course.code}/lectures/{short_name}"
-
+    return f"lecturers/{instance.topic.lecturer.code}/topics/{instance.topic.code}/lectures/{short_name}"
 
 def lecturer_photo_path(instance, filename):
     """Upload path for lecturer photos"""
@@ -16,16 +14,14 @@ def lecturer_photo_path(instance, filename):
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
     return f"lecturers/{instance.code}/{short_name}"
 
-
-def course_cover_path(instance, filename):
-    """Upload path for course covers"""
+def topic_cover_path(instance, filename):
+    """Upload path for topic covers"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{instance.lecturer.code}/courses/{instance.code}/{short_name}"
-
+    return f"lecturers/{instance.lecturer.code}/topics/{instance.code}/{short_name}"
 
 class Lecturer(models.Model):
-    code = models.CharField(max_length=50, unique=True, null=True)
+    code = models.CharField(max_length=255, unique=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     photo = models.ImageField(upload_to=lecturer_photo_path, blank=True, null=True)
@@ -41,15 +37,14 @@ class Lecturer(models.Model):
         ordering = ["order", "name"]
         unique_together = ["order"]
 
-
-class Course(models.Model):
+class Topic(models.Model):
     lecturer = models.ForeignKey(
-        Lecturer, on_delete=models.CASCADE, related_name="courses"
+        Lecturer, on_delete=models.CASCADE, related_name="topics"
     )
-    code = models.CharField(max_length=50, null=True)
+    code = models.CharField(max_length=255)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    cover = models.ImageField(upload_to=course_cover_path, blank=True, null=True)
+    cover = models.ImageField(upload_to=topic_cover_path, blank=True, null=True)
     order = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -60,10 +55,9 @@ class Course(models.Model):
         ordering = ["lecturer", "order"]
         unique_together = ["lecturer", "order", "code"]
 
-
 class Lecture(models.Model):
-    course = models.ForeignKey(
-        Course, on_delete=models.CASCADE, related_name="lectures"
+    topic = models.ForeignKey(
+        Topic, on_delete=models.CASCADE, related_name="lectures"
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
@@ -74,11 +68,11 @@ class Lecture(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.course.title} - {self.title}"
+        return f"{self.topic.title} - {self.title}"
 
     class Meta:
-        ordering = ["course", "order"]
-        unique_together = ["course", "order"]
+        ordering = ["topic", "order"]
+        unique_together = ["topic", "order"]
 
     @property
     def file_size_mb(self):

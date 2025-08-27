@@ -1,36 +1,235 @@
 {% extends "admin/base_site.html" %}
 
-{% block title %}Import Lectures - {{ course.title }}{% endblock %}
+{% block title %}Import Lectures - {{ topic.title }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+.import-form {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-section {
+    margin-bottom: 24px;
+}
+
+.form-section h3 {
+    margin: 0 0 12px 0;
+    color: #333;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.file-input-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.file-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px dashed #417690;
+    border-radius: 6px;
+    background: #f8f9fa;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.file-input:hover {
+    border-color: #205067;
+    background: #f0f8ff;
+}
+
+.file-input:focus {
+    outline: none;
+    border-color: #205067;
+    box-shadow: 0 0 0 3px rgba(65, 118, 144, 0.1);
+}
+
+.help-text {
+    color: #666;
+    font-size: 13px;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+}
+
+.btn-primary {
+    background: #417690;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: #205067;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.instructions {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.instructions h3 {
+    margin: 0 0 16px 0;
+    color: #495057;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.instructions ul {
+    margin: 0;
+    padding-left: 20px;
+    list-style-type: disc;
+}
+
+.instructions li {
+    margin-bottom: 8px;
+    color: #6c757d;
+    line-height: 1.5;
+}
+
+.topic-info {
+    background: linear-gradient(135deg, #417690 0%, #205067 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.topic-info h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 300;
+}
+
+.topic-info .subtitle {
+    opacity: 0.9;
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.icon {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="module">
-    <h2>Import Lectures for "{{ course.title }}"</h2>
-    
-    <form enctype="multipart/form-data" method="post">
+<div class="topic-info">
+    <h2>Import Lectures</h2>
+    <div class="subtitle">for "{{ topic.title }}"</div>
+</div>
+
+<div class="import-form">
+    <form enctype="multipart/form-data" method="post" id="import-form">
         {% csrf_token %}
         
-        <div class="form-group">
-            <label for="lecture_files">Select Audio Files:</label>
-            <input type="file" name="lecture_files" id="lecture_files" 
-                   multiple accept=".mp3,.wav,.m4a,.flac,.ogg" required>
-            <p class="help">Supported formats: MP3, WAV, M4A, FLAC, OGG</p>
+        <div class="form-section">
+            <h3>Select Audio Files</h3>
+            <div class="file-input-wrapper">
+                <input type="file" 
+                       name="lecture_files" 
+                       id="lecture_files" 
+                       class="file-input"
+                       multiple 
+                       accept=".mp3,.wav,.m4a,.flac,.ogg,.aac" 
+                       required>
+            </div>
+            <div class="help-text">
+                Supported formats: MP3, WAV, M4A, FLAC, OGG, AAC
+            </div>
         </div>
         
         <div class="form-actions">
-            <input type="submit" value="Import Files" class="default">
-            <a href="../" class="button">Cancel</a>
+            <button type="submit" class="btn-primary">
+                <svg class="icon" viewBox="0 0 20 20" style="margin-right: 6px;">
+                    <path d="M10 3v10l4-4m-4 4l-4-4m4 4v4"></path>
+                </svg>
+                Import Files
+            </button>
+            <a href="../" class="btn-secondary">Cancel</a>
         </div>
     </form>
-    
-    <div class="module">
-        <h3>Instructions:</h3>
-        <ul>
-            <li>Select multiple audio files to import</li>
-            <li>Files will be automatically sorted by name</li>
-            <li>Order numbers will be assigned automatically</li>
-            <li>Long filenames will be shortened automatically</li>
-            <li>Duplicate files will be skipped</li>
-        </ul>
-    </div>
 </div>
+
+<div class="instructions">
+    <h3>
+        <svg class="icon" viewBox="0 0 20 20">
+            <path d="M10 0C4.477 0 0 4.477 0 10s4.477 10 10 10 10-4.477 10-10S15.523 0 10 0zm1 15H9v-2h2v2zm0-4H9V5h2v6z"/>
+        </svg>
+        Import Instructions
+    </h3>
+    <ul>
+        <li>Select multiple audio files to import at once</li>
+        <li>Files will be automatically sorted by filename</li>
+        <li>Order numbers will be assigned sequentially</li>
+        <li>Long filenames will be automatically shortened</li>
+        <li>Duplicate files will be skipped to prevent conflicts</li>
+        <li>Processing may take a few moments for large files</li>
+    </ul>
+</div>
+
+<script>
+document.getElementById('lecture_files').addEventListener('change', function(e) {
+    const fileCount = e.target.files.length;
+    if (fileCount > 0) {
+        const helpText = document.querySelector('.help-text');
+        helpText.innerHTML = `${fileCount} file${fileCount > 1 ? 's' : ''} selected. Supported formats: MP3, WAV, M4A, FLAC, OGG, AAC`;
+    }
+});
+
+document.getElementById('import-form').addEventListener('submit', function(e) {
+    const submitBtn = document.querySelector('.btn-primary');
+    submitBtn.innerHTML = '<svg class="icon" viewBox="0 0 20 20" style="margin-right: 6px; animation: spin 1s linear infinite;"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="31.416" stroke-dashoffset="31.416"><animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/><animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/></circle></svg>Importing...';
+    submitBtn.disabled = true;
+});
+</script>
+
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
 {% endblock %}
