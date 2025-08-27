@@ -3,8 +3,7 @@ import re
 import mutagen
 
 from django.db import transaction
-from django.conf import settings
-from django.utils.module_loading import import_string
+from django.core.files.storage import default_storage
 from apps.lecture.models import Lecture
 from apps.system.services import Logger
 
@@ -130,10 +129,8 @@ class LectureImportService:
             with transaction.atomic():
                 logger.debug(f"Creating lecture from file: {uploaded_file.name}")
                 
-                # Get storage to ensure we're using the correct one
-                storage_class = import_string(settings.DEFAULT_FILE_STORAGE)
-                storage = storage_class()
-                logger.debug(f"Using storage: {type(storage)}")
+                # Debug storage information
+                logger.debug(f"Using storage: {type(default_storage)}")
                 
                 title = self._extract_title(uploaded_file.name)
                 file_size = uploaded_file.size
@@ -151,7 +148,7 @@ class LectureImportService:
                     logger.error(f"Cannot create lecture - order '{order}' already exists")
                     return False
                 
-                # Create lecture with explicit storage validation
+                # Create lecture
                 logger.debug(f"About to create Lecture object...")
                 lecture = Lecture.objects.create(
                     course=self.course,
@@ -167,7 +164,7 @@ class LectureImportService:
                 logger.debug(f"File URL: {lecture.audio_file.url}")
                 
                 # Verify file exists in storage
-                if hasattr(storage, 'exists') and not storage.exists(lecture.audio_file.name):
+                if not default_storage.exists(lecture.audio_file.name):
                     logger.error(f"File was not saved to storage: {lecture.audio_file.name}")
                     return False
                 
@@ -176,7 +173,7 @@ class LectureImportService:
                               f"Title: {lecture.title}",
                               f"Order: {lecture.order}",
                               f"File: {lecture.audio_file.name}",
-                              f"Storage: {type(storage)}")
+                              f"Storage: {type(default_storage)}")
                 return True
 
         except Exception as e:
