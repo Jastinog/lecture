@@ -24,6 +24,7 @@ apps/lecture/management/
 """
 
 import os
+import uuid
 from django.core.management.base import BaseCommand
 from django.core.files import File
 from apps.lecture.models import Lecturer
@@ -57,45 +58,80 @@ class Command(BaseCommand):
         lecturers_data = [
             {
                 "name": "Srila Prabhupada",
+                "code": "srila-prabhupada",
                 "description": "Founder-Acharya of ISKCON, author of numerous translations of sacred scriptures. Spread Krishna consciousness worldwide.",
                 "photo": "srila_prabhupada.jpg",
                 "order": 1,  # Most important - founder
             },
             {
                 "name": "Radhanath Swami",
+                "code": "radhanath-swami",
                 "description": 'Author of "The Journey Home", inspiring spiritual teacher and storyteller.',
                 "photo": "radhanath_swami.jpg",
                 "order": 2,  # Very popular and well-known
             },
             {
                 "name": "Indradyumna Swami",
+                "code": "indradyumna-swami",
                 "description": "ISKCON sankirtana leader, organizer of festivals and spiritual programs worldwide.",
                 "photo": "indradyumna_swami.jpg",
                 "order": 3,  # Popular festival organizer
             },
             {
                 "name": "Bhakti Charu Swami",
+                "code": "bhakti-charu-swami",
                 "description": "ISKCON spiritual teacher, known for inspiring lectures on devotion and spiritual practice.",
                 "photo": "bhakti_charu_swami.jpg",
                 "order": 4,  # Senior disciple
             },
             {
                 "name": "Jayapataka Swami",
+                "code": "jayapataka-swami",
                 "description": "One of Prabhupada's senior disciples, GBC and experienced spiritual teacher.",
                 "photo": "jayapataka_swami.jpg",
                 "order": 5,  # Senior disciple and GBC
             },
             {
                 "name": "Sivarama Swami",
+                "code": "sivarama-swami",
                 "description": "European GBC, author of many books on Vaishnava philosophy and practice.",
                 "photo": "sivarama_swami.jpg",
                 "order": 6,  # European leader
             },
             {
                 "name": "Achyuta Priya",
+                "code": "achyuta-priya",
                 "description": "Head of ISKCON Ukraine, GBC member. Pioneer of Krishna consciousness in Soviet Ukraine since 1980, expert in devotee care and community development.",
                 "photo": "achyuta_priya.jpg",
                 "order": 7,  # Regional leader - Ukraine
+            },
+            {
+                "name": "Bhakti Vikasa Swami",
+                "code": "bhakti-vikasa-swami",
+                "description": "Senior ISKCON teacher, author of multiple books on Vedic culture and Krishna consciousness.",
+                "photo": "bhakti_vikasa_swami.jpg",
+                "order": 8,
+            },
+            {
+                "name": "Kadamba Kanana Swami",
+                "code": "kadamba-kanana-swami",
+                "description": "Senior ISKCON leader, known for deep philosophical lectures and spiritual guidance.",
+                "photo": "kadamba_kanana_swami.jpg",
+                "order": 9,
+            },
+            {
+                "name": "Bhanu Swami",
+                "code": "bhanu-swami",
+                "description": "Scholar and translator of Vaishnava literature, expert in Sanskrit and philosophy.",
+                "photo": "bhanu_swami.jpg",
+                "order": 10,
+            },
+            {
+                "name": "Yadunandana Swami",
+                "code": "yadunandana-swami",
+                "description": "European ISKCON leader, experienced in temple management and devotee training.",
+                "photo": "yadunandana_swami.jpg",
+                "order": 11,
             },
         ]
 
@@ -134,7 +170,7 @@ class Command(BaseCommand):
 
         created_count = 0
         for lecturer_data in lecturers_data:
-            # Check if lecturer already exists
+            # Check if lecturer already exists by name
             if Lecturer.objects.filter(name=lecturer_data["name"]).exists():
                 self.stdout.write(
                     self.style.WARNING(
@@ -146,6 +182,7 @@ class Command(BaseCommand):
             # Create lecturer
             lecturer = Lecturer(
                 name=lecturer_data["name"],
+                code=lecturer_data["code"],
                 description=lecturer_data["description"],
                 order=lecturer_data["order"],
             )
@@ -168,14 +205,20 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.WARNING(f"Photo not found: {photo_path}"))
 
-            lecturer.save()
-            created_count += 1
-
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f'Created lecturer: {lecturer_data["name"]} (order: {lecturer_data["order"]})'
+            try:
+                lecturer.save()
+                created_count += 1
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'Created lecturer: {lecturer_data["name"]} (order: {lecturer_data["order"]})'
+                    )
                 )
-            )
+            except Exception as e:
+                self.stdout.write(
+                    self.style.ERROR(
+                        f'Error creating lecturer {lecturer_data["name"]}: {e}'
+                    )
+                )
 
         self.stdout.write("\n" + "=" * 50)
         self.stdout.write(
