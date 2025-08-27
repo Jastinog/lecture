@@ -7,7 +7,7 @@ def lecture_upload_path(instance, filename):
     """Generate nested upload path for lecture files"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lectures/{instance.course.lecturer.code}/{instance.course.code}/{short_name}"
+    return f"lecturers/{instance.course.lecturer.code}/courses/{instance.course.code}/lectures/{short_name}"
 
 
 def lecturer_photo_path(instance, filename):
@@ -21,7 +21,7 @@ def course_cover_path(instance, filename):
     """Upload path for course covers"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"courses/{instance.lecturer.code}/{instance.code}/{short_name}"
+    return f"lecturers/{instance.lecturer.code}/courses/{instance.code}/{short_name}"
 
 
 class Lecturer(models.Model):

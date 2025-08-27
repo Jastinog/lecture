@@ -11,7 +11,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 from pathlib import Path
-import os
 
 import environ
 
@@ -210,15 +209,15 @@ USE_TZ = True
 # ==============================================================================
 
 # AWS S3 Configuration
-AWS_ACCESS_KEY_ID = env.str('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = env.str('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = env.str('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_REGION_NAME = 'eu-north-1'  # Stockholm
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+AWS_ACCESS_KEY_ID = env.str("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = env.str("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = env.str("AWS_STORAGE_BUCKET_NAME")
+AWS_S3_REGION_NAME = "eu-north-1"  # Stockholm
+AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
 
 # Optional: Cache control
 AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
+    "CacheControl": "max-age=86400",
 }
 
 # Optional: File overwrite
@@ -231,11 +230,11 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = [str(APPS_DIR / "static")]
 
 # Media files configuration - S3 for production, local for development
-USE_S3_MEDIA = env.bool('USE_S3_MEDIA', default=False)
+USE_S3_MEDIA = env.bool("USE_S3_MEDIA", default=False)
 
 if USE_S3_MEDIA:
     print("DEBUG: Using S3 storage")
-    
+
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
@@ -253,12 +252,12 @@ if USE_S3_MEDIA:
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
     }
-    
-    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-    
+
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+
 else:
     print("DEBUG: Using local storage")
-    
+
     STORAGES = {
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -270,7 +269,7 @@ else:
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
     }
-    
+
     MEDIA_ROOT = str(APPS_DIR / "media")
     MEDIA_URL = "/media/"
 

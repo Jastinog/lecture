@@ -68,7 +68,6 @@ class CourseAdmin(admin.ModelAdmin):
 
     def import_lectures_view(self, request, object_id):
         course = get_object_or_404(Course, id=object_id)
-        
 
         if request.method == "POST":
             uploaded_files = request.FILES.getlist("lecture_files")
@@ -77,18 +76,20 @@ class CourseAdmin(admin.ModelAdmin):
                 messages.error(request, "Please select files to import")
                 return render(request, "admin/import_lectures.html", {"course": course})
 
-            logger.info(f"Files received for import: {len(uploaded_files)}",
-                       [f.name for f in uploaded_files])
+            logger.info(
+                f"Files received for import: {len(uploaded_files)}",
+                [f.name for f in uploaded_files],
+            )
 
             try:
                 service = LectureImportService(course)
                 imported_count = service.import_files(uploaded_files)
-                
+
                 messages.success(
                     request, f"Successfully imported {imported_count} lectures"
                 )
                 return HttpResponseRedirect("../")
-                
+
             except Exception as e:
                 messages.error(request, f"Import failed: {str(e)}")
 

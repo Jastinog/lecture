@@ -1,7 +1,6 @@
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.core.files.base import ContentFile
-from django.conf import settings
 from PIL import Image, ImageOps
 import io
 import os
@@ -27,7 +26,7 @@ def resize_image(image_field, size=(512, 512), quality=80):
 
     try:
         # For S3, we need to read the file content
-        if hasattr(image_field, 'read'):
+        if hasattr(image_field, "read"):
             # File is already open
             image_field.seek(0)
             image_data = image_field.read()
@@ -78,7 +77,7 @@ def resize_lecturer_photo(sender, instance, **kwargs):
     Resize lecturer photo to 512x512 before saving
     Converts to JPEG format with quality 80
     """
-    if instance.photo and hasattr(instance.photo, 'file'):
+    if instance.photo and hasattr(instance.photo, "file"):
         try:
             # Check if this is a new upload (not just a model save)
             if instance.pk:
@@ -96,14 +95,12 @@ def resize_lecturer_photo(sender, instance, **kwargs):
                 # Get original name and force .jpg extension
                 original_name = os.path.basename(instance.photo.name)
                 name, _ = os.path.splitext(original_name)
-                
+
                 # Force JPEG extension
                 new_name = f"{name}_resized.jpg"
-                
+
                 instance.photo.save(
-                    new_name,
-                    resized_content,
-                    save=False  # Don't save the model again
+                    new_name, resized_content, save=False  # Don't save the model again
                 )
         except Exception as e:
             print(f"Error processing lecturer photo for {instance.name}: {e}")
@@ -115,7 +112,7 @@ def resize_course_cover(sender, instance, **kwargs):
     Resize course cover to 512x512 before saving
     Converts to JPEG format with quality 80
     """
-    if instance.cover and hasattr(instance.cover, 'file'):
+    if instance.cover and hasattr(instance.cover, "file"):
         try:
             # Check if this is a new upload (not just a model save)
             if instance.pk:
@@ -133,14 +130,12 @@ def resize_course_cover(sender, instance, **kwargs):
                 # Get original name and force .jpg extension
                 original_name = os.path.basename(instance.cover.name)
                 name, _ = os.path.splitext(original_name)
-                
+
                 # Force JPEG extension
                 new_name = f"{name}_resized.jpg"
-                
+
                 instance.cover.save(
-                    new_name,
-                    resized_content,
-                    save=False  # Don't save the model again
+                    new_name, resized_content, save=False  # Don't save the model again
                 )
         except Exception as e:
             print(f"Error processing course cover for {instance.title}: {e}")
