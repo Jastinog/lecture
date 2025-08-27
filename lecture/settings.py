@@ -11,6 +11,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 from pathlib import Path
+import os
 
 import environ
 
@@ -85,6 +86,7 @@ INSTALLED_APPS = [
     "crispy_forms",
     "corsheaders",
     "channels",
+    "storages",  # Added for AWS S3 integration
     "apps.users",
     "apps.websocket",
     "apps.lecture",
@@ -202,27 +204,51 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.0/howto/static-files/
+# ==============================================================================
+# AWS S3 CONFIGURATION
+# ==============================================================================
 
-# STATIC
-# ------------------------------------------------------------------------------
+# AWS S3 Configuration
+AWS_ACCESS_KEY_ID = env.str('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = env.str('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = env.str('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME = 'eu-north-1'  # Stockholm
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+
+# Optional: Cache control
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
+
+# Optional: File overwrite
+AWS_S3_FILE_OVERWRITE = False
+
+AWS_DEFAULT_ACL = 'private'
+AWS_QUERYSTRING_AUTH = True
+AWS_QUERYSTRING_EXPIRE = 3600
+
+# Static files (CSS, JavaScript, Images) - always local
 STATIC_ROOT = str(BASE_DIR / "staticfiles")
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [str(APPS_DIR / "static")]
+
+# Media files configuration - S3 for production, local for development
+USE_S3_MEDIA = env.bool('USE_S3_MEDIA', default=False)
+
+if USE_S3_MEDIA:
+    # S3 Media files (uploaded by users)
+    DEFAULT_FILE_STORAGE = 'storage.PrivateMediaStorage'
+else:
+    # Local Media files - for development
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    MEDIA_ROOT = str(APPS_DIR / "media")
+    MEDIA_URL = "/media/"
+
 
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
-
-# MEDIA
-# ------------------------------------------------------------------------------
-# https://docs.djangoproject.com/en/dev/ref/settings/#media-root
-MEDIA_ROOT = str(APPS_DIR / "media")
-# https://docs.djangoproject.com/en/dev/ref/settings/#media-url
-MEDIA_URL = "/media/"
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
