@@ -4,27 +4,28 @@ from django.db import models
 
 
 def lecture_upload_path(instance, filename):
-    """Generate short upload path for lecture files"""
+    """Generate nested upload path for lecture files"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lectures/{short_name}"
+    return f"lectures/{instance.course.lecturer.code}/{instance.course.code}/{short_name}"
 
 
 def lecturer_photo_path(instance, filename):
     """Upload path for lecturer photos"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{short_name}"
+    return f"lecturers/{instance.code}/{short_name}"
 
 
 def course_cover_path(instance, filename):
     """Upload path for course covers"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"courses/{short_name}"
+    return f"courses/{instance.lecturer.code}/{instance.code}/{short_name}"
 
 
 class Lecturer(models.Model):
+    code = models.CharField(max_length=50, unique=True, null=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     photo = models.ImageField(upload_to=lecturer_photo_path, blank=True, null=True)
@@ -45,6 +46,7 @@ class Course(models.Model):
     lecturer = models.ForeignKey(
         Lecturer, on_delete=models.CASCADE, related_name="courses"
     )
+    code = models.CharField(max_length=50, null=True)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     cover = models.ImageField(upload_to=course_cover_path, blank=True, null=True)
@@ -56,7 +58,7 @@ class Course(models.Model):
 
     class Meta:
         ordering = ["lecturer", "order"]
-        unique_together = ["lecturer", "order"]
+        unique_together = ["lecturer", "order", "code"]
 
 
 class Lecture(models.Model):
