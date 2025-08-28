@@ -1,5 +1,6 @@
 import uuid
 import os
+import hashlib
 from django.db import models
 
 def lecture_upload_path(instance, filename):
@@ -65,6 +66,7 @@ class Lecture(models.Model):
     file_size = models.BigIntegerField(null=True, blank=True)
     duration = models.CharField(max_length=20, blank=True)
     order = models.PositiveIntegerField()
+    file_hash = models.CharField(max_length=64, blank=True, help_text="SHA256 hash of original filename for duplicate detection")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -73,9 +75,17 @@ class Lecture(models.Model):
     class Meta:
         ordering = ["topic", "order"]
         unique_together = ["topic", "order"]
+        indexes = [
+            models.Index(fields=["topic", "file_hash"]),
+        ]
 
     @property
     def file_size_mb(self):
         if self.file_size:
             return round(self.file_size / (1024 * 1024), 1)
         return 0.0
+
+    @staticmethod
+    def generate_file_hash(filename):
+        """Generate SHA256 hash from filename"""
+        return hashlib.sha256(filename.encode('utf-8')).hexdigest()

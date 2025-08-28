@@ -47,10 +47,10 @@ class LectureImportService:
             )
 
             if self._is_audio_file(file.name):
-                # Check for duplicate title
-                if self._check_duplicate_lecture(file.name, next_order):
+                # Check for duplicate hash
+                if self._check_duplicate_by_hash(file.name):
                     skipped_count += 1
-                    logger.warning(f"Duplicate lecture found, skipping: {file.name}")
+                    logger.warning(f"Duplicate file found by hash, skipping: {file.name}")
                     continue
 
                 if self._create_lecture(file, next_order):
@@ -115,23 +115,15 @@ class LectureImportService:
             logger.error(f"Error calculating next order: {str(e)}")
             return 1
 
-    def _check_duplicate_lecture(self, filename, order):
-        """Check if lecture with same title or order already exists"""
-        title = self._extract_title(filename)
-
-        # Check by title
-        title_exists = self.topic.lectures.filter(title=title).exists()
-        if title_exists:
-            logger.warning(f"Lecture with title '{title}' already exists")
-            return True
-
-        # Check by order
-        order_exists = self.topic.lectures.filter(order=order).exists()
-        if order_exists:
-            logger.warning(f"Lecture with order '{order}' already exists")
-            return True
-
-        return False
+    def _check_duplicate_by_hash(self, filename):
+        """Check if lecture with same file hash already exists"""
+        file_hash = Lecture.generate_file_hash(filename)
+        exists = self.topic.lectures.filter(file_hash=file_hash).exists()
+        
+        if exists:
+            logger.warning(f"Lecture with hash '{file_hash}' for file '{filename}' already exists")
+        
+        return exists
 
     def _create_lecture(self, uploaded_file, order):
         """Create lecture from uploaded file"""
@@ -144,21 +136,16 @@ class LectureImportService:
 
                 title = self._extract_title(uploaded_file.name)
                 file_size = uploaded_file.size
+                file_hash = Lecture.generate_file_hash(uploaded_file.name)
 
                 # Get duration before any file operations
                 duration = self._get_duration_from_file(uploaded_file)
                 logger.debug(f"Duration extracted: '{duration}'")
 
                 # Double-check for duplicates before creating
-                if self.topic.lectures.filter(title=title).exists():
+                if self.topic.lectures.filter(file_hash=file_hash).exists():
                     logger.error(
-                        f"Cannot create lecture - title '{title}' already exists"
-                    )
-                    return False
-
-                if self.topic.lectures.filter(order=order).exists():
-                    logger.error(
-                        f"Cannot create lecture - order '{order}' already exists"
+                        f"Cannot create lecture - file hash '{file_hash}' already exists"
                     )
                     return False
 
@@ -171,6 +158,7 @@ class LectureImportService:
                     file_size=file_size,
                     duration=duration,
                     order=order,
+                    file_hash=file_hash,
                 )
 
                 # Verify the file was saved correctly
@@ -190,6 +178,7 @@ class LectureImportService:
                     f"Title: {lecture.title}",
                     f"Order: {lecture.order}",
                     f"File: {lecture.audio_file.name}",
+                    f"Hash: {file_hash}",
                     f"Storage: {type(default_storage)}",
                 )
                 return True

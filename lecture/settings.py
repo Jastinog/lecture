@@ -233,8 +233,6 @@ STATICFILES_DIRS = [str(APPS_DIR / "static")]
 USE_S3_MEDIA = env.bool("USE_S3_MEDIA", default=False)
 
 if USE_S3_MEDIA:
-    print("DEBUG: Using S3 storage")
-
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
@@ -256,8 +254,6 @@ if USE_S3_MEDIA:
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
 else:
-    print("DEBUG: Using local storage")
-
     STORAGES = {
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",

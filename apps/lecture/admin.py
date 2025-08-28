@@ -13,11 +13,20 @@ logger = Logger(app_name="lecture_admin")
 
 @admin.register(Lecturer)
 class LecturerAdmin(admin.ModelAdmin):
-    list_display = ["name", "order", "created_at"]
+    list_display = ["photo_thumbnail", "name", "order", "created_at"]
     search_fields = ["name"]
     ordering = ["order", "name"]
     list_editable = ["order"]
     list_display_links = ["name"]
+
+    def photo_thumbnail(self, obj):
+        if obj.photo:
+            return format_html(
+                '<img src="{}" width="40" height="40" style="border-radius: 4px; object-fit: cover;" />',
+                obj.photo.url
+            )
+        return "-"
+    photo_thumbnail.short_description = "Photo"
 
     def get_queryset(self, request):
         return super().get_queryset(request).order_by("order", "name")
@@ -26,13 +35,20 @@ class LecturerAdmin(admin.ModelAdmin):
 class LectureInline(admin.TabularInline):
     model = Lecture
     extra = 0
-    fields = ["title", "order", "audio_file", "duration", "file_size_mb"]
-    readonly_fields = ["file_size_mb"]
+    fields = ["title", "order", "audio_file", "duration", "file_size_mb", "file_hash_short"]
+    readonly_fields = ["file_size_mb", "file_hash_short"]
+
+    def file_hash_short(self, obj):
+        if obj.file_hash:
+            return f"{obj.file_hash[:8]}..."
+        return "-"
+    file_hash_short.short_description = "Hash"
 
 
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
     list_display = [
+        "cover_thumbnail",
         "title",
         "lecturer",
         "order",
@@ -44,6 +60,15 @@ class TopicAdmin(admin.ModelAdmin):
     ordering = ["lecturer__order", "lecturer__name", "order"]
     list_editable = ["order"]
     inlines = [LectureInline]
+
+    def cover_thumbnail(self, obj):
+        if obj.cover:
+            return format_html(
+                '<img src="{}" width="40" height="40" style="border-radius: 4px; object-fit: cover;" />',
+                obj.cover.url
+            )
+        return "-"
+    cover_thumbnail.short_description = "Cover"
 
     def lecture_count_with_import(self, obj):
         count = obj.lectures.count()
@@ -92,7 +117,6 @@ class TopicAdmin(admin.ModelAdmin):
             except Exception as e:
                 messages.error(request, f"Import failed: {str(e)}")
 
-        # Всегда возвращаем response
         return render(request, "admin/import_lectures.html", {"topic": topic})
 
 
@@ -104,14 +128,21 @@ class LectureAdmin(admin.ModelAdmin):
         "order",
         "file_size_mb",
         "duration",
+        "file_hash_short",
         "created_at",
     ]
     list_filter = ["topic__lecturer", "topic", "created_at"]
-    search_fields = ["title", "topic__title", "topic__lecturer__name"]
+    search_fields = ["title", "topic__title", "topic__lecturer__name", "file_hash"]
     ordering = ["topic__lecturer__order", "topic", "order"]
     list_editable = ["order"]
+    readonly_fields = ["file_hash"]
 
     def file_size_mb(self, obj):
         return f"{obj.file_size_mb} MB"
-
     file_size_mb.short_description = "Size"
+
+    def file_hash_short(self, obj):
+        if obj.file_hash:
+            return f"{obj.file_hash[:8]}..."
+        return "-"
+    file_hash_short.short_description = "Hash"
