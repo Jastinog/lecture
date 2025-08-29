@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Вход в систему{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/auth.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="lecture-player">
+        <div class="auth-header">
+            <i class="fas fa-headphones auth-header-icon"></i>
+            <h1 class="auth-header-title">Вход в систему</h1>
+            <p class="auth-header-subtitle">Войдите для доступа к лекциям</p>
+        </div>
+
+        <form method="post" class="auth-form">
+            {% csrf_token %}
+            
+            <div class="auth-field">
+                <label for="email" class="auth-label">Email</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    required 
+                    class="auth-input"
+                    placeholder="Введите ваш email"
+                >
+            </div>
+
+            <div class="auth-field">
+                <label for="password" class="auth-label">Пароль</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    required 
+                    class="auth-input"
+                    placeholder="Введите ваш пароль"
+                >
+            </div>
+
+            <button type="submit" class="auth-button">
+                Войти
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p class="auth-footer-text">
+                Нет аккаунта? 
+                <a href="{% url 'users:register' %}" class="auth-link">
+                    Зарегистрироваться
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

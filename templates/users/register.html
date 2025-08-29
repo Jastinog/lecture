@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/auth.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="lecture-player">
+        <div class="auth-header">
+            <i class="fas fa-user-plus auth-header-icon"></i>
+            <h1 class="auth-header-title">Регистрация</h1>
+            <p class="auth-header-subtitle">Создайте аккаунт для доступа к лекциям</p>
+        </div>
+
+        <form method="post" class="auth-form">
+            {% csrf_token %}
+            
+            <div class="auth-field">
+                <label for="{{ form.email.id_for_label }}" class="auth-label">Email</label>
+                <input 
+                    type="email" 
+                    id="{{ form.email.id_for_label }}"
+                    name="{{ form.email.name }}"
+                    value="{{ form.email.value|default_if_none:'' }}"
+                    required 
+                    class="auth-input"
+                    placeholder="Введите ваш email"
+                >
+                {% if form.email.errors %}
+                    {% for error in form.email.errors %}
+                        <div class="auth-error">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="auth-field">
+                <label for="{{ form.password1.id_for_label }}" class="auth-label">Пароль</label>
+                <input 
+                    type="password" 
+                    id="{{ form.password1.id_for_label }}"
+                    name="{{ form.password1.name }}"
+                    required 
+                    class="auth-input"
+                    placeholder="Введите пароль"
+                >
+                {% if form.password1.errors %}
+                    {% for error in form.password1.errors %}
+                        <div class="auth-error">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="auth-field">
+                <label for="{{ form.password2.id_for_label }}" class="auth-label">Подтвердите пароль</label>
+                <input 
+                    type="password" 
+                    id="{{ form.password2.id_for_label }}"
+                    name="{{ form.password2.name }}"
+                    required 
+                    class="auth-input"
+                    placeholder="Подтвердите пароль"
+                >
+                {% if form.password2.errors %}
+                    {% for error in form.password2.errors %}
+                        <div class="auth-error">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <button type="submit" class="auth-button">
+                Зарегистрироваться
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p class="auth-footer-text">
+                Уже есть аккаунт? 
+                <a href="{% url 'users:login' %}" class="auth-link">
+                    Войти
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
