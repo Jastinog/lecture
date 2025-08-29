@@ -227,7 +227,7 @@ class LectureImportService:
         return cleaned_title
 
     def _get_duration_from_file(self, uploaded_file):
-        """Get audio duration from uploaded file"""
+        """Get audio duration from uploaded file in seconds"""
         try:
             logger.debug(f"Extracting duration from: {uploaded_file.name}")
 
@@ -242,12 +242,8 @@ class LectureImportService:
 
             if audio_file and hasattr(audio_file.info, "length"):
                 seconds = int(audio_file.info.length)
-                minutes = seconds // 60
-                seconds = seconds % 60
-                duration = f"{minutes}:{seconds:02d}"
-
-                logger.debug(f"Duration extracted: {duration}")
-                return duration
+                logger.debug(f"Duration extracted: {seconds} seconds")
+                return seconds
             else:
                 logger.warning(f"Could not extract duration from {uploaded_file.name}")
 
@@ -256,4 +252,4 @@ class LectureImportService:
                 f"Error extracting duration from {uploaded_file.name}: {str(e)}"
             )
 
-        return ""
+        return None

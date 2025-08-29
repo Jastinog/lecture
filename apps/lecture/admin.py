@@ -5,7 +5,8 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.utils.html import format_html
 from apps.system.services import Logger
-from apps.lecture.models import Lecturer, Topic, Lecture
+from apps.lecture.models import Lecturer, Topic, Lecture, LectureProgress
+
 from .services import LectureImportService
 
 logger = Logger(app_name="lecture_admin")
@@ -159,3 +160,54 @@ class LectureAdmin(admin.ModelAdmin):
         return "-"
 
     file_hash_short.short_description = "Hash"
+
+
+@admin.register(LectureProgress)
+class LectureProgressAdmin(admin.ModelAdmin):
+    list_display = [
+        "user_email",
+        "lecture_title",
+        "progress_percentage_display",
+        "completed",
+        "listen_count",
+        "current_time_display",
+        "last_listened",
+    ]
+    list_filter = ["completed", "last_listened", "lecture__topic__lecturer"]
+    search_fields = [
+        "user__email",
+        "lecture__title",
+        "lecture__topic__title",
+        "lecture__topic__lecturer__name",
+    ]
+    readonly_fields = ["created_at", "last_listened"]
+    ordering = ["-last_listened"]
+
+    def user_email(self, obj):
+        return obj.user.email
+
+    user_email.short_description = "User"
+
+    def lecture_title(self, obj):
+        return f"{obj.lecture.topic.lecturer.name} - {obj.lecture.topic.title} - {obj.lecture.title}"
+
+    lecture_title.short_description = "Lecture"
+
+    def current_time_display(self, obj):
+        minutes = int(obj.current_time // 60)
+        seconds = int(obj.current_time % 60)
+        return f"{minutes}:{seconds:02d}"
+
+    current_time_display.short_description = "Position"
+
+    def progress_percentage_display(self, obj):
+        return f"{obj.progress_percentage:.1f}%"
+
+    progress_percentage_display.short_description = "Progress"
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("user", "lecture__topic__lecturer")
+        )

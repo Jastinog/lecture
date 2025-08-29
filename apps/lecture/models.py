@@ -3,6 +3,8 @@ import os
 import hashlib
 from django.db import models
 
+from apps.users.models import User
+
 
 def lecture_upload_path(instance, filename):
     """Generate nested upload path for lecture files"""
@@ -68,7 +70,7 @@ class Lecture(models.Model):
     description = models.TextField(blank=True)
     audio_file = models.FileField(upload_to=lecture_upload_path)
     file_size = models.BigIntegerField(null=True, blank=True)
-    duration = models.CharField(max_length=20, blank=True)
+    duration = models.IntegerField(null=True, blank=True)
     order = models.PositiveIntegerField()
     file_hash = models.CharField(
         max_length=64,
@@ -97,3 +99,43 @@ class Lecture(models.Model):
     def generate_file_hash(filename):
         """Generate SHA256 hash from filename"""
         return hashlib.sha256(filename.encode("utf-8")).hexdigest()
+
+
+class LectureProgress(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="lecture_progress"
+    )
+    lecture = models.ForeignKey(
+        Lecture, on_delete=models.CASCADE, related_name="progress_records"
+    )
+    current_time = models.FloatField(
+        default=0.0, help_text="Current playback position in seconds"
+    )
+    completed = models.BooleanField(
+        default=False, help_text="Whether lecture was fully listened to"
+    )
+    listen_count = models.PositiveIntegerField(
+        default=0, help_text="Number of times this lecture was played"
+    )
+    last_listened = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["user", "lecture"]
+        indexes = [
+            models.Index(fields=["user", "lecture"]),
+            models.Index(fields=["user", "completed"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.lecture.title} ({self.current_time}s)"
+
+    @property
+    def progress_percentage(self):
+        """Calculate progress percentage if lecture has duration"""
+
+        print(self.current_time, self.lecture.duration)
+        if hasattr(self.lecture, "duration") and self.lecture.duration > 0:
+            return min(100, (self.current_time / self.lecture.duration) * 100)
+
+        return 60
