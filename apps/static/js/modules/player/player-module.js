@@ -80,8 +80,8 @@ class LecturePlayer {
         this.audio.addEventListener('canplay', () => this.onCanPlay());
         this.audio.addEventListener('loadstart', () => this.isLoading = true);
 
-        // Progress bar seek
-        this.progressBar.addEventListener('click', (e) => this.seek(e));
+        // Progress bar click-to-seek
+        this.initProgressBar();
     }
 
     async playLecture(card) {
@@ -177,6 +177,7 @@ class LecturePlayer {
 
     updateProgress() {
         if (!this.audio.duration) return;
+        
         const percent = (this.audio.currentTime / this.audio.duration) * 100;
         this.progressFilled.style.width = `${percent}%`;
         this.timeCurrent.textContent = this.formatTime(this.audio.currentTime);
@@ -184,12 +185,6 @@ class LecturePlayer {
 
     updateDuration() {
         this.timeTotal.textContent = this.formatTime(this.audio.duration);
-    }
-
-    seek(e) {
-        const rect = this.progressBar.getBoundingClientRect();
-        const percent = (e.clientX - rect.left) / rect.width;
-        this.audio.currentTime = percent * this.audio.duration;
     }
 
     formatTime(seconds) {
@@ -201,5 +196,26 @@ class LecturePlayer {
 
     onEnded() {
         this.playNext();
+    }
+
+    initProgressBar() {
+        // Click to seek
+        this.progressBar.addEventListener('click', (e) => this.seek(e));
+    }
+
+    seek(e) {
+        if (!this.audio.duration) return;
+        
+        e.preventDefault();
+        const rect = this.progressBar.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const percent = Math.max(0, Math.min(1, clickX / rect.width));
+        const newTime = percent * this.audio.duration;
+        
+        this.audio.currentTime = newTime;
+        
+        // Immediately update the visual to match the new position
+        this.progressFilled.style.width = `${percent * 100}%`;
+        this.timeCurrent.textContent = this.formatTime(newTime);
     }
 }
