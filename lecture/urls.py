@@ -22,8 +22,9 @@ from django.urls import include, path
 
 urlpatterns = [
     path("", include("apps.lecture.urls")),
+    path("auth/", include("apps.users.urls")),
     path("admin/", admin.site.urls),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
 if settings.DEBUG:
-    # Static file serving when using Gunicorn + Uvicorn for local web socket development
     urlpatterns += staticfiles_urlpatterns()

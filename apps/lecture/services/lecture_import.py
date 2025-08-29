@@ -50,7 +50,9 @@ class LectureImportService:
                 # Check for duplicate hash
                 if self._check_duplicate_by_hash(file.name):
                     skipped_count += 1
-                    logger.warning(f"Duplicate file found by hash, skipping: {file.name}")
+                    logger.warning(
+                        f"Duplicate file found by hash, skipping: {file.name}"
+                    )
                     continue
 
                 if self._create_lecture(file, next_order):
@@ -119,10 +121,12 @@ class LectureImportService:
         """Check if lecture with same file hash already exists"""
         file_hash = Lecture.generate_file_hash(filename)
         exists = self.topic.lectures.filter(file_hash=file_hash).exists()
-        
+
         if exists:
-            logger.warning(f"Lecture with hash '{file_hash}' for file '{filename}' already exists")
-        
+            logger.warning(
+                f"Lecture with hash '{file_hash}' for file '{filename}' already exists"
+            )
+
         return exists
 
     def _create_lecture(self, uploaded_file, order):

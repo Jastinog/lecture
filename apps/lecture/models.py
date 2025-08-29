@@ -3,11 +3,13 @@ import os
 import hashlib
 from django.db import models
 
+
 def lecture_upload_path(instance, filename):
     """Generate nested upload path for lecture files"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
     return f"lecturers/{instance.topic.lecturer.code}/topics/{instance.topic.code}/lectures/{short_name}"
+
 
 def lecturer_photo_path(instance, filename):
     """Upload path for lecturer photos"""
@@ -15,11 +17,13 @@ def lecturer_photo_path(instance, filename):
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
     return f"lecturers/{instance.code}/{short_name}"
 
+
 def topic_cover_path(instance, filename):
     """Upload path for topic covers"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
     return f"lecturers/{instance.lecturer.code}/topics/{instance.code}/{short_name}"
+
 
 class Lecturer(models.Model):
     code = models.CharField(max_length=255, unique=True)
@@ -37,6 +41,7 @@ class Lecturer(models.Model):
     class Meta:
         ordering = ["order", "name"]
         unique_together = ["order"]
+
 
 class Topic(models.Model):
     lecturer = models.ForeignKey(
@@ -56,17 +61,20 @@ class Topic(models.Model):
         ordering = ["lecturer", "order"]
         unique_together = ["lecturer", "order", "code"]
 
+
 class Lecture(models.Model):
-    topic = models.ForeignKey(
-        Topic, on_delete=models.CASCADE, related_name="lectures"
-    )
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="lectures")
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     audio_file = models.FileField(upload_to=lecture_upload_path)
     file_size = models.BigIntegerField(null=True, blank=True)
     duration = models.CharField(max_length=20, blank=True)
     order = models.PositiveIntegerField()
-    file_hash = models.CharField(max_length=64, blank=True, help_text="SHA256 hash of original filename for duplicate detection")
+    file_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="SHA256 hash of original filename for duplicate detection",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -88,4 +96,4 @@ class Lecture(models.Model):
     @staticmethod
     def generate_file_hash(filename):
         """Generate SHA256 hash from filename"""
-        return hashlib.sha256(filename.encode('utf-8')).hexdigest()
+        return hashlib.sha256(filename.encode("utf-8")).hexdigest()

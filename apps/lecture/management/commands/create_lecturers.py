@@ -24,7 +24,6 @@ apps/lecture/management/
 """
 
 import os
-import uuid
 from django.core.management.base import BaseCommand
 from django.core.files import File
 from apps.lecture.models import Lecturer

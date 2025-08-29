@@ -23,9 +23,10 @@ class LecturerAdmin(admin.ModelAdmin):
         if obj.photo:
             return format_html(
                 '<img src="{}" width="40" height="40" style="border-radius: 4px; object-fit: cover;" />',
-                obj.photo.url
+                obj.photo.url,
             )
         return "-"
+
     photo_thumbnail.short_description = "Photo"
 
     def get_queryset(self, request):
@@ -35,13 +36,21 @@ class LecturerAdmin(admin.ModelAdmin):
 class LectureInline(admin.TabularInline):
     model = Lecture
     extra = 0
-    fields = ["title", "order", "audio_file", "duration", "file_size_mb", "file_hash_short"]
+    fields = [
+        "title",
+        "order",
+        "audio_file",
+        "duration",
+        "file_size_mb",
+        "file_hash_short",
+    ]
     readonly_fields = ["file_size_mb", "file_hash_short"]
 
     def file_hash_short(self, obj):
         if obj.file_hash:
             return f"{obj.file_hash[:8]}..."
         return "-"
+
     file_hash_short.short_description = "Hash"
 
 
@@ -65,9 +74,10 @@ class TopicAdmin(admin.ModelAdmin):
         if obj.cover:
             return format_html(
                 '<img src="{}" width="40" height="40" style="border-radius: 4px; object-fit: cover;" />',
-                obj.cover.url
+                obj.cover.url,
             )
         return "-"
+
     cover_thumbnail.short_description = "Cover"
 
     def lecture_count_with_import(self, obj):
@@ -77,6 +87,7 @@ class TopicAdmin(admin.ModelAdmin):
             count,
             obj.id,
         )
+
     lecture_count_with_import.short_description = "Lectures"
 
     def get_urls(self):
@@ -139,10 +150,12 @@ class LectureAdmin(admin.ModelAdmin):
 
     def file_size_mb(self, obj):
         return f"{obj.file_size_mb} MB"
+
     file_size_mb.short_description = "Size"
 
     def file_hash_short(self, obj):
         if obj.file_hash:
             return f"{obj.file_hash[:8]}..."
         return "-"
+
     file_hash_short.short_description = "Hash"
