@@ -3,6 +3,9 @@ class LecturePlayer {
         this.audio = document.getElementById('audio-player');
         this.currentCard = null;
         this.isLoading = false;
+        this.currentLectureId = null;
+        this.progressUpdateInterval = null;
+        this.lastSavedTime = 0;
 
         // Controls
         this.playPauseBtn = document.getElementById('btn-play-pause');
@@ -20,6 +23,7 @@ class LecturePlayer {
 
         // Constants
         this.SKIP_SECONDS = 15;
+        this.PROGRESS_UPDATE_INTERVAL = 5000; // 5 seconds
 
         this.init();
     }
@@ -40,7 +44,7 @@ class LecturePlayer {
         this.prevBtn?.addEventListener('click', () => this.playPrevious());
         this.nextBtn?.addEventListener('click', () => this.playNext());
 
-        // New ±15s handlers
+        // ±15s handlers
         this.rewindBtn.addEventListener('click', () => {
             if (!this.audio.duration) return;
             this.audio.currentTime = Math.max(0, this.audio.currentTime - this.SKIP_SECONDS);
@@ -50,7 +54,7 @@ class LecturePlayer {
             this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + this.SKIP_SECONDS);
         });
 
-        // Keyboard shortcuts: J/K/L like YouTube
+        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
             if (e.key.toLowerCase() === 'k' || e.code === 'Space') {
@@ -69,16 +73,17 @@ class LecturePlayer {
 
         // Audio events
         this.audio.addEventListener('ended', () => this.onEnded());
-        this.audio.addEventListener('pause', () => {
-            this.updatePlayPauseBtn(false);
-        });
-        this.audio.addEventListener('play', () => {
-            this.updatePlayPauseBtn(true);
-        });
+        this.audio.addEventListener('pause', () => this.onPause());
+        this.audio.addEventListener('play', () => this.onPlay());
         this.audio.addEventListener('timeupdate', () => this.updateProgress());
         this.audio.addEventListener('loadedmetadata', () => this.updateDuration());
         this.audio.addEventListener('canplay', () => this.onCanPlay());
         this.audio.addEventListener('loadstart', () => this.isLoading = true);
+
+        // Page unload handler
+        window.addEventListener('beforeunload', () => {
+            this.saveCurrentProgress();
+        });
 
         // Progress bar click-to-seek
         this.initProgressBar();
@@ -87,6 +92,12 @@ class LecturePlayer {
     async playLecture(card) {
         const url = card.dataset.url;
         const title = card.dataset.title;
+        const lectureId = parseInt(card.dataset.id);
+
+        // Save progress of previous lecture
+        if (this.currentLectureId && this.currentLectureId !== lectureId) {
+            await this.saveCurrentProgress();
+        }
 
         // If clicking the same card that's currently playing, pause it
         if (this.currentCard === card && !this.audio.paused) {
@@ -99,6 +110,7 @@ class LecturePlayer {
             this.audio.pause();
             this.audio.src = url;
             this.currentCard = card;
+            this.currentLectureId = lectureId;
             this.nowPlayingTitle.textContent = title;
             this.isLoading = true;
         }
@@ -116,8 +128,109 @@ class LecturePlayer {
     onCanPlay() {
         if (this.isLoading) {
             this.isLoading = false;
-            // Don't auto-play here, let playLecture handle it
         }
+    }
+
+    onPlay() {
+        this.updatePlayPauseBtn(true);
+        this.startProgressUpdates();
+    }
+
+    onPause() {
+        this.updatePlayPauseBtn(false);
+        this.stopProgressUpdates();
+        this.saveCurrentProgress();
+    }
+
+    async onEnded() {
+        // Mark as completed and save
+        await this.saveCurrentProgress(true);
+        this.playNext();
+    }
+
+    startProgressUpdates() {
+        this.stopProgressUpdates(); // Clear any existing interval
+        
+        this.progressUpdateInterval = setInterval(() => {
+            this.saveCurrentProgress();
+        }, this.PROGRESS_UPDATE_INTERVAL);
+    }
+
+    stopProgressUpdates() {
+        if (this.progressUpdateInterval) {
+            clearInterval(this.progressUpdateInterval);
+            this.progressUpdateInterval = null;
+        }
+    }
+
+    async saveCurrentProgress(forceCompleted = false) {
+        if (!this.currentLectureId || !this.audio.duration) return;
+
+        const currentTime = this.audio.currentTime;
+        const duration = this.audio.duration;
+        
+        // Only save if time changed significantly (avoid spam)
+        if (Math.abs(currentTime - this.lastSavedTime) < 2 && !forceCompleted) return;
+
+        try {
+            const response = await fetch('/progress/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                body: JSON.stringify({
+                    lecture_id: this.currentLectureId,
+                    current_time: currentTime,
+                    duration: duration,
+                    force_completed: forceCompleted
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.updateLectureUI(this.currentLectureId, data);
+                this.lastSavedTime = currentTime;
+                console.log('Progress saved:', data);
+            }
+        } catch (error) {
+            console.error('Failed to save progress:', error);
+        }
+    }
+
+    updateLectureUI(lectureId, progressData) {
+        const card = document.querySelector(`[data-id="${lectureId}"]`);
+        if (!card) return;
+
+        const progressBar = card.querySelector('.lecture-progress-filled');
+        const statusBadge = card.querySelector('.status-badge');
+        const listenCount = card.querySelector('.listen-count');
+
+        if (progressBar) {
+            progressBar.style.width = `${progressData.progress_percentage}%`;
+            progressBar.className = progressData.completed ? 
+                'lecture-progress-filled completed' : 
+                'lecture-progress-filled in-progress';
+        }
+
+        if (statusBadge) {
+            if (progressData.completed) {
+                statusBadge.innerHTML = '<i class="fas fa-check"></i> Прослушано';
+                statusBadge.className = 'status-badge status-completed';
+            } else if (progressData.progress_percentage > 0) {
+                statusBadge.innerHTML = `<i class="fas fa-play"></i> ${Math.round(progressData.progress_percentage)}%`;
+                statusBadge.className = 'status-badge status-in-progress';
+            }
+        }
+
+        if (listenCount) {
+            listenCount.innerHTML = `<i class="fas fa-repeat"></i> ${progressData.listen_count}x`;
+        }
+    }
+
+    getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+               document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
     }
 
     togglePlayPause() {
@@ -194,12 +307,7 @@ class LecturePlayer {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
-    onEnded() {
-        this.playNext();
-    }
-
     initProgressBar() {
-        // Click to seek
         this.progressBar.addEventListener('click', (e) => this.seek(e));
     }
 
@@ -214,7 +322,6 @@ class LecturePlayer {
         
         this.audio.currentTime = newTime;
         
-        // Immediately update the visual to match the new position
         this.progressFilled.style.width = `${percent * 100}%`;
         this.timeCurrent.textContent = this.formatTime(newTime);
     }
