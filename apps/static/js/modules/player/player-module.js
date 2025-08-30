@@ -390,6 +390,9 @@ class LecturePlayer {
             this.seekTarget = null;
             this.audio.removeEventListener('seeked', onSeeked);
             this.audio.removeEventListener('seeking', onSeeking);
+            
+            // Save progress immediately after seeking
+            this.saveCurrentProgress();
         };
         
         const onSeeking = () => {
@@ -409,6 +412,8 @@ class LecturePlayer {
             if (this.isSeeking) {
                 this.isSeeking = false;
                 this.seekTarget = null;
+                // Save progress in fallback too
+                this.saveCurrentProgress();
             }
         }, 1000);
     }
