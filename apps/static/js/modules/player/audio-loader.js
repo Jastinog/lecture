@@ -7,10 +7,10 @@ export class AudioLoader {
         this.loadedBlobs = new Map();
     }
 
-    async loadAudio(url) {
+    async loadAudio(lectureId) {
         // Check if already loaded
-        if (this.loadedBlobs.has(url)) {
-            const blob = this.loadedBlobs.get(url);
+        if (this.loadedBlobs.has(lectureId)) {
+            const blob = this.loadedBlobs.get(lectureId);
             return URL.createObjectURL(blob);
         }
 
@@ -23,8 +23,13 @@ export class AudioLoader {
             const xhr = new XMLHttpRequest();
             this.currentRequest = xhr;
 
-            xhr.open('GET', url, true);
+            xhr.open('GET', `/api/audio/${lectureId}/`, true);
             xhr.responseType = 'blob';
+
+            const csrfToken = this.getCSRFToken();
+            if (csrfToken) {
+                xhr.setRequestHeader('X-CSRFToken', csrfToken);
+            }
 
             xhr.onprogress = (e) => {
                 if (e.lengthComputable && this.onProgress) {
@@ -45,7 +50,7 @@ export class AudioLoader {
             xhr.onload = () => {
                 if (xhr.status === 200) {
                     const blob = xhr.response;
-                    this.loadedBlobs.set(url, blob);
+                    this.loadedBlobs.set(lectureId, blob);
                     const objectURL = URL.createObjectURL(blob);
                     
                     if (this.onComplete) {
@@ -83,8 +88,8 @@ export class AudioLoader {
         });
     }
 
-    isLoaded(url) {
-        return this.loadedBlobs.has(url);
+    isLoaded(lectureId) {
+        return this.loadedBlobs.has(lectureId);
     }
 
     abort() {
@@ -95,24 +100,14 @@ export class AudioLoader {
     }
 
     clearCache() {
-        // Revoke all object URLs to prevent memory leaks
-        this.loadedBlobs.forEach((blob, url) => {
-            if (url.startsWith('blob:')) {
-                URL.revokeObjectURL(url);
-            }
+        this.loadedBlobs.forEach((blob, lectureId) => {
+            URL.revokeObjectURL(URL.createObjectURL(blob));
         });
         this.loadedBlobs.clear();
     }
 
-    getCacheSize() {
-        let totalSize = 0;
-        this.loadedBlobs.forEach(blob => {
-            totalSize += blob.size;
-        });
-        return {
-            bytes: totalSize,
-            mb: (totalSize / 1024 / 1024).toFixed(2),
-            count: this.loadedBlobs.size
-        };
+    getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+               document.querySelector('meta[name=csrf-token]')?.content || '';
     }
 }

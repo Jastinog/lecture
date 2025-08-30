@@ -1,15 +1,51 @@
 import json
+import requests
 
+from django.conf import settings
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
+from django.http import StreamingHttpResponse, Http404, JsonResponse
+
 from .models import Lecture, Lecturer, Topic, LectureProgress, CurrentLecture
 
-def audio_test(request):
-    """Audio loading test page"""
-    return render(request, "audio_test.html")
+@login_required
+def serve_audio(request, lecture_id):
+    """Load and serve audio file"""
+    lecture = get_object_or_404(Lecture, id=lecture_id)
+    
+    if not lecture.audio_file:
+        raise Http404("Audio file not found")
+    
+    # Check if using S3 or local storage
+    if settings.USE_S3_MEDIA:
+        file_url = lecture.audio_file.url
+    else:
+        file_url = f"{settings.BACKEND_URL}{lecture.audio_file.url}"
+    
+    try:
+        headers = {}
+        if 'HTTP_RANGE' in request.META:
+            headers['Range'] = request.META['HTTP_RANGE']
+        
+        file_response = requests.get(file_url, headers=headers, stream=True)
+        file_response.raise_for_status()
+        
+        response = StreamingHttpResponse(
+            file_response.iter_content(chunk_size=8192),
+            content_type=file_response.headers.get('Content-Type', 'audio/mpeg'),
+            status=file_response.status_code
+        )
+        
+        for header in ['Content-Length', 'Content-Range', 'Accept-Ranges']:
+            if header in file_response.headers:
+                response[header] = file_response.headers[header]
+                
+        return response
+        
+    except requests.RequestException:
+        raise Http404("Failed to load audio file")
 
 def lecturers_list(request):
     """List all lecturers"""

@@ -134,21 +134,18 @@ export class LecturePlayer {
         this.header.updateNowPlaying(card.dataset.title);
         this.playlist.updateUI();
         
-        const url = card.dataset.url;
-        
         try {
-            // Check if already loaded
-            if (this.audioLoader.isLoaded(url)) {
+            if (this.audioLoader.isLoaded(this.currentLectureId)) {
                 console.log("Audio already loaded from cache");
-                const objectURL = await this.audioLoader.loadAudio(url);
+                const objectURL = await this.audioLoader.loadAudio(this.currentLectureId);
                 this.audio.src = objectURL;
                 this.audio.load();
             } else {
-                console.log("Loading new audio file...");
+                console.log("Loading full audio file...");
                 this.isLoading = true;
                 this.showLoadingState();
                 
-                const objectURL = await this.audioLoader.loadAudio(url);
+                const objectURL = await this.audioLoader.loadAudio(this.currentLectureId);
                 this.audio.src = objectURL;
                 this.audio.load();
             }
