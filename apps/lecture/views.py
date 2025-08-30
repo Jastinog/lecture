@@ -37,12 +37,17 @@ def topic_player(request, topic_id):
 
     # Get current lecture for this topic
     current_lecture = None
+    current_lecture_progress = None
     if request.user.is_authenticated:
         current_lecture_obj = CurrentLecture.objects.filter(
             user=request.user, topic=topic
         ).first()
         if current_lecture_obj:
             current_lecture = current_lecture_obj.lecture
+            # Get progress for current lecture
+            current_lecture_progress = LectureProgress.objects.filter(
+                user=request.user, lecture=current_lecture
+            ).first()
 
     # Always attach progress data to each lecture
     if request.user.is_authenticated:
@@ -73,7 +78,8 @@ def topic_player(request, topic_id):
         "topic": topic,
         "lectures": lectures,
         "lecture_count": lectures.count(),
-        "current_lecture": current_lecture,  # Add this
+        "current_lecture": current_lecture,
+        "current_lecture_progress": current_lecture_progress,
     }
 
     return render(request, "topic_player.html", context)

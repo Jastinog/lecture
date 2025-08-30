@@ -1,0 +1,20 @@
+@media (max-width: 768px) {
+    .desktop-nav,
+    .desktop-user-menu {
+        display: none !important;
+    }
+    
+    .mobile-menu-button {
+        display: block !important;
+    }
+    
+    .header-brand-text {
+        font-size: 18px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-brand-text {
+        font-size: 16px !important;
+    }
+}

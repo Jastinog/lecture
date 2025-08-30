@@ -1,3 +1,28 @@
+:root {
+    --bg-0: #111827;
+    --bg-1: #1a1d23;
+    --bg-2: #2a2d35;
+    --bg-3: #374151;
+
+    --brand: #d97706;
+    --brand-2: #f59e0b;
+
+    --fs-xxl: 1.75rem;
+    --fs-xl:  1.5rem;
+    --fs-lg:  1.25rem;
+    --fs-md:  1rem;
+    --fs-sm:  0.875rem;
+    --fs-xs:  0.75rem;
+}
+
+body { 
+    background: var(--bg-0); 
+}
+
+.hidden {
+    display: none !important;
+}
+
 @media (max-width: 768px) {
     .desktop-nav,
     .desktop-user-menu {

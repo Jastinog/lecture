@@ -1,0 +1,234 @@
+.lecture-player {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #111827;
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.audio-player-container {
+    background: #1F2937;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--bg-3);
+}
+
+.now-playing {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.now-playing-label {
+    color: #6B7280;
+    font-size: 0.875rem;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.now-playing-title {
+    color: #F9FAFB;
+    font-size: 1.125rem;
+    font-weight: 500;
+}
+
+.player-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn-control {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg-3);
+    color: #F9FAFB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1.125rem;
+}
+
+.btn-control:hover {
+    background: #4B5563;
+}
+
+.btn-play-pause {
+    width: 4rem;
+    height: 4rem;
+    background: #ea580c;
+    font-size: 1.5rem;
+}
+
+.btn-play-pause:hover {
+    background: #dc2626;
+}
+
+.player-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.time-current,
+.time-total {
+    color: #9CA3AF;
+    font-size: 0.875rem;
+    font-family: 'SF Mono', Monaco, monospace;
+    min-width: 2.5rem;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 1rem;
+    background: var(--bg-3);
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.progress-bar:hover {
+    background: #4b5563;
+}
+
+.progress-filled {
+    height: 100%;
+    background: linear-gradient(90deg, #ea580c, #f97316);
+    transition: width 0.15s ease;
+    width: 0%;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-filled::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.15) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0.15) 75%,
+        transparent 75%,
+        transparent
+    );
+    background-size: 1rem 1rem;
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+.progress-filled::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255,255,255,0.2) 50%, 
+        transparent
+    );
+    animation: shimmer 2.5s infinite ease-in-out;
+}
+
+@keyframes progress-bar-stripes {
+    0% {
+        background-position-x: 1rem;
+    }
+    100% {
+        background-position-x: 0;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@media (max-width: 768px) {
+    .lecture-player {
+        padding: 0.5rem 0.125rem;
+        margin: 0.125rem;
+    }
+    
+    .audio-player-container {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .now-playing {
+        margin-bottom: 1rem;
+    }
+    
+    .now-playing-label {
+        font-size: 0.75rem;
+    }
+    
+    .now-playing-title {
+        font-size: 1rem;
+    }
+    
+    .player-controls {
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    
+    .btn-control {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1rem;
+    }
+    
+    .btn-play-pause {
+        width: 3rem;
+        height: 3rem;
+        font-size: 1.25rem;
+    }
+    
+    .player-progress {
+        gap: 0.5rem;
+    }
+    
+    .time-current,
+    .time-total {
+        font-size: 0.75rem;
+        min-width: 2rem;
+    }
+    
+    .progress-bar {
+        height: 0.625rem;
+    }
+    
+    .progress-bar:hover {
+        height: 0.75rem;
+    }
+    
+    .progress-thumb {
+        width: 0.875rem;
+        height: 0.875rem;
+        right: -0.4375rem;
+    }
+    
+    .play-indicator {
+        height: 2rem;
+    }
+}

@@ -3,8 +3,11 @@
 
 {% block title %}{{ topic.title }}{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/player.css' %}">
+{% endblock %}
+
 {% block content %}
-<link rel="stylesheet" href="{% static 'css/lectures.css' %}">
 {% csrf_token %}
 <meta name="csrf-token" content="{{ csrf_token }}">
 {% if current_lecture %}
@@ -39,9 +42,17 @@
     </div>
     
     <!-- Audio Player -->
-    <div class="audio-player-container">
-        <audio id="audio-player"></audio>
+    <div class="audio-player-container" 
+         {% if current_lecture %}
+         data-current-lecture-id="{{ current_lecture.id }}"
+         data-current-time="{{ current_lecture_progress.current_time|default:0|floatformat:2 }}"
+         data-completed="{{ current_lecture_progress.completed|default:False|yesno:'true,false' }}"
+         data-progress="{{ current_lecture_progress.progress_percentage|default:0|floatformat:1 }}"
+         data-listen-count="{{ current_lecture_progress.listen_count|default:0 }}"
+         {% endif %}>
         
+        <audio id="audio-player"></audio>
+    
         <div class="now-playing">
             <span class="now-playing-title">{% if current_lecture %}{{ current_lecture.title }}{% else %}- - -{% endif %}</span>
         </div>
