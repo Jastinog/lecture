@@ -139,3 +139,32 @@ class LectureProgress(models.Model):
             return min(100, (self.current_time / self.lecture.duration) * 100)
 
         return 60
+
+
+class CurrentLecture(models.Model):
+    """Track the current playing lecture for each user per topic"""
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="current_lectures"
+    )
+    topic = models.ForeignKey(
+        Topic, on_delete=models.CASCADE, related_name="current_listeners"
+    )
+    lecture = models.ForeignKey(
+        Lecture, on_delete=models.CASCADE, related_name="current_players"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["user", "topic"]
+        indexes = [
+            models.Index(fields=["user", "topic"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.topic.title} - {self.lecture.title}"
+
+    def clean(self):
+        """Ensure lecture belongs to the topic"""
+        if self.lecture and self.topic and self.lecture.topic != self.topic:
+            raise ValidationError("Lecture must belong to the specified topic")

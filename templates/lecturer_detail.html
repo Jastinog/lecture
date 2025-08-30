@@ -51,12 +51,6 @@
                     {{ topic.lectures.count }} лекций • {{ topic.created_at|date:"M Y" }}
                 </div>
             </div>
-            
-            <div class="play-btn" aria-hidden="true">
-                <svg width="12" height="14" viewBox="0 0 12 14">
-                    <path d="M0 0v14l12-7L0 0z"/>
-                </svg>
-            </div>
         </a>
         {% empty %}
         <div class="text-center py-12">

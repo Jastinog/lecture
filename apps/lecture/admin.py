@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.utils.html import format_html
 from apps.system.services import Logger
-from apps.lecture.models import Lecturer, Topic, Lecture, LectureProgress
+from apps.lecture.models import Lecturer, Topic, Lecture, LectureProgress, CurrentLecture
 
 from .services import LectureImportService
 
@@ -210,4 +210,44 @@ class LectureProgressAdmin(admin.ModelAdmin):
             super()
             .get_queryset(request)
             .select_related("user", "lecture__topic__lecturer")
+        )
+
+@admin.register(CurrentLecture)
+class CurrentLectureAdmin(admin.ModelAdmin):
+    list_display = [
+        "user_email",
+        "topic_title",
+        "lecture_title",
+        "updated_at",
+    ]
+    list_filter = ["topic__lecturer", "topic", "updated_at"]
+    search_fields = [
+        "user__email",
+        "topic__title",
+        "lecture__title",
+        "topic__lecturer__name",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-updated_at"]
+
+    def user_email(self, obj):
+        return obj.user.email
+
+    user_email.short_description = "User"
+
+    def topic_title(self, obj):
+        return f"{obj.topic.lecturer.name} - {obj.topic.title}"
+
+    topic_title.short_description = "Topic"
+
+    def lecture_title(self, obj):
+        return obj.lecture.title
+
+    lecture_title.short_description = "Current Lecture"
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("user", "topic__lecturer", "lecture")
         )

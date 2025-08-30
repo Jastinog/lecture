@@ -5,6 +5,11 @@
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/lectures.css' %}">
+{% csrf_token %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% if current_lecture %}
+<meta name="current-lecture-id" content="{{ current_lecture.id }}">
+{% endif %}
 
 <div class="lecture-player">
     <!-- Back button -->
@@ -38,7 +43,7 @@
         <audio id="audio-player"></audio>
         
         <div class="now-playing">
-            <span class="now-playing-title">- - -</span>
+            <span class="now-playing-title">{% if current_lecture %}{{ current_lecture.title }}{% else %}- - -{% endif %}</span>
         </div>
         
         <div class="player-controls">
@@ -76,11 +81,13 @@
     <!-- Playlist -->
     <div class="lecture-list">
         {% for lecture in lectures %}
-        <div class="lecture-card" 
+        <div class="lecture-card{% if current_lecture and current_lecture.id == lecture.id %} active{% endif %}" 
              data-id="{{ lecture.id }}"
              data-url="{{ lecture.audio_file.url }}"
              data-title="{{ lecture.title }}">
+            
             <div class="card-number">{{ lecture.order }}</div>
+            
             <div class="card-content">
                 <h3>{{ lecture.title }}</h3>
                 <div class="card-meta">{{ lecture.file_size_mb }} MB • {{ lecture.duration|default:"--:--" }}</div>

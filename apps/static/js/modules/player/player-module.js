@@ -26,6 +26,7 @@ class LecturePlayer {
         this.PROGRESS_UPDATE_INTERVAL = 5000; // 5 seconds
 
         this.init();
+        this.loadCurrentLecture(); // Auto-load current lecture
     }
 
     init() {
@@ -89,6 +90,56 @@ class LecturePlayer {
         this.initProgressBar();
     }
 
+    async loadCurrentLecture() {
+        // Check if there's a current lecture set from the server
+        const currentLectureId = document.querySelector('meta[name="current-lecture-id"]')?.getAttribute('content');
+        
+        if (currentLectureId) {
+            const currentCard = document.querySelector(`[data-id="${currentLectureId}"]`);
+            if (currentCard) {
+                console.log(`Auto-loading current lecture: ${currentCard.dataset.title}`);
+                this.setCurrentCard(currentCard);
+                
+                // Auto-load the audio source and position
+                this.audio.src = currentCard.dataset.url;
+                await this.loadSavedProgress(parseInt(currentLectureId));
+                return;
+            }
+        }
+        
+        // If no current lecture, find first incomplete or first lecture
+        this.loadFirstIncompleteLecture();
+    }
+
+    loadFirstIncompleteLecture() {
+        const cards = document.querySelectorAll('.lecture-card');
+        
+        // Find first incomplete lecture
+        for (const card of cards) {
+            const statusBadge = card.querySelector('.status-badge');
+            
+            // Check if lecture is not completed
+            if (!statusBadge || !statusBadge.classList.contains('status-completed')) {
+                console.log(`Setting default current lecture: ${card.dataset.title}`);
+                this.setCurrentCard(card);
+                return;
+            }
+        }
+        
+        // If all completed, set first lecture
+        if (cards.length > 0) {
+            console.log(`All lectures completed, setting first: ${cards[0].dataset.title}`);
+            this.setCurrentCard(cards[0]);
+        }
+    }
+
+    setCurrentCard(card) {
+        this.currentCard = card;
+        this.currentLectureId = parseInt(card.dataset.id);
+        this.nowPlayingTitle.textContent = card.dataset.title;
+        this.updatePlaylistUI();
+    }
+
     async playLecture(card) {
         const url = card.dataset.url;
         const title = card.dataset.title;
@@ -113,6 +164,9 @@ class LecturePlayer {
             this.currentLectureId = lectureId;
             this.nowPlayingTitle.textContent = title;
             this.isLoading = true;
+
+            // Get saved progress and set starting position
+            await this.loadSavedProgress(lectureId);
         }
 
         // Play the audio
@@ -122,6 +176,38 @@ class LecturePlayer {
         } catch (error) {
             console.error('Play failed:', error);
             this.isLoading = false;
+        }
+    }
+
+
+
+    async loadSavedProgress(lectureId) {
+        try {
+            const response = await fetch(`/api/progress/?lecture_id=${lectureId}`, {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': this.getCSRFToken()
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Always set the starting position from saved progress
+                if (data.current_time > 0) {
+                    // Wait for metadata to load before setting currentTime
+                    this.audio.addEventListener('loadedmetadata', () => {
+                        this.audio.currentTime = data.current_time;
+                        console.log(`Resuming from ${data.current_time}s (${Math.round(data.progress_percentage)}%)`);
+                        // Update progress bar immediately
+                        this.updateProgress();
+                    }, { once: true });
+                }
+                
+                this.lastSavedTime = data.current_time;
+            }
+        } catch (error) {
+            console.error('Failed to load saved progress:', error);
         }
     }
 
@@ -173,7 +259,7 @@ class LecturePlayer {
         if (Math.abs(currentTime - this.lastSavedTime) < 2 && !forceCompleted) return;
 
         try {
-            const response = await fetch('/progress/', {
+            const response = await fetch('/api/progress/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
