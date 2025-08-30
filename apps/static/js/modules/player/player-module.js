@@ -1,4 +1,10 @@
-class LecturePlayer {
+import { PlaylistManager } from './playlist-manager.js';
+import { PlayerControls } from './player-controls.js';
+import { ProgressBar } from './progress-bar.js';
+import { PlayerHeader } from './player-header.js';
+import { AudioLoader } from './audio-loader.js';
+
+export class LecturePlayer {
     constructor() {
         this.audio = document.getElementById('audio-player');
         this.currentCard = null;
@@ -6,88 +12,95 @@ class LecturePlayer {
         this.currentLectureId = null;
         this.progressUpdateInterval = null;
         this.lastSavedTime = 0;
-        this.seekTarget = null;  // Add this property
-
-        // Controls
-        this.playPauseBtn = document.getElementById('btn-play-pause');
-        this.prevBtn = document.getElementById('btn-prev');
-        this.nextBtn = document.getElementById('btn-next');
-        this.rewindBtn = document.getElementById('btn-rewind');
-        this.forwardBtn = document.getElementById('btn-forward');
-
-        // Progress
-        this.progressBar = document.querySelector('.progress-bar');
-        this.progressFilled = document.querySelector('.progress-filled');
-        this.timeCurrent = document.querySelector('.time-current');
-        this.timeTotal = document.querySelector('.time-total');
-        this.nowPlayingTitle = document.querySelector('.now-playing-title');
-        this.isSeeking = false;
+        this.targetSeekTime = null;
+        this.isSeekingToTarget = false;
 
         // Constants
         this.SKIP_SECONDS = 15;
         this.PROGRESS_UPDATE_INTERVAL = 5000;
 
+        // Initialize AudioLoader
+        this.audioLoader = new AudioLoader();
+        this.setupAudioLoader();
+
+        // Initialize modules
+        this.playlist = new PlaylistManager(this);
+        this.controls = new PlayerControls(this);
+        this.progressBar = new ProgressBar(this);
+        this.header = new PlayerHeader(this);
+
         this.init();
         this.loadCurrentLecture();
     }
 
-    init() {
-        // Card click handlers
-        document.querySelectorAll('.lecture-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.playLecture(card);
-            });
-        });
+    setupAudioLoader() {
+        this.audioLoader.onProgress = (data) => {
+            this.onLoadProgress(data);
+        };
 
-        // Control buttons
-        if (this.playPauseBtn) {
-            this.playPauseBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.togglePlayPause();
-            });
+        this.audioLoader.onComplete = (data) => {
+            this.onLoadComplete(data);
+        };
+
+        this.audioLoader.onError = (error) => {
+            this.onLoadError(error);
+        };
+    }
+
+    onLoadProgress(data) {
+        console.log(`Loading: ${data.percent.toFixed(1)}% (${data.loadedMB}MB / ${data.totalMB}MB)`);
+        
+        // Update loading indicator if exists
+        const loadingIndicator = document.querySelector('.loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.style.width = `${data.percent}%`;
         }
-        this.prevBtn?.addEventListener('click', () => this.playPrevious());
-        this.nextBtn?.addEventListener('click', () => this.playNext());
-        this.rewindBtn?.addEventListener('click', () => this.skip(-this.SKIP_SECONDS));
-        this.forwardBtn?.addEventListener('click', () => this.skip(this.SKIP_SECONDS));
+    }
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            
-            switch(e.key.toLowerCase()) {
-                case ' ':
-                case 'k':
-                    e.preventDefault();
-                    this.togglePlayPause();
-                    break;
-                case 'j':
-                case 'arrowleft':
-                    e.preventDefault();
-                    this.skip(-this.SKIP_SECONDS);
-                    break;
-                case 'l':
-                case 'arrowright':
-                    e.preventDefault();
-                    this.skip(this.SKIP_SECONDS);
-                    break;
-            }
-        });
+    onLoadComplete(data) {
+        console.log(`Audio loaded: ${data.sizeMB}MB`);
+        this.isLoading = false;
+        
+        // Hide loading indicator
+        const loadingIndicator = document.querySelector('.loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.style.width = '0%';
+        }
+    }
+
+    onLoadError(error) {
+        console.error('Audio loading failed:', error);
+        this.isLoading = false;
+        
+        // Show error message
+        const status = document.querySelector('.now-playing-title');
+        if (status) {
+            status.textContent = 'Ошибка загрузки';
+        }
+    }
+
+    init() {
+        // Initialize all modules
+        this.playlist.init();
+        this.controls.init();
+        this.progressBar.init();
+        this.header.init();
 
         // Audio events
+        this.audio.addEventListener('loadedmetadata', () => this.onMetadataLoaded());
+        this.audio.addEventListener('canplay', () => this.onCanPlay());
+        this.audio.addEventListener('timeupdate', () => this.onTimeUpdate());
+        this.audio.addEventListener('seeked', () => this.onSeeked());
         this.audio.addEventListener('ended', () => this.onEnded());
         this.audio.addEventListener('pause', () => this.onPause());
         this.audio.addEventListener('play', () => this.onPlay());
-        this.audio.addEventListener('timeupdate', () => this.updateProgress());
-        this.audio.addEventListener('loadedmetadata', () => this.onMetadataLoaded());
         this.audio.addEventListener('error', (e) => this.onError(e));
 
         // Page unload
-        window.addEventListener('beforeunload', () => this.saveCurrentProgress());
-
-        // Progress bar seek
-        this.progressBar?.addEventListener('click', (e) => this.seek(e));
+        window.addEventListener('beforeunload', () => {
+            this.saveCurrentProgress();
+            this.audioLoader.clearCache();
+        });
     }
 
     async loadCurrentLecture() {
@@ -97,77 +110,138 @@ class LecturePlayer {
         if (lectureId) {
             const card = document.querySelector(`[data-id="${lectureId}"]`);
             if (card) {
-                this.setupLecture(card, false);
-                
-                // Restore saved position
                 const savedTime = parseFloat(container.dataset.currentTime || '0');
+                console.log("Loading current lecture with saved time:", savedTime);
+
                 if (savedTime > 0) {
+                    this.targetSeekTime = savedTime;
                     this.lastSavedTime = savedTime;
-                    this.audio.currentTime = savedTime;
                 }
+                
+                await this.setupLecture(card, false);
                 return;
             }
         }
         
-        // Load first incomplete
-        this.loadFirstIncompleteLecture();
+        this.playlist.loadFirstIncompleteLecture();
     }
 
-    loadFirstIncompleteLecture() {
-        const cards = document.querySelectorAll('.lecture-card');
-        
-        for (const card of cards) {
-            const badge = card.querySelector('.status-badge');
-            if (!badge?.classList.contains('status-completed')) {
-                this.setupLecture(card, false);
-                return;
-            }
-        }
-        
-        // All completed - load first
-        if (cards[0]) {
-            this.setupLecture(cards[0], false);
-        }
-    }
-
-    setupLecture(card, autoPlay = false) {
+    async setupLecture(card, autoPlay = false) {
         this.currentCard = card;
         this.currentLectureId = parseInt(card.dataset.id);
-        this.audio.src = card.dataset.url;
-        this.nowPlayingTitle.textContent = card.dataset.title;
-        this.updatePlaylistUI();
+        this.isSeekingToTarget = false;
         
-        if (autoPlay) {
-            this.audio.play().catch(e => console.error('Autoplay failed:', e));
+        this.header.updateNowPlaying(card.dataset.title);
+        this.playlist.updateUI();
+        
+        const url = card.dataset.url;
+        
+        try {
+            // Check if already loaded
+            if (this.audioLoader.isLoaded(url)) {
+                console.log("Audio already loaded from cache");
+                const objectURL = await this.audioLoader.loadAudio(url);
+                this.audio.src = objectURL;
+                this.audio.load();
+            } else {
+                console.log("Loading new audio file...");
+                this.isLoading = true;
+                this.showLoadingState();
+                
+                const objectURL = await this.audioLoader.loadAudio(url);
+                this.audio.src = objectURL;
+                this.audio.load();
+            }
+
+            if (autoPlay) {
+                this.audio.play().catch(e => console.error('Autoplay failed:', e));
+            }
+        } catch (error) {
+            console.error('Failed to setup lecture:', error);
+            this.onLoadError(error);
+        }
+    }
+
+    showLoadingState() {
+        const status = document.querySelector('.now-playing-title');
+        if (status) {
+            status.textContent = 'Загрузка...';
+        }
+    }
+
+    onMetadataLoaded() {
+        console.log("Metadata loaded, duration:", this.audio.duration);
+        this.progressBar.updateTotalTime(this.audio.duration);
+    }
+
+    onCanPlay() {
+        console.log("Can play event");
+        this.isLoading = false;
+        
+        // Seek to target time if needed
+        if (this.targetSeekTime !== null && !this.isSeekingToTarget) {
+            console.log("Seeking to target time:", this.targetSeekTime);
+            this.isSeekingToTarget = true;
+            this.audio.currentTime = this.targetSeekTime;
+            
+            const onSeeked = () => {
+                console.log("Seek completed successfully, time:", this.audio.currentTime);
+                this.audio.removeEventListener('seeked', onSeeked);
+                this.finishSeeking();
+            };
+            
+            this.audio.addEventListener('seeked', onSeeked);
+            
+            setTimeout(() => {
+                if (this.isSeekingToTarget) {
+                    console.log("Seek timeout, finishing anyway");
+                    this.finishSeeking();
+                }
+            }, 1000);
+        }
+    }
+
+    finishSeeking() {
+        this.isSeekingToTarget = false;
+        this.targetSeekTime = null;
+        this.lastSavedTime = this.audio.currentTime;
+        console.log("Seeking finished, final time:", this.audio.currentTime);
+        this.progressBar.updateProgress();
+    }
+
+    onSeeked() {
+        console.log("Seeked event, current time:", this.audio.currentTime);
+    }
+
+    onTimeUpdate() {
+        if (!this.isSeekingToTarget) {
+            this.progressBar.updateProgress();
         }
     }
 
     async playLecture(card) {
         const lectureId = parseInt(card.dataset.id);
         
-        // Save current progress if switching
         if (this.currentLectureId && this.currentLectureId !== lectureId) {
             await this.saveCurrentProgress();
         }
 
-        // Toggle play/pause if same lecture
         if (this.currentCard === card) {
-            this.togglePlayPause();
+            this.controls.togglePlayPause();
             return;
         }
 
-        // Setup new lecture
-        this.setupLecture(card, true);
-        
-        // Set as current on server
-        await this.setCurrentLecture(lectureId);
-        
-        // Load saved progress
+        // Load progress before setup
         const progress = await this.loadProgress(lectureId);
         if (progress?.current_time > 0) {
-            this.audio.currentTime = progress.current_time;
+            this.targetSeekTime = progress.current_time;
             this.lastSavedTime = progress.current_time;
+        } else {
+            this.targetSeekTime = null;
         }
+
+        await this.setupLecture(card, true);
+        await this.setCurrentLecture(lectureId);
     }
 
     async loadProgress(lectureId) {
@@ -197,69 +271,25 @@ class LecturePlayer {
         }
     }
 
-    skip(seconds) {
-        if (!this.audio.duration) return;
-        this.audio.currentTime = Math.max(0, Math.min(this.audio.duration, this.audio.currentTime + seconds));
-    }
-
-    togglePlayPause() {
-        if (!this.currentCard) {
-            const firstCard = document.querySelector('.lecture-card');
-            if (firstCard) this.playLecture(firstCard);
-            return;
-        }
-
-        if (this.audio.paused) {
-            this.audio.play().catch(e => console.error('Play failed:', e));
-        } else {
-            this.audio.pause();
-        }
-    }
-
-    playPrevious() {
-        if (!this.currentCard) return;
-        const prev = this.currentCard.previousElementSibling;
-        if (prev?.classList.contains('lecture-card')) {
-            this.playLecture(prev);
-        }
-    }
-
-    playNext() {
-        if (!this.currentCard) return;
-        const next = this.currentCard.nextElementSibling;
-        if (next?.classList.contains('lecture-card')) {
-            this.playLecture(next);
-        }
-    }
-
-    onMetadataLoaded() {
-        this.timeTotal.textContent = this.formatTime(this.audio.duration);
-        
-        // Restore position if needed
-        if (this.lastSavedTime > 0 && this.audio.currentTime === 0) {
-            this.audio.currentTime = this.lastSavedTime;
-        }
-    }
-
     onPlay() {
-        this.updatePlayPauseBtn(true);
+        this.controls.updatePlayPauseBtn(true);
         this.startProgressUpdates();
     }
 
     onPause() {
-        this.updatePlayPauseBtn(false);
+        this.controls.updatePlayPauseBtn(false);
         this.stopProgressUpdates();
-        // Don't save here - will be saved by interval stop
     }
 
     async onEnded() {
         await this.saveCurrentProgress(true);
-        this.playNext();
+        this.playlist.playNext();
     }
 
     onError(e) {
         console.error('Audio error:', e);
         this.isLoading = false;
+        this.isSeekingToTarget = false;
     }
 
     startProgressUpdates() {
@@ -273,16 +303,15 @@ class LecturePlayer {
         if (this.progressUpdateInterval) {
             clearInterval(this.progressUpdateInterval);
             this.progressUpdateInterval = null;
-            this.saveCurrentProgress(); // Save once on stop
+            this.saveCurrentProgress();
         }
     }
 
     async saveCurrentProgress(forceCompleted = false) {
-        if (!this.currentLectureId || !this.audio.duration) return;
+        if (!this.currentLectureId || !this.audio.duration || this.isSeekingToTarget) return;
 
         const currentTime = this.audio.currentTime;
         
-        // Skip if time hasn't changed significantly
         if (Math.abs(currentTime - this.lastSavedTime) < 2 && !forceCompleted) return;
 
         try {
@@ -302,120 +331,12 @@ class LecturePlayer {
 
             if (response.ok) {
                 const data = await response.json();
-                this.updateLectureUI(this.currentLectureId, data);
+                this.playlist.updateLectureUI(this.currentLectureId, data);
                 this.lastSavedTime = currentTime;
             }
         } catch (error) {
             console.error('Failed to save progress:', error);
         }
-    }
-
-    updateLectureUI(lectureId, data) {
-        const card = document.querySelector(`[data-id="${lectureId}"]`);
-        if (!card) return;
-
-        const progressBar = card.querySelector('.lecture-progress-filled');
-        const statusBadge = card.querySelector('.status-badge');
-        const listenCount = card.querySelector('.listen-count');
-
-        if (progressBar) {
-            progressBar.style.width = `${data.progress_percentage}%`;
-            progressBar.className = `lecture-progress-filled ${data.completed ? 'completed' : 'in-progress'}`;
-        }
-
-        if (statusBadge) {
-            if (data.completed) {
-                statusBadge.innerHTML = '<i class="fas fa-check"></i> Прослушано';
-                statusBadge.className = 'status-badge status-completed';
-            } else if (data.progress_percentage > 0) {
-                statusBadge.innerHTML = `<i class="fas fa-play"></i> ${Math.round(data.progress_percentage)}%`;
-                statusBadge.className = 'status-badge status-in-progress';
-            }
-        }
-
-        if (listenCount) {
-            listenCount.innerHTML = `<i class="fas fa-repeat"></i> ${data.listen_count}x`;
-        }
-    }
-
-    updateProgress() {
-        // Don't update if we're currently seeking
-        if (this.isSeeking || !this.audio.duration) return;
-        
-        const percent = (this.audio.currentTime / this.audio.duration) * 100;
-        this.progressFilled.style.width = `${percent}%`;
-        this.timeCurrent.textContent = this.formatTime(this.audio.currentTime);
-    }
-
-    updatePlaylistUI() {
-        document.querySelectorAll('.lecture-card').forEach(card => {
-            card.classList.toggle('active', card === this.currentCard);
-        });
-    }
-
-    updatePlayPauseBtn(isPlaying) {
-        const icon = this.playPauseBtn?.querySelector('i');
-        if (icon) {
-            icon.className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
-        }
-    }
-
-    seek(e) {
-        if (!this.audio.duration) return;
-        
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const rect = this.progressBar.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const percent = Math.max(0, Math.min(1, clickX / rect.width));
-        const newTime = percent * this.audio.duration;
-        
-        // Set seeking flag BEFORE changing time
-        this.isSeeking = true;
-        
-        // Update UI immediately
-        this.progressFilled.style.width = `${percent * 100}%`;
-        this.timeCurrent.textContent = this.formatTime(newTime);
-        
-        // Store the target time to prevent race conditions
-        this.seekTarget = newTime;
-        
-        // Set new time
-        this.audio.currentTime = newTime;
-        
-        // Reset seeking flag only after seek actually completes
-        const onSeeked = () => {
-            this.isSeeking = false;
-            this.seekTarget = null;
-            this.audio.removeEventListener('seeked', onSeeked);
-            this.audio.removeEventListener('seeking', onSeeking);
-            
-            // Save progress immediately after seeking
-            this.saveCurrentProgress();
-        };
-        
-        const onSeeking = () => {
-            // Keep the visual in sync while seeking
-            if (this.seekTarget !== null) {
-                const percent = (this.seekTarget / this.audio.duration) * 100;
-                this.progressFilled.style.width = `${percent}%`;
-                this.timeCurrent.textContent = this.formatTime(this.seekTarget);
-            }
-        };
-        
-        this.audio.addEventListener('seeked', onSeeked);
-        this.audio.addEventListener('seeking', onSeeking);
-        
-        // Fallback timeout in case events don't fire
-        setTimeout(() => {
-            if (this.isSeeking) {
-                this.isSeeking = false;
-                this.seekTarget = null;
-                // Save progress in fallback too
-                this.saveCurrentProgress();
-            }
-        }, 1000);
     }
 
     formatTime(seconds) {

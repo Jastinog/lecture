@@ -134,7 +134,6 @@ class LectureProgress(models.Model):
     def progress_percentage(self):
         """Calculate progress percentage if lecture has duration"""
 
-        print(self.current_time, self.lecture.duration)
         if hasattr(self.lecture, "duration") and self.lecture.duration > 0:
             return min(100, (self.current_time / self.lecture.duration) * 100)
 

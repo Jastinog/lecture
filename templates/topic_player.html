@@ -51,7 +51,7 @@
          data-listen-count="{{ current_lecture_progress.listen_count|default:0 }}"
          {% endif %}>
         
-        <audio id="audio-player"></audio>
+        <audio id="audio-player" preload="auto"></audio>
     
         <div class="now-playing">
             <span class="now-playing-title">{% if current_lecture %}{{ current_lecture.title }}{% else %}- - -{% endif %}</span>

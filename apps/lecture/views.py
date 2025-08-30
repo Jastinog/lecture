@@ -7,6 +7,9 @@ from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from .models import Lecture, Lecturer, Topic, LectureProgress, CurrentLecture
 
+def audio_test(request):
+    """Audio loading test page"""
+    return render(request, "audio_test.html")
 
 def lecturers_list(request):
     """List all lecturers"""

@@ -5,8 +5,10 @@ app_name = "lecture"
 
 urlpatterns = [
     path("", views.lecturers_list, name="lecturers_list"),
+    path('test/', views.audio_test, name='audio_test'),
     path("lecturer/<int:lecturer_id>/", views.lecturer_detail, name="lecturer_detail"),
     path("topic/<int:topic_id>/", views.topic_player, name="topic_player"),
     path("api/progress/", views.update_progress, name="update_progress"),
     path("api/current-lecture/", views.set_current_lecture, name="set_current_lecture"),
+
 ]
