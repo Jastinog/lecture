@@ -130,15 +130,12 @@ export class LecturePlayer {
     onCanPlayThrough() {
         console.log("Audio can play through without buffering");
         
-        // Only mark as ready when audio is fully loaded and not already ready
         if (this.isFullyLoaded && !this.isAudioReady) {
             this.isAudioReady = true;
             this.hideLoadingState();
             
-            // Apply saved position
             this.applySavedPosition();
             
-            // Now audio is ready for playback
             if (this.pendingPlay) {
                 this.pendingPlay = false;
                 this.startPlayback();
@@ -173,11 +170,20 @@ export class LecturePlayer {
             const card = document.querySelector(`[data-id="${lectureId}"]`);
             if (card) {
                 const savedTime = parseFloat(container.dataset.currentTime || '0');
-                console.log("Loading current lecture with saved time:", savedTime);
+                const isCompleted = container.dataset.completed === 'true';
+                
+                console.log("Loading current lecture with saved time:", savedTime, "completed:", isCompleted);
 
-                if (savedTime > 0) {
+                if (savedTime > 0 && !isCompleted) {
                     this.targetSeekTime = savedTime;
                     this.lastSavedTime = savedTime;
+                } else {
+                    this.targetSeekTime = 0;
+                    this.lastSavedTime = 0;
+                    
+                    if (isCompleted) {
+                        await this.resetCompletedLecture(parseInt(lectureId));
+                    }
                 }
                 
                 await this.setupLecture(card, false);
@@ -218,7 +224,6 @@ export class LecturePlayer {
                 
                 if (this.currentLectureId === parseInt(card.dataset.id)) {
                     this.audio.src = objectURL;
-                    // Audio will trigger canplaythrough after load()
                 }
             } else {
                 console.log("Loading full audio file...");
@@ -229,7 +234,6 @@ export class LecturePlayer {
                 
                 if (this.currentLectureId === parseInt(card.dataset.id)) {
                     this.audio.src = objectURL;
-                    // Wait for onLoadComplete to set isFullyLoaded = true
                 }
             }
         } catch (error) {
@@ -274,11 +278,16 @@ export class LecturePlayer {
         }
 
         const progress = await this.loadProgress(lectureId);
-        if (progress?.current_time > 0) {
+        if (progress?.current_time > 0 && !progress.completed) {
             this.targetSeekTime = progress.current_time;
             this.lastSavedTime = progress.current_time;
         } else {
-            this.targetSeekTime = null;
+            this.targetSeekTime = 0;
+            this.lastSavedTime = 0;
+            
+            if (progress?.completed) {
+                await this.resetCompletedLecture(lectureId);
+            }
         }
 
         await this.setupLecture(card, true);
@@ -287,7 +296,6 @@ export class LecturePlayer {
 
     requestPlay() {
         if (!this.currentCard) {
-            // Updated selector: .lecture-card → .card-item
             const firstCard = document.querySelector('.card-item');
             if (firstCard) this.playLecture(firstCard);
             return;
@@ -321,7 +329,6 @@ export class LecturePlayer {
 
     async loadProgress(lectureId) {
         try {
-            // Fixed API path
             const response = await fetch(`/api/progress/?lecture_id=${lectureId}`, {
                 headers: { 'X-CSRFToken': this.getCSRFToken() }
             });
@@ -334,7 +341,6 @@ export class LecturePlayer {
 
     async setCurrentLecture(lectureId) {
         try {
-            // Fixed API path
             await fetch('/api/current-lecture/', {
                 method: 'POST',
                 headers: {
@@ -364,7 +370,6 @@ export class LecturePlayer {
     }
 
     onError(e) {
-        // Ignore errors from empty audio element or when no audio is loaded
         if (!this.audio.src || !this.currentLectureId) {
             return;
         }
@@ -396,7 +401,7 @@ export class LecturePlayer {
         }
     }
 
-    async saveCurrentProgress(forceCompleted = false) {
+    async saveCurrentProgress(completed = false) {
         if (!this.currentLectureId || !this.isAudioReady || !this.isFullyLoaded) return;
 
         const currentTime = this.audio.currentTime;
@@ -405,10 +410,9 @@ export class LecturePlayer {
         
         if (!duration) return;
         
-        if (Math.abs(currentTime - this.lastSavedTime) < 2 && !forceCompleted) return;
+        if (Math.abs(currentTime - this.lastSavedTime) < 2 && !completed) return;
 
         try {
-            // Fixed API path
             const response = await fetch('/api/progress/', {
                 method: 'POST',
                 headers: {
@@ -419,7 +423,7 @@ export class LecturePlayer {
                     lecture_id: this.currentLectureId,
                     current_time: currentTime,
                     duration: duration,
-                    force_completed: forceCompleted
+                    completed: completed
                 })
             });
 
@@ -430,6 +434,32 @@ export class LecturePlayer {
             }
         } catch (error) {
             console.error('Failed to save progress:', error);
+        }
+    }
+
+    async resetCompletedLecture(lectureId) {
+        try {
+            const response = await fetch('/api/progress/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                body: JSON.stringify({
+                    lecture_id: lectureId,
+                    current_time: 0,
+                    duration: 0,
+                    completed: false
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.playlist.updateLectureUI(lectureId, data);
+                console.log('Completed lecture reset to beginning');
+            }
+        } catch (error) {
+            console.error('Failed to reset completed lecture:', error);
         }
     }
 

@@ -188,33 +188,23 @@ def update_progress(request):
             lecture_id = data.get("lecture_id")
             current_time = data.get("current_time", 0)
             duration = data.get("duration", 0)
-            force_completed = data.get("force_completed", False)
+            completed = data.get("completed", False)
 
             if not lecture_id:
                 return JsonResponse({"error": "lecture_id required"}, status=400)
 
             lecture = get_object_or_404(Lecture, id=lecture_id)
 
-            # Calculate completion
-            completed = force_completed
-            if not completed and duration > 0:
-                progress_percent = (current_time / duration) * 100
-                completed = progress_percent >= 90  # 90% threshold
-
-            # Update or create progress
             progress, created = LectureProgress.objects.update_or_create(
                 user=request.user,
                 lecture=lecture,
-                defaults={"current_time": current_time, "completed": completed},
+                defaults={
+                    "current_time": current_time, 
+                    "completed": completed
+                },
             )
 
-            # Increment listen count on first play or when starting over
-            if created:
-                progress.listen_count = 1
-                progress.save(update_fields=["listen_count"])
-            elif (
-                current_time < 30 and progress.current_time > 60
-            ):  # Started from beginning
+            if completed:
                 progress.listen_count += 1
                 progress.save(update_fields=["listen_count"])
 

@@ -185,18 +185,16 @@
     width: 100%;
     height: 4px;
     background: var(--bg-3);
-    border-radius: 2px;
     overflow: hidden;
 }
 
 .progress-bar-fill {
     height: 100%;
-    border-radius: 2px;
     transition: width 0.3s ease;
 }
 
 .progress-bar-fill.completed {
-    background: #22c55e;
+   background: #65a30d;
 }
 
 .progress-bar-fill.in-progress {
@@ -230,9 +228,10 @@
 }
 
 .status-completed {
-    background: rgba(34, 197, 94, 0.2);
-    color: #22c55e;
+   background: rgba(101, 163, 13, 0.2);
+   color: #65a30d;
 }
+
 
 .status-in-progress {
     background: rgba(249, 115, 22, 0.2);
