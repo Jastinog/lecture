@@ -3,6 +3,7 @@ import { PlayerControls } from './player-controls.js';
 import { ProgressBar } from './progress-bar.js';
 import { PlayerHeader } from './player-header.js';
 import { AudioLoader } from './audio-loader.js';
+import { FavoriteHandler } from './favorite-handler.js';
 
 export class LecturePlayer {
     constructor() {
@@ -30,6 +31,7 @@ export class LecturePlayer {
         this.controls = new PlayerControls(this);
         this.progressBar = new ProgressBar(this);
         this.header = new PlayerHeader(this);
+        this.favoriteHandler = new FavoriteHandler(this);
 
         this.init();
         this.loadCurrentLecture();
@@ -88,6 +90,7 @@ export class LecturePlayer {
         this.controls.init();
         this.progressBar.init();
         this.header.init();
+        this.favoriteHandler.init();
 
         // Audio events
         this.audio.addEventListener('loadstart', () => this.onLoadStart());

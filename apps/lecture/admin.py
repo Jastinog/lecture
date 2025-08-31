@@ -5,7 +5,15 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.utils.html import format_html
 from apps.system.services import Logger
-from apps.lecture.models import Lecturer, Topic, Lecture, LectureProgress, CurrentLecture
+from apps.lecture.models import (
+    Lecturer,
+    Topic,
+    Lecture,
+    LectureProgress,
+    CurrentLecture,
+    FavoriteLecture,
+    LectureHistory,
+)
 
 from .services import LectureImportService
 
@@ -212,6 +220,7 @@ class LectureProgressAdmin(admin.ModelAdmin):
             .select_related("user", "lecture__topic__lecturer")
         )
 
+
 @admin.register(CurrentLecture)
 class CurrentLectureAdmin(admin.ModelAdmin):
     list_display = [
@@ -250,4 +259,104 @@ class CurrentLectureAdmin(admin.ModelAdmin):
             super()
             .get_queryset(request)
             .select_related("user", "topic__lecturer", "lecture")
+        )
+
+
+@admin.register(FavoriteLecture)
+class FavoriteLectureAdmin(admin.ModelAdmin):
+    list_display = [
+        "user_email",
+        "lecture_title",
+        "lecturer_name",
+        "topic_title",
+        "created_at",
+    ]
+    list_filter = ["lecture__topic__lecturer", "lecture__topic", "created_at"]
+    search_fields = [
+        "user__email",
+        "lecture__title",
+        "lecture__topic__title",
+        "lecture__topic__lecturer__name",
+    ]
+    readonly_fields = ["created_at"]
+    ordering = ["-created_at"]
+
+    def user_email(self, obj):
+        return obj.user.email
+
+    user_email.short_description = "User"
+
+    def lecture_title(self, obj):
+        return obj.lecture.title
+
+    lecture_title.short_description = "Lecture"
+
+    def lecturer_name(self, obj):
+        return obj.lecture.topic.lecturer.name
+
+    lecturer_name.short_description = "Lecturer"
+
+    def topic_title(self, obj):
+        return obj.lecture.topic.title
+
+    topic_title.short_description = "Topic"
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("user", "lecture__topic__lecturer")
+        )
+
+
+@admin.register(LectureHistory)
+class LectureHistoryAdmin(admin.ModelAdmin):
+    list_display = [
+        "user_email",
+        "lecture_title",
+        "duration_listened_display",
+        "completion_percentage_display",
+        "listened_at",
+    ]
+    list_filter = [
+        "listened_at",
+        "lecture__topic__lecturer",
+        "lecture__topic",
+    ]
+    search_fields = [
+        "user__email",
+        "lecture__title",
+        "lecture__topic__title",
+        "lecture__topic__lecturer__name",
+    ]
+    readonly_fields = ["listened_at"]
+    ordering = ["-listened_at"]
+
+    def user_email(self, obj):
+        return obj.user.email
+
+    user_email.short_description = "User"
+
+    def lecture_title(self, obj):
+        return f"{obj.lecture.topic.lecturer.name} - {obj.lecture.topic.title} - {obj.lecture.title}"
+
+    lecture_title.short_description = "Lecture"
+
+    def duration_listened_display(self, obj):
+        minutes = int(obj.duration_listened // 60)
+        seconds = int(obj.duration_listened % 60)
+        return f"{minutes}:{seconds:02d}"
+
+    duration_listened_display.short_description = "Duration"
+
+    def completion_percentage_display(self, obj):
+        return f"{obj.completion_percentage:.1f}%"
+
+    completion_percentage_display.short_description = "Completed"
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("user", "lecture__topic__lecturer")
         )

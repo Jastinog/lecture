@@ -1,9 +1,11 @@
 /* Player specific styles - extends the unified page-container */
 .player-container {
-    height: calc(100vh - 2rem);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    background: #1b1f26;
+    border-radius: 12px;
+    min-height: calc(100vh - 2rem);
 }
 
 /* Audio Player Section */
@@ -151,7 +153,6 @@
     z-index: 1;
 }
 
-/* Replace the .progress-filled class in player.css with this */
 .progress-filled {
     height: 100%;
     background: linear-gradient(135deg, #ea580c, #f97316) !important;
@@ -163,7 +164,6 @@
     transition: width 0.1s ease-out;
 }
 
-/* Remove the background-image animation if it's causing issues */
 .progress-filled::after {
     content: '';
     position: absolute;
@@ -186,28 +186,6 @@
     border-radius: inherit;
 }
 
-/* === Playlist: scroll area & width === */
-.player-container .card-list {
-    flex: 1;
-    overflow-y: auto;
-    /* FIX: убрали сужение справа */
-    /* padding-right: 0.5rem; */
-    scrollbar-gutter: stable both-edges;
-    width: 100%;
-    max-width: none;
-}
-
-.player-container .card-list::-webkit-scrollbar { width: 6px; }
-.player-container .card-list::-webkit-scrollbar-track { background: var(--bg-2); border-radius: 3px; }
-.player-container .card-list::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 3px; }
-
-/* айтемы на ту же ширину, что и секция плеера */
-.player-container .card-item {
-    width: 100%;
-    max-width: none;
-    box-sizing: border-box;
-}
-
 @keyframes progress-bar-stripes {
     from { background-position: 1rem 0; }
     to   { background-position: 0 0; }
@@ -215,6 +193,11 @@
 
 /* Mobile styles */
 @media (max-width: 768px) {
+    .player-container {
+        margin: 0;
+        padding: 0.75rem;
+    }
+
     .now-playing { margin-bottom: 1rem; }
     .now-playing-label { font-size: 0.75rem; }
     .now-playing-title { font-size: 1rem; }

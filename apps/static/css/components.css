@@ -207,6 +207,14 @@
     margin-top: 0.5rem;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.status-group {
+    display: flex;
+    align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
 }
@@ -242,6 +250,51 @@
     gap: 0.25rem;
     color: #9CA3AF;
     font-size: 0.75rem;
+}
+
+/* Favorite button styles */
+.favorite-btn {
+    background: none;
+    border: none;
+    color: #6B7280;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0.375rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.favorite-btn:hover {
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+    transform: scale(1.1);
+}
+
+.favorite-btn.active {
+    color: #ffd700;
+}
+
+.favorite-btn.active:hover {
+    color: #ffed4e;
+    background: rgba(255, 215, 0, 0.15);
+}
+
+@keyframes favoriteAnimation {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0) scale(1);
+    }
+    40% {
+        transform: translateY(-3px) scale(1.15);
+    }
+    60% {
+        transform: translateY(-1px) scale(1.05);
+    }
 }
 
 /* Empty state */
@@ -304,6 +357,17 @@
     }
     
     .listen-count { font-size: 0.625rem; }
+    
+    .favorite-btn {
+        font-size: 14px;
+        min-width: 28px;
+        height: 28px;
+        padding: 0.25rem;
+    }
+    
+    .status-group {
+        gap: 0.375rem;
+    }
     
     .empty-state { padding: 2rem 1rem; }
     

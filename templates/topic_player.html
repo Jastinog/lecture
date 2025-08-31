@@ -109,27 +109,35 @@
                     </div>
 
                     <div class="card-status">
-                        {% if lecture.progress.completed %}
-                            <span class="status-badge status-completed">
-                                <i class="fas fa-check"></i>
-                                Прослушано
-                            </span>
-                        {% elif lecture.progress.progress_percentage > 0 %}
-                            <span class="status-badge status-in-progress">
-                                <i class="fas fa-play"></i>
-                                {{ lecture.progress.progress_percentage|default:0|floatformat:0 }}%
-                            </span>
-                        {% else %}
-                            <span class="status-badge status-not-started">
-                                <i class="fas fa-circle"></i>
-                                0%
-                            </span>
-                        {% endif %}
+                        <div class="status-group">
+                            {% if lecture.progress.completed %}
+                                <span class="status-badge status-completed">
+                                    <i class="fas fa-check"></i>
+                                    Прослушано
+                                </span>
+                            {% elif lecture.progress.progress_percentage > 0 %}
+                                <span class="status-badge status-in-progress">
+                                    <i class="fas fa-play"></i>
+                                    {{ lecture.progress.progress_percentage|default:0|floatformat:0 }}%
+                                </span>
+                            {% else %}
+                                <span class="status-badge status-not-started">
+                                    <i class="fas fa-circle"></i>
+                                    0%
+                                </span>
+                            {% endif %}
 
-                        <span class="listen-count">
-                            <i class="fas fa-repeat"></i>
-                            {{ lecture.progress.listen_count|default:0 }}x
-                        </span>
+                            <span class="listen-count">
+                                <i class="fas fa-repeat"></i>
+                                {{ lecture.progress.listen_count|default:0 }}x
+                            </span>
+                        </div>
+
+                        <button class="favorite-btn {% if lecture.is_favorite %}active{% endif %}" 
+                                data-lecture-id="{{ lecture.id }}"
+                                aria-label="Добавить в избранное">
+                            <i class="fas fa-star"></i>
+                        </button>
                     </div>
                 {% endif %}
             </div>

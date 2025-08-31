@@ -7,6 +7,11 @@ export class PlaylistManager {
         // Updated selector: .lecture-card → .card-item
         document.querySelectorAll('.card-item').forEach(card => {
             card.addEventListener('click', (e) => {
+                // Ignore clicks on favorite button
+                if (e.target.closest('.favorite-btn')) {
+                    return;
+                }
+                
                 e.preventDefault();
                 this.player.playLecture(card);
             });

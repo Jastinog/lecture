@@ -2,6 +2,7 @@ import uuid
 import os
 import hashlib
 from django.db import models
+from django.core.exceptions import ValidationError
 
 from apps.users.models import User
 
@@ -142,6 +143,7 @@ class LectureProgress(models.Model):
 
 class CurrentLecture(models.Model):
     """Track the current playing lecture for each user per topic"""
+
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="current_lectures"
     )
@@ -167,3 +169,51 @@ class CurrentLecture(models.Model):
         """Ensure lecture belongs to the topic"""
         if self.lecture and self.topic and self.lecture.topic != self.topic:
             raise ValidationError("Lecture must belong to the specified topic")
+
+
+class FavoriteLecture(models.Model):
+    """User's favorite lectures"""
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="favorite_lectures"
+    )
+    lecture = models.ForeignKey(
+        Lecture, on_delete=models.CASCADE, related_name="favorited_by"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["user", "lecture"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.lecture.title}"
+
+
+class LectureHistory(models.Model):
+    """History of listened lectures"""
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="lecture_history"
+    )
+    lecture = models.ForeignKey(
+        Lecture, on_delete=models.CASCADE, related_name="history_records"
+    )
+    listened_at = models.DateTimeField(auto_now_add=True)
+    duration_listened = models.IntegerField(
+        default=0, help_text="Duration listened in seconds"
+    )
+    completion_percentage = models.FloatField(
+        default=0.0, help_text="Percentage of lecture completed"
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "listened_at"]),
+            models.Index(fields=["user", "lecture"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.lecture.title} ({self.listened_at})"
