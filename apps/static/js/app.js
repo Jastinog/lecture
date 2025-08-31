@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize lecture player if on player page
-    if (document.querySelector('.lecture-player')) {
+    if (document.querySelector('.audio-player-section')) {
         import('./modules/player/player-module.js').then(module => {
             window.lecturePlayer = new module.LecturePlayer();
         });

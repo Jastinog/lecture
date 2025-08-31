@@ -4,55 +4,51 @@
 {% block title %}{{ lecturer.name }} - Темы{% endblock %}
 
 {% block content %}
-<div class="lecture-player">
-    <!-- Back button -->
-    <div class="mb-4">
-        <a href="{% url 'lecture:lecturers_list' %}" 
-           class="text-orange-400 hover:text-orange-300 inline-flex items-center">
-            <i class="fas fa-arrow-left mr-2"></i>
+<div class="page-container">
+    <div class="back-button">
+        <a href="{% url 'lecture:lecturers_list' %}" class="back-link">
+            <i class="fas fa-arrow-left"></i>
             Назад к лекторам
         </a>
     </div>
     
-    <div class="player-header">
-        {% if lecturer.photo %}
-        <div class="header-cover">
-            <img src="{{ lecturer.photo.url }}" alt="{{ lecturer.name }}" class="w-12 h-12 rounded-full object-cover">
+    <div class="page-header">
+        <div class="header-avatar">
+            {% if lecturer.photo %}
+                <img src="{{ lecturer.photo.url }}" alt="{{ lecturer.name }}">
+            {% else %}
+                <i class="fas fa-user"></i>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="header-dot"></div>
-        {% endif %}
-        
-        <div>
-            <h1>{{ lecturer.name }}</h1>
+        <div class="header-content">
+            <h1 class="header-title">{{ lecturer.name }}</h1>
             <p class="header-subtitle">Темы лекций</p>
         </div>
-        <div class="lecture-count">{{ topics.count }} тем</div>
+        <div class="header-meta">{{ topics.count }} тем</div>
     </div>
     
-    <div class="lecture-list">
+    <div class="card-list">
         {% for topic in topics %}
-        <a href="{% url 'lecture:topic_player' topic.id %}" class="lecture-card">
-            {% if topic.cover %}
-            <div class="card-number series-cover">
-                <img src="{{ topic.cover.url }}" alt="{{ topic.title }}" class="w-full h-full object-cover rounded">
+        <a href="{% url 'lecture:topic_player' topic.id %}" class="card-item">
+            <div class="card-icon">
+                {% if topic.cover %}
+                    <img src="{{ topic.cover.url }}" alt="{{ topic.title }}">
+                {% else %}
+                    <i class="fas fa-headphones"></i>
+                {% endif %}
             </div>
-            {% else %}
-            <div class="card-number">
-                <i class="fas fa-headphones"></i>
-            </div>
-            {% endif %}
             
             <div class="card-content">
-                <h3>{{ topic.title }}</h3>
+                <h3 class="card-title">{{ topic.title }}</h3>
                 <div class="card-meta">
                     {{ topic.lectures.count }} лекций • {{ topic.created_at|date:"M Y" }}
                 </div>
             </div>
         </a>
         {% empty %}
-        <div class="text-center py-12">
-            <p class="text-gray-400">У этого лектора пока нет тем</p>
+        <div class="empty-state">
+            <i class="fas fa-headphones"></i>
+            <p>У этого лектора пока нет тем</p>
         </div>
         {% endfor %}
     </div>

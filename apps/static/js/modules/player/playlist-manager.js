@@ -4,7 +4,8 @@ export class PlaylistManager {
     }
 
     init() {
-        document.querySelectorAll('.lecture-card').forEach(card => {
+        // Updated selector: .lecture-card → .card-item
+        document.querySelectorAll('.card-item').forEach(card => {
             card.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.player.playLecture(card);
@@ -13,7 +14,8 @@ export class PlaylistManager {
     }
 
     loadFirstIncompleteLecture() {
-        const cards = document.querySelectorAll('.lecture-card');
+        // Updated selector: .lecture-card → .card-item
+        const cards = document.querySelectorAll('.card-item');
         
         for (const card of cards) {
             const badge = card.querySelector('.status-badge');
@@ -31,7 +33,8 @@ export class PlaylistManager {
     playPrevious() {
         if (!this.player.currentCard) return;
         const prev = this.player.currentCard.previousElementSibling;
-        if (prev?.classList.contains('lecture-card')) {
+        // Updated selector: .lecture-card → .card-item
+        if (prev?.classList.contains('card-item')) {
             this.player.playLecture(prev);
         }
     }
@@ -39,13 +42,15 @@ export class PlaylistManager {
     playNext() {
         if (!this.player.currentCard) return;
         const next = this.player.currentCard.nextElementSibling;
-        if (next?.classList.contains('lecture-card')) {
+        // Updated selector: .lecture-card → .card-item
+        if (next?.classList.contains('card-item')) {
             this.player.playLecture(next);
         }
     }
 
     updateUI() {
-        document.querySelectorAll('.lecture-card').forEach(card => {
+        // Updated selector: .lecture-card → .card-item
+        document.querySelectorAll('.card-item').forEach(card => {
             card.classList.toggle('active', card === this.player.currentCard);
         });
     }
@@ -54,13 +59,14 @@ export class PlaylistManager {
         const card = document.querySelector(`[data-id="${lectureId}"]`);
         if (!card) return;
 
-        const progressBar = card.querySelector('.lecture-progress-filled');
+        // Updated selectors to match new CSS classes
+        const progressBar = card.querySelector('.progress-bar-fill');
         const statusBadge = card.querySelector('.status-badge');
         const listenCount = card.querySelector('.listen-count');
 
         if (progressBar) {
             progressBar.style.width = `${data.progress_percentage}%`;
-            progressBar.className = `lecture-progress-filled ${data.completed ? 'completed' : 'in-progress'}`;
+            progressBar.className = `progress-bar-fill ${data.completed ? 'completed' : 'in-progress'}`;
         }
 
         if (statusBadge) {

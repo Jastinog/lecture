@@ -55,7 +55,8 @@ export class PlayerControls {
 
     togglePlayPause() {
         if (!this.player.currentCard) {
-            const firstCard = document.querySelector('.lecture-card');
+            // Updated selector: .lecture-card → .card-item
+            const firstCard = document.querySelector('.card-item');
             if (firstCard) this.player.playLecture(firstCard);
             return;
         }

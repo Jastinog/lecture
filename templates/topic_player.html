@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load time_filters %}
 
 {% block title %}{{ topic.title }}{% endblock %}
 
@@ -14,34 +15,30 @@
 <meta name="current-lecture-id" content="{{ current_lecture.id }}">
 {% endif %}
 
-<div class="lecture-player">
-    <!-- Back button -->
+<div class="page-container player-container">
     <div class="back-button">
-        <a href="{% url 'lecture:lecturer_detail' topic.lecturer.id %}" 
-           class="text-orange-400 hover:text-orange-300 inline-flex items-center">
-            <i class="fas fa-arrow-left mr-2"></i>
+        <a href="{% url 'lecture:lecturer_detail' topic.lecturer.id %}" class="back-link">
+            <i class="fas fa-arrow-left"></i>
             {{ "Назад к "|add:topic.lecturer.name|truncatechars:40 }}
         </a>
     </div>
     
-    <!-- Player header -->
-    <div class="player-header">
-        {% if topic.lecturer.photo %}
-        <div class="header-cover">
-            <img src="{{ topic.lecturer.photo.url }}" alt="{{ topic.lecturer.name }}" class="w-12 h-12 rounded-full object-cover">
+    <div class="page-header">
+        <div class="header-avatar">
+            {% if topic.lecturer.photo %}
+                <img src="{{ topic.lecturer.photo.url }}" alt="{{ topic.lecturer.name }}">
+            {% else %}
+                <i class="fas fa-user"></i>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="header-dot"></div>
-        {% endif %}
-        
-        <div>
-            <h1>{{ topic.lecturer.name }}</h1>
+        <div class="header-content">
+            <h1 class="header-title">{{ topic.lecturer.name }}</h1>
             <p class="header-subtitle">{{ topic.title }}</p>
         </div>
-        <div class="lecture-count">{{ lecture_count }} лекций</div>
+        <div class="header-meta">{{ lecture_count }} лекций</div>
     </div>
     
-    <!-- Audio Player - integrated into main layout -->
+    <!-- Audio Player Section -->
     <div class="audio-player-section" 
          {% if current_lecture %}
          data-current-lecture-id="{{ current_lecture.id }}"
@@ -82,38 +79,36 @@
         <div class="player-progress" role="slider" aria-label="Progress bar">
             <span class="time-current">0:00</span>
             <div class="progress-bar">
-                <div class="progress-filled">
-                </div>
+                <div class="progress-filled"></div>
             </div>
             <span class="time-total">0:00</span>
         </div>
     </div>
 
-    <!-- Playlist -->
-    <div class="lecture-list">
+    <!-- Lecture List -->
+    <div class="card-list">
         {% for lecture in lectures %}
-        <div class="lecture-card{% if current_lecture and current_lecture.id == lecture.id %} active{% endif %}" 
+        <div class="card-item{% if current_lecture and current_lecture.id == lecture.id %} active{% endif %}" 
              data-id="{{ lecture.id }}"
              data-url="{{ lecture.audio_file.url }}"
-             data-title="{{ lecture.title }}">
+             data-title="{{ lecture.title }}"
+             data-duration="{{ lecture.duration|default:0 }}">
             
-            <div class="card-number">{{ lecture.order }}</div>
+            <div class="card-icon">{{ lecture.order }}</div>
             
             <div class="card-content">
-                <h3>{{ lecture.title }}</h3>
-                <div class="card-meta">{{ lecture.file_size_mb }} MB • {{ lecture.duration|default:"--:--" }}</div>
+                <h3 class="card-title">{{ lecture.title }}</h3>
+                <div class="card-meta">{{ lecture.file_size_mb }} MB • {{ lecture.duration|format_duration }}</div>
 
                 {% if user.is_authenticated %}
-                    <!-- Always show progress bar -->
-                    <div class="lecture-progress">
-                        <div class="lecture-progress-bar">
-                            <div class="lecture-progress-filled {% if lecture.progress.completed %}completed{% else %}in-progress{% endif %}" 
+                    <div class="card-progress">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill {% if lecture.progress.completed %}completed{% else %}in-progress{% endif %}" 
                                  style="width: {{ lecture.progress.progress_percentage|default:0|floatformat:1 }}%"></div>
                         </div>
                     </div>
 
-                    <!-- Always show status and listen count -->
-                    <div class="lecture-status">
+                    <div class="card-status">
                         {% if lecture.progress.completed %}
                             <span class="status-badge status-completed">
                                 <i class="fas fa-check"></i>

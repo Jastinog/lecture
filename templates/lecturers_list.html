@@ -4,29 +4,30 @@
 {% block title %}Лекторы{% endblock %}
 
 {% block content %}
-<div class="lecture-player">
-    <div class="player-header">
-        <div>
-            <h1>Лекторы</h1>
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-avatar">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="header-content">
+            <h1 class="header-title">Лекторы</h1>
             <p class="header-subtitle">Выберите лектора для прослушивания</p>
         </div>
     </div>
     
-    <div class="lecture-list">
+    <div class="card-list">
         {% for lecturer in lecturers %}
-        <a href="{% url 'lecture:lecturer_detail' lecturer.id %}" class="lecture-card">
-            {% if lecturer.photo %}
-            <div class="card-number speaker-photo-large">
-                <img src="{{ lecturer.photo.url }}" alt="{{ lecturer.name }}" class="w-full h-full object-cover rounded">
+        <a href="{% url 'lecture:lecturer_detail' lecturer.id %}" class="card-item">
+            <div class="card-icon">
+                {% if lecturer.photo %}
+                    <img src="{{ lecturer.photo.url }}" alt="{{ lecturer.name }}">
+                {% else %}
+                    <i class="fas fa-user"></i>
+                {% endif %}
             </div>
-            {% else %}
-            <div class="card-number">
-                <i class="fas fa-user"></i>
-            </div>
-            {% endif %}
             
             <div class="card-content">
-                <h3>{{ lecturer.name }}</h3>
+                <h3 class="card-title">{{ lecturer.name }}</h3>
                 <div class="card-meta">
                     {{ lecturer.topics.count }} {% if lecturer.topics.count == 1 %}тема{% elif lecturer.topics.count < 5 %}темы{% else %}тем{% endif %}
                     {% if lecturer.description %} • {{ lecturer.description|truncatewords:10 }}{% endif %}
@@ -34,9 +35,9 @@
             </div>
         </a>
         {% empty %}
-        <div class="text-center py-12">
-            <i class="fas fa-users text-4xl text-gray-600 mb-4"></i>
-            <p class="text-gray-400">Лекторы пока не добавлены</p>
+        <div class="empty-state">
+            <i class="fas fa-users"></i>
+            <p>Лекторы пока не добавлены</p>
         </div>
         {% endfor %}
     </div>

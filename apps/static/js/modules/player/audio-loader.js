@@ -23,6 +23,7 @@ export class AudioLoader {
             const xhr = new XMLHttpRequest();
             this.currentRequest = xhr;
 
+            // Fixed API path
             xhr.open('GET', `/api/audio/${lectureId}/`, true);
             xhr.responseType = 'blob';
 

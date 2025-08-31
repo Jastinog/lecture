@@ -13,7 +13,9 @@ export class LecturePlayer {
         this.progressUpdateInterval = null;
         this.lastSavedTime = 0;
         this.targetSeekTime = null;
-        this.isSeekingToTarget = false;
+        this.isAudioReady = false;
+        this.isFullyLoaded = false;
+        this.pendingPlay = false;
 
         // Constants
         this.SKIP_SECONDS = 15;
@@ -49,29 +51,39 @@ export class LecturePlayer {
 
     onLoadProgress(data) {
         console.log(`Loading: ${data.percent.toFixed(1)}% (${data.loadedMB}MB / ${data.totalMB}MB)`);
-        
-        // Update buffer progress bar with loading progress
         this.progressBar.updateLoadingProgress(data.percent);
-        
-        // Don't update title during loading - it should show the lecture title
+        this.showLoadingState(`Загрузка ${data.percent.toFixed(0)}%`);
     }
 
     onLoadComplete(data) {
         console.log(`Audio loaded: ${data.sizeMB}MB`);
-        this.isLoading = false;
-        
-        // Don't update title - it should already show the lecture title
+        this.isFullyLoaded = true;
+        this.hideLoadingState();
     }
 
     onLoadError(error) {
         console.error('Audio loading failed:', error);
         this.isLoading = false;
-        
-        // Don't change title on error - keep showing the lecture title
+        this.isFullyLoaded = false;
+        this.isAudioReady = false;
+        this.pendingPlay = false;
+        this.hideLoadingState();
+        this.showError('Ошибка загрузки аудио');
+    }
+
+    showLoadingState(message = 'Загрузка...') {
+        this.progressBar.showLoading(message);
+    }
+
+    hideLoadingState() {
+        this.progressBar.hideLoading();
+    }
+
+    showError(message) {
+        console.error(message);
     }
 
     init() {
-        // Initialize all modules
         this.playlist.init();
         this.controls.init();
         this.progressBar.init();
@@ -81,6 +93,7 @@ export class LecturePlayer {
         this.audio.addEventListener('loadstart', () => this.onLoadStart());
         this.audio.addEventListener('loadedmetadata', () => this.onMetadataLoaded());
         this.audio.addEventListener('canplay', () => this.onCanPlay());
+        this.audio.addEventListener('canplaythrough', () => this.onCanPlayThrough());
         this.audio.addEventListener('timeupdate', () => this.onTimeUpdate());
         this.audio.addEventListener('seeked', () => this.onSeeked());
         this.audio.addEventListener('ended', () => this.onEnded());
@@ -88,7 +101,6 @@ export class LecturePlayer {
         this.audio.addEventListener('play', () => this.onPlay());
         this.audio.addEventListener('error', (e) => this.onError(e));
 
-        // Page unload
         window.addEventListener('beforeunload', () => {
             this.saveCurrentProgress();
             this.audioLoader.clearCache();
@@ -97,12 +109,61 @@ export class LecturePlayer {
 
     onLoadStart() {
         console.log("Audio load started");
-        // Reset buffer indicator when new audio starts loading
-        this.progressBar.resetBuffer();
+        this.isAudioReady = false;
+    }
+
+    onMetadataLoaded() {
+        console.log("Metadata loaded, duration:", this.audio.duration);
+        const durationFromData = this.currentCard ? parseFloat(this.currentCard.dataset.duration || '0') : 0;
+        if (durationFromData === 0) {
+            this.progressBar.updateTotalTime(this.audio.duration);
+        }
+    }
+
+    onCanPlay() {
+        console.log("Audio can start playing");
+    }
+
+    onCanPlayThrough() {
+        console.log("Audio can play through without buffering");
+        
+        // Only mark as ready when audio is fully loaded and not already ready
+        if (this.isFullyLoaded && !this.isAudioReady) {
+            this.isAudioReady = true;
+            this.hideLoadingState();
+            
+            // Apply saved position
+            this.applySavedPosition();
+            
+            // Now audio is ready for playback
+            if (this.pendingPlay) {
+                this.pendingPlay = false;
+                this.startPlayback();
+            }
+        }
+    }
+
+    applySavedPosition() {
+        if (this.targetSeekTime !== null && this.targetSeekTime > 0) {
+            console.log("Applying saved position:", this.targetSeekTime);
+            this.audio.currentTime = this.targetSeekTime;
+            this.targetSeekTime = null;
+            this.progressBar.updateProgress();
+        }
+    }
+
+    async startPlayback() {
+        if (this.isAudioReady && this.isFullyLoaded) {
+            try {
+                await this.audio.play();
+            } catch (e) {
+                console.error('Playback failed:', e);
+            }
+        }
     }
 
     async loadCurrentLecture() {
-        const container = document.querySelector('.audio-player-container');
+        const container = document.querySelector('.audio-player-section');
         const lectureId = container?.dataset.currentLectureId;
         
         if (lectureId) {
@@ -124,88 +185,75 @@ export class LecturePlayer {
         this.playlist.loadFirstIncompleteLecture();
     }
 
-    async setupLecture(card, autoPlay = false) {
+    async setupLecture(card, requestPlay = false) {
+        this.stopCurrentAudio();
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         this.currentCard = card;
         this.currentLectureId = parseInt(card.dataset.id);
-        this.isSeekingToTarget = false;
+        this.isAudioReady = false;
+        this.isFullyLoaded = false;
+        this.pendingPlay = requestPlay;
+        this.isLoading = false;
         
-        // Set title immediately when lecture is selected
+        const durationFromData = parseFloat(card.dataset.duration || '0');
+        if (durationFromData > 0) {
+            this.progressBar.updateTotalTime(durationFromData);
+        }
+        
         this.header.updateNowPlaying(card.dataset.title);
         this.playlist.updateUI();
         
         try {
             if (this.audioLoader.isLoaded(this.currentLectureId)) {
                 console.log("Audio already loaded from cache");
+                this.showLoadingState('Подготовка из кеша...');
+                this.isFullyLoaded = true;
+                
                 const objectURL = await this.audioLoader.loadAudio(this.currentLectureId);
-                this.audio.src = objectURL;
-                this.audio.load();
+                
+                if (this.currentLectureId === parseInt(card.dataset.id)) {
+                    this.audio.src = objectURL;
+                    // Audio will trigger canplaythrough after load()
+                }
             } else {
                 console.log("Loading full audio file...");
                 this.isLoading = true;
-                // Don't show loading state in title - title stays as lecture title
+                this.showLoadingState('Начинаем загрузку...');
                 
                 const objectURL = await this.audioLoader.loadAudio(this.currentLectureId);
-                this.audio.src = objectURL;
-                this.audio.load();
-            }
-
-            if (autoPlay) {
-                this.audio.play().catch(e => console.error('Autoplay failed:', e));
+                
+                if (this.currentLectureId === parseInt(card.dataset.id)) {
+                    this.audio.src = objectURL;
+                    // Wait for onLoadComplete to set isFullyLoaded = true
+                }
             }
         } catch (error) {
             console.error('Failed to setup lecture:', error);
-            this.onLoadError(error);
+            if (this.currentLectureId === parseInt(card.dataset.id)) {
+                this.onLoadError(error);
+            }
         }
     }
 
-    onMetadataLoaded() {
-        console.log("Metadata loaded, duration:", this.audio.duration);
-        this.progressBar.updateTotalTime(this.audio.duration);
-    }
-
-    onCanPlay() {
-        console.log("Can play event");
-        this.isLoading = false;
+    stopCurrentAudio() {
+        this.audioLoader.abort();
         
-        // Seek to target time if needed
-        if (this.targetSeekTime !== null && !this.isSeekingToTarget) {
-            console.log("Seeking to target time:", this.targetSeekTime);
-            this.isSeekingToTarget = true;
-            this.audio.currentTime = this.targetSeekTime;
-            
-            const onSeeked = () => {
-                console.log("Seek completed successfully, time:", this.audio.currentTime);
-                this.audio.removeEventListener('seeked', onSeeked);
-                this.finishSeeking();
-            };
-            
-            this.audio.addEventListener('seeked', onSeeked);
-            
-            setTimeout(() => {
-                if (this.isSeekingToTarget) {
-                    console.log("Seek timeout, finishing anyway");
-                    this.finishSeeking();
-                }
-            }, 1000);
+        if (!this.audio.paused) {
+            this.audio.pause();
         }
-    }
-
-    finishSeeking() {
-        this.isSeekingToTarget = false;
-        this.targetSeekTime = null;
-        this.lastSavedTime = this.audio.currentTime;
-        console.log("Seeking finished, final time:", this.audio.currentTime);
-        this.progressBar.updateProgress();
-    }
-
-    onSeeked() {
-        console.log("Seeked event, current time:", this.audio.currentTime);
-    }
-
-    onTimeUpdate() {
-        if (!this.isSeekingToTarget) {
-            this.progressBar.updateProgress();
-        }
+        this.audio.currentTime = 0;
+        this.audio.src = '';
+        
+        this.stopProgressUpdates();
+        this.progressBar.resetForNewLecture();
+        
+        this.isLoading = false;
+        this.isAudioReady = false;
+        this.isFullyLoaded = false;
+        this.pendingPlay = false;
+        this.hideLoadingState();
     }
 
     async playLecture(card) {
@@ -216,11 +264,12 @@ export class LecturePlayer {
         }
 
         if (this.currentCard === card) {
-            this.controls.togglePlayPause();
+            if (this.isAudioReady && this.isFullyLoaded) {
+                this.controls.togglePlayPause();
+            }
             return;
         }
 
-        // Load progress before setup
         const progress = await this.loadProgress(lectureId);
         if (progress?.current_time > 0) {
             this.targetSeekTime = progress.current_time;
@@ -233,8 +282,43 @@ export class LecturePlayer {
         await this.setCurrentLecture(lectureId);
     }
 
+    requestPlay() {
+        if (!this.currentCard) {
+            // Updated selector: .lecture-card → .card-item
+            const firstCard = document.querySelector('.card-item');
+            if (firstCard) this.playLecture(firstCard);
+            return;
+        }
+
+        if (this.isAudioReady && this.isFullyLoaded) {
+            this.startPlayback();
+        } else {
+            this.pendingPlay = true;
+            this.showLoadingState('Подготовка к воспроизведению...');
+        }
+    }
+
+    requestPause() {
+        this.pendingPlay = false;
+        if (this.isAudioReady && this.isFullyLoaded) {
+            this.audio.pause();
+        }
+    }
+
+    onTimeUpdate() {
+        if (this.isAudioReady && this.isFullyLoaded) {
+            this.progressBar.updateProgress();
+        }
+    }
+
+    onSeeked() {
+        console.log("Seeked event, current time:", this.audio.currentTime);
+        this.progressBar.updateProgress();
+    }
+
     async loadProgress(lectureId) {
         try {
+            // Fixed API path
             const response = await fetch(`/api/progress/?lecture_id=${lectureId}`, {
                 headers: { 'X-CSRFToken': this.getCSRFToken() }
             });
@@ -247,6 +331,7 @@ export class LecturePlayer {
 
     async setCurrentLecture(lectureId) {
         try {
+            // Fixed API path
             await fetch('/api/current-lecture/', {
                 method: 'POST',
                 headers: {
@@ -276,9 +361,21 @@ export class LecturePlayer {
     }
 
     onError(e) {
+        // Ignore errors from empty audio element or when no audio is loaded
+        if (!this.audio.src || !this.currentLectureId) {
+            return;
+        }
+        
         console.error('Audio error:', e);
+        
+        this.audioLoader.abort();
+        
         this.isLoading = false;
-        this.isSeekingToTarget = false;
+        this.isAudioReady = false;
+        this.isFullyLoaded = false;
+        this.pendingPlay = false;
+        this.hideLoadingState();
+        this.showError('Ошибка воспроизведения');
     }
 
     startProgressUpdates() {
@@ -297,13 +394,18 @@ export class LecturePlayer {
     }
 
     async saveCurrentProgress(forceCompleted = false) {
-        if (!this.currentLectureId || !this.audio.duration || this.isSeekingToTarget) return;
+        if (!this.currentLectureId || !this.isAudioReady || !this.isFullyLoaded) return;
 
         const currentTime = this.audio.currentTime;
+        const durationFromData = this.currentCard ? parseFloat(this.currentCard.dataset.duration || '0') : 0;
+        const duration = durationFromData > 0 ? durationFromData : this.audio.duration;
+        
+        if (!duration) return;
         
         if (Math.abs(currentTime - this.lastSavedTime) < 2 && !forceCompleted) return;
 
         try {
+            // Fixed API path
             const response = await fetch('/api/progress/', {
                 method: 'POST',
                 headers: {
@@ -313,7 +415,7 @@ export class LecturePlayer {
                 body: JSON.stringify({
                     lecture_id: this.currentLectureId,
                     current_time: currentTime,
-                    duration: this.audio.duration,
+                    duration: duration,
                     force_completed: forceCompleted
                 })
             });
