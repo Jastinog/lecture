@@ -121,6 +121,14 @@ export class LecturePlayer {
         if (durationFromData === 0) {
             this.progressBar.updateTotalTime(this.audio.duration);
         }
+        
+        if (this.targetSeekTime !== null && this.targetSeekTime > 0 && this.audio.duration) {
+            if (this.audio.readyState >= 2) {
+                setTimeout(() => {
+                    this.applySavedPosition();
+                }, 50);
+            }
+        }
     }
 
     onCanPlay() {
@@ -134,21 +142,33 @@ export class LecturePlayer {
             this.isAudioReady = true;
             this.hideLoadingState();
             
-            this.applySavedPosition();
+            if (this.targetSeekTime !== null && this.targetSeekTime > 0) {
+                setTimeout(() => {
+                    this.applySavedPosition();
+                }, 100);
+            }
             
             if (this.pendingPlay) {
                 this.pendingPlay = false;
-                this.startPlayback();
+                setTimeout(() => {
+                    this.startPlayback();
+                }, this.targetSeekTime > 0 ? 200 : 50);
             }
         }
     }
 
     applySavedPosition() {
-        if (this.targetSeekTime !== null && this.targetSeekTime > 0) {
-            console.log("Applying saved position:", this.targetSeekTime);
-            this.audio.currentTime = this.targetSeekTime;
+        if (this.targetSeekTime !== null && this.targetSeekTime > 0 && this.audio.duration) {
+            console.log("Applying saved position:", this.targetSeekTime, "duration:", this.audio.duration);
+            
+            const validTime = Math.min(this.targetSeekTime, this.audio.duration - 1);
+            
+            this.audio.currentTime = validTime;
             this.targetSeekTime = null;
-            this.progressBar.updateProgress();
+            
+            setTimeout(() => {
+                this.progressBar.forceUpdateProgress();
+            }, 50);
         }
     }
 

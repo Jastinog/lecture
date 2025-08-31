@@ -134,12 +134,8 @@ export class ProgressBar {
         }
     }
 
-    updateProgress() {
-        if (this.isSeeking || !this.player.isAudioReady) return;
-
+    forceUpdateProgress() {
         const currentTime = this.player.audio.currentTime;
-        
-        // Get duration from database first, fallback to audio metadata
         const durationFromData = this.player.currentCard ? parseFloat(this.player.currentCard.dataset.duration || '0') : 0;
         const duration = durationFromData > 0 ? durationFromData : this.player.audio.duration;
 
@@ -153,6 +149,31 @@ export class ProgressBar {
         
         if (this.timeCurrent) {
             this.timeCurrent.textContent = this.player.formatTime(currentTime);
+        }
+        
+        console.log("Force updated progress:", percent.toFixed(1) + "%", "time:", currentTime.toFixed(1) + "s");
+    }
+
+    updateProgress() {
+        if (!this.player.isAudioReady) return;
+
+        const currentTime = this.player.audio.currentTime;
+        
+        const durationFromData = this.player.currentCard ? parseFloat(this.player.currentCard.dataset.duration || '0') : 0;
+        const duration = durationFromData > 0 ? durationFromData : this.player.audio.duration;
+
+        if (isNaN(currentTime) || isNaN(duration) || duration <= 0) return;
+
+        if (!this.isSeeking) {
+            const percent = (currentTime / duration) * 100;
+            
+            if (this.progressFilled) {
+                this.progressFilled.style.width = `${percent}%`;
+            }
+            
+            if (this.timeCurrent) {
+                this.timeCurrent.textContent = this.player.formatTime(currentTime);
+            }
         }
     }
 
@@ -185,7 +206,6 @@ export class ProgressBar {
     performSeek(newTime, percent) {
         this.isSeeking = true;
         
-        // Update UI immediately
         if (this.progressFilled) {
             this.progressFilled.style.width = `${percent * 100}%`;
         }
@@ -193,7 +213,6 @@ export class ProgressBar {
             this.timeCurrent.textContent = this.player.formatTime(newTime);
         }
         
-        // Perform actual seek
         this.player.audio.currentTime = newTime;
         
         const onSeeked = () => {
