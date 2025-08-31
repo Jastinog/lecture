@@ -13,6 +13,10 @@
     --fs-md:  1rem;
     --fs-sm:  0.875rem;
     --fs-xs:  0.75rem;
+
+    --g-start: #14161b;
+    --g-mid:   #1b1f26;
+    --g-end:   #171e21;
 }
 
 body { 

@@ -12,7 +12,7 @@
     margin-bottom: 2rem;
     padding: 1.5rem;
     border-radius: 0.5rem;
-    background: linear-gradient(135deg, #0c0a09 0%, #1c1917 30%, #292524 60%, #1c1917 100%);
+    background: linear-gradient(135deg, var(--g-start) 0%, var(--g-mid) 50%, var(--g-end) 100%);
     border: 1px solid var(--bg-3);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
@@ -57,18 +57,10 @@
 }
 
 @keyframes professional-scroll {
-    0% {
-        transform: translateX(0);
-    }
-    29.4% {
-        transform: translateX(0);
-    }
-    70.6% {
-        transform: translateX(calc(-50% - 1.5rem));
-    }
-    100% {
-        transform: translateX(calc(-50% - 1.5rem));
-    }
+    0% { transform: translateX(0); }
+    29.4% { transform: translateX(0); }
+    70.6% { transform: translateX(calc(-50% - 1.5rem)); }
+    100% { transform: translateX(calc(-50% - 1.5rem)); }
 }
 
 .player-controls {
@@ -94,10 +86,7 @@
     transition: all 0.2s ease;
 }
 
-.btn-control:hover {
-    background: #4B5563;
-    transform: translateY(-1px);
-}
+.btn-control:hover { background: #4B5563; }
 
 .btn-play-pause {
     width: 4rem;
@@ -109,7 +98,6 @@
 
 .btn-play-pause:hover {
     background: linear-gradient(135deg, #dc2626, #b91c1c);
-    transform: translateY(-2px);
     box-shadow: 0 6px 12px rgba(234, 88, 12, 0.4);
 }
 
@@ -198,101 +186,44 @@
     border-radius: inherit;
 }
 
-/* Override card-list for player to make it scrollable */
+/* === Playlist: scroll area & width === */
 .player-container .card-list {
     flex: 1;
     overflow-y: auto;
-    padding-right: 0.5rem;
+    /* FIX: убрали сужение справа */
+    /* padding-right: 0.5rem; */
+    scrollbar-gutter: stable both-edges;
+    width: 100%;
+    max-width: none;
 }
 
-.player-container .card-list::-webkit-scrollbar {
-    width: 6px;
-}
+.player-container .card-list::-webkit-scrollbar { width: 6px; }
+.player-container .card-list::-webkit-scrollbar-track { background: var(--bg-2); border-radius: 3px; }
+.player-container .card-list::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 3px; }
 
-.player-container .card-list::-webkit-scrollbar-track {
-    background: var(--bg-2);
-    border-radius: 3px;
-}
-
-.player-container .card-list::-webkit-scrollbar-thumb {
-    background: var(--bg-3);
-    border-radius: 3px;
+/* айтемы на ту же ширину, что и секция плеера */
+.player-container .card-item {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
 }
 
 @keyframes progress-bar-stripes {
-    from {
-        background-position: 1rem 0;
-    }
-    to {
-        background-position: 0 0;
-    }
+    from { background-position: 1rem 0; }
+    to   { background-position: 0 0; }
 }
 
 /* Mobile styles */
 @media (max-width: 768px) {
-    .player-container {
-        height: calc(100vh - 0.5rem);
-        padding: 1rem 0.5rem;
-    }
-    
-    .audio-player-section {
-        margin-bottom: 1.5rem;
-        padding: 1rem;
-    }
-    
-    .now-playing {
-        margin-bottom: 1rem;
-    }
-    
-    .now-playing-label {
-        font-size: 0.75rem;
-    }
-    
-    .now-playing-title {
-        font-size: 1rem;
-    }
-    
-    .now-playing-title.scrolling {
-        animation-duration: 40s;
-    }
-    
-    .player-controls {
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-    }
-    
-    .btn-control {
-        width: 2.5rem;
-        height: 2.5rem;
-        font-size: 1rem;
-    }
-    
-    .btn-play-pause {
-        width: 3rem;
-        height: 3rem;
-        font-size: 1.25rem;
-    }
-    
-    .player-progress {
-        gap: 0.5rem;
-        padding: 0.75rem;
-    }
-    
-    .time-current,
-    .time-total {
-        font-size: 0.75rem;
-        min-width: 2rem;
-    }
-    
-    .progress-bar {
-        height: 0.75rem;
-    }
-    
-    .player-container .card-list {
-        padding-right: 0.25rem;
-    }
-    
-    .player-container .card-list::-webkit-scrollbar {
-        width: 4px;
-    }
+    .now-playing { margin-bottom: 1rem; }
+    .now-playing-label { font-size: 0.75rem; }
+    .now-playing-title { font-size: 1rem; }
+
+    .player-controls { gap: 0.5rem; margin-bottom: 0.75rem; }
+    .btn-control { width: 2.5rem; height: 2.5rem; font-size: 1rem; }
+    .btn-play-pause { width: 2.75rem; height: 2.75rem; font-size: 1.125rem; }
+
+    .player-progress { gap: 0.5rem; padding: 0.5rem; }
+    .time-current, .time-total { font-size: 0.75rem; min-width: 2rem; }
+    .progress-bar { height: 0.625rem; }
 }
