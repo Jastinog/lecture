@@ -50,33 +50,24 @@ export class LecturePlayer {
     onLoadProgress(data) {
         console.log(`Loading: ${data.percent.toFixed(1)}% (${data.loadedMB}MB / ${data.totalMB}MB)`);
         
-        // Update loading indicator if exists
-        const loadingIndicator = document.querySelector('.loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.style.width = `${data.percent}%`;
-        }
+        // Update buffer progress bar with loading progress
+        this.progressBar.updateLoadingProgress(data.percent);
+        
+        // Don't update title during loading - it should show the lecture title
     }
 
     onLoadComplete(data) {
         console.log(`Audio loaded: ${data.sizeMB}MB`);
         this.isLoading = false;
         
-        // Hide loading indicator
-        const loadingIndicator = document.querySelector('.loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.style.width = '0%';
-        }
+        // Don't update title - it should already show the lecture title
     }
 
     onLoadError(error) {
         console.error('Audio loading failed:', error);
         this.isLoading = false;
         
-        // Show error message
-        const status = document.querySelector('.now-playing-title');
-        if (status) {
-            status.textContent = 'Ошибка загрузки';
-        }
+        // Don't change title on error - keep showing the lecture title
     }
 
     init() {
@@ -87,6 +78,7 @@ export class LecturePlayer {
         this.header.init();
 
         // Audio events
+        this.audio.addEventListener('loadstart', () => this.onLoadStart());
         this.audio.addEventListener('loadedmetadata', () => this.onMetadataLoaded());
         this.audio.addEventListener('canplay', () => this.onCanPlay());
         this.audio.addEventListener('timeupdate', () => this.onTimeUpdate());
@@ -101,6 +93,12 @@ export class LecturePlayer {
             this.saveCurrentProgress();
             this.audioLoader.clearCache();
         });
+    }
+
+    onLoadStart() {
+        console.log("Audio load started");
+        // Reset buffer indicator when new audio starts loading
+        this.progressBar.resetBuffer();
     }
 
     async loadCurrentLecture() {
@@ -131,6 +129,7 @@ export class LecturePlayer {
         this.currentLectureId = parseInt(card.dataset.id);
         this.isSeekingToTarget = false;
         
+        // Set title immediately when lecture is selected
         this.header.updateNowPlaying(card.dataset.title);
         this.playlist.updateUI();
         
@@ -143,7 +142,7 @@ export class LecturePlayer {
             } else {
                 console.log("Loading full audio file...");
                 this.isLoading = true;
-                this.showLoadingState();
+                // Don't show loading state in title - title stays as lecture title
                 
                 const objectURL = await this.audioLoader.loadAudio(this.currentLectureId);
                 this.audio.src = objectURL;
@@ -156,13 +155,6 @@ export class LecturePlayer {
         } catch (error) {
             console.error('Failed to setup lecture:', error);
             this.onLoadError(error);
-        }
-    }
-
-    showLoadingState() {
-        const status = document.querySelector('.now-playing-title');
-        if (status) {
-            status.textContent = 'Загрузка...';
         }
     }
 

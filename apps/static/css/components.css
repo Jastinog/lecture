@@ -1,9 +1,19 @@
+/* Add this to the beginning of components.css */
+
+/* Common container for consistent width across all pages */
+.lecture-player {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Existing styles remain the same... */
+
 .lecture-card {
     display: flex;
     align-items: center;
     padding: 1rem;
     border-radius: 0.5rem;
-    background: #1F2937;
+    background: linear-gradient(135deg, #1F2937 0%, #252d3a 100%);
     border: 1px solid var(--bg-3);
     text-decoration: none;
     color: inherit;
@@ -12,15 +22,11 @@
     position: relative;
 }
 
-.lecture-card:hover {
-    background: var(--bg-3);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
 .lecture-card.playing,
 .lecture-card.active {
-    background: #431407;
-    border-color: #ea580c;
+    background: linear-gradient(135deg, #7c2d12 0%, #431407 100%);
+    border-color: #f97316;
+    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.3);
 }
 
 .card-number {
@@ -71,8 +77,8 @@
 
 .lecture-card.playing .card-number,
 .lecture-card.active .card-number {
-    background: #F9FAFB;
-    color: #111827;
+    background: #f97316;
+    color: #fff;
 }
 
 .card-content {
@@ -116,7 +122,7 @@
 }
 
 .lecture-progress-filled.in-progress {
-    background: #ea580c;
+    background: #f97316;
 }
 
 .lecture-status {
@@ -143,8 +149,8 @@
 }
 
 .status-in-progress {
-    background: rgba(234, 88, 12, 0.2);
-    color: #ea580c;
+    background: rgba(249, 115, 22, 0.2);
+    color: #f97316;
 }
 
 .status-not-started {

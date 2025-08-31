@@ -1,4 +1,3 @@
-// В progress-bar.js
 export class ProgressBar {
     constructor(player) {
         this.player = player;
@@ -15,92 +14,50 @@ export class ProgressBar {
     createBufferIndicator() {
         if (!this.progressBar) return;
         
+        // Create buffer indicator inside the main progress bar
         this.bufferIndicator = document.createElement('div');
         this.bufferIndicator.className = 'progress-buffer';
-        this.bufferIndicator.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            background: #6B7280;
-            width: 0%;
-            z-index: 1;
-        `;
         
+        // Insert buffer indicator before the progress-filled
         this.progressBar.insertBefore(this.bufferIndicator, this.progressFilled);
-        this.progressFilled.style.zIndex = '2';
-        this.progressFilled.style.position = 'relative';
     }
 
     init() {
         this.progressBar?.addEventListener('click', (e) => this.seek(e));
         
-        // Используем событие progress для отслеживания буферизации
+        // Track buffering progress
         this.player.audio.addEventListener('progress', () => this.updateBuffer());
+        this.player.audio.addEventListener('loadstart', () => this.resetBuffer());
+    }
+
+    resetBuffer() {
+        // Don't reset buffer width - keep it visible
+        // Only reset when new file starts loading
     }
 
     updateBuffer() {
         if (!this.player.audio.duration || !this.bufferIndicator) return;
 
         const buffered = this.player.audio.buffered;
-        let bufferedEnd = 0;
+        let maxBufferedEnd = 0;
         
-        // Находим буферизованный участок, содержащий текущую позицию
-        const currentTime = this.player.audio.currentTime;
-        
+        // Find the maximum buffered end time
         for (let i = 0; i < buffered.length; i++) {
-            if (buffered.start(i) <= currentTime && buffered.end(i) >= currentTime) {
-                bufferedEnd = buffered.end(i);
-                break;
-            }
-            // Если текущая позиция впереди всех буферов, берем максимальный
-            if (buffered.end(i) > bufferedEnd) {
-                bufferedEnd = buffered.end(i);
-            }
+            maxBufferedEnd = Math.max(maxBufferedEnd, buffered.end(i));
         }
         
-        const bufferPercent = (bufferedEnd / this.player.audio.duration) * 100;
+        const bufferPercent = Math.min(100, (maxBufferedEnd / this.player.audio.duration) * 100);
         this.bufferIndicator.style.width = `${bufferPercent}%`;
         
-        console.log(`Buffer: ${bufferedEnd.toFixed(1)}s / ${this.player.audio.duration.toFixed(1)}s (${bufferPercent.toFixed(1)}%)`);
-        
-        // Проверяем готовность для seek
-        if (this.player.targetSeekTime && bufferedEnd >= this.player.targetSeekTime && !this.player.isSeekingToTarget) {
-            console.log(`Buffer ready for seek: ${bufferedEnd} >= ${this.player.targetSeekTime}`);
-            this.player.onBufferReady();
-        }
+        // Log buffer progress for debugging
+        console.log(`Buffer: ${maxBufferedEnd.toFixed(1)}s / ${this.player.audio.duration.toFixed(1)}s (${bufferPercent.toFixed(1)}%)`);
     }
 
-    // Добавляем метод для принудительной буферизации до определенного времени
-    async waitForBuffer(targetTime, timeout = 30000) {
-        return new Promise((resolve, reject) => {
-            const startTime = Date.now();
-            
-            const checkBuffer = () => {
-                if (Date.now() - startTime > timeout) {
-                    reject(new Error('Buffer timeout'));
-                    return;
-                }
-                
-                const buffered = this.player.audio.buffered;
-                let isBuffered = false;
-                
-                for (let i = 0; i < buffered.length; i++) {
-                    if (buffered.start(i) <= targetTime && buffered.end(i) >= targetTime) {
-                        isBuffered = true;
-                        break;
-                    }
-                }
-                
-                if (isBuffered) {
-                    resolve();
-                } else {
-                    setTimeout(checkBuffer, 100);
-                }
-            };
-            
-            checkBuffer();
-        });
+    // Show loading progress during initial file download
+    updateLoadingProgress(percent) {
+        if (!this.bufferIndicator) return;
+        this.bufferIndicator.style.width = `${percent}%`;
+        // Don't reset after loading - let the normal buffer update handle it
     }
 
     updateProgress() {
@@ -148,31 +105,7 @@ export class ProgressBar {
         this.timeCurrent.textContent = this.player.formatTime(newTime);
         
         this.seekTarget = newTime;
-        
-        // Проверяем, есть ли буфер для этого времени
-        const buffered = this.player.audio.buffered;
-        let canSeek = false;
-        
-        for (let i = 0; i < buffered.length; i++) {
-            if (buffered.start(i) <= newTime && buffered.end(i) >= newTime) {
-                canSeek = true;
-                break;
-            }
-        }
-        
-        if (canSeek) {
-            // Можем искать сразу
-            this.performSeek(newTime);
-        } else {
-            // Ждем буферизации
-            console.log("Waiting for buffer before seek...");
-            this.waitForBuffer(newTime, 10000)
-                .then(() => this.performSeek(newTime))
-                .catch(() => {
-                    console.log("Buffer timeout, seeking anyway");
-                    this.performSeek(newTime);
-                });
-        }
+        this.performSeek(newTime);
     }
 
     performSeek(newTime) {

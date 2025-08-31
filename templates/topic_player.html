@@ -16,7 +16,7 @@
 
 <div class="lecture-player">
     <!-- Back button -->
-    <div class="mb-4">
+    <div class="back-button">
         <a href="{% url 'lecture:lecturer_detail' topic.lecturer.id %}" 
            class="text-orange-400 hover:text-orange-300 inline-flex items-center">
             <i class="fas fa-arrow-left mr-2"></i>
@@ -41,8 +41,8 @@
         <div class="lecture-count">{{ lecture_count }} лекций</div>
     </div>
     
-    <!-- Audio Player -->
-    <div class="audio-player-container" 
+    <!-- Audio Player - integrated into main layout -->
+    <div class="audio-player-section" 
          {% if current_lecture %}
          data-current-lecture-id="{{ current_lecture.id }}"
          data-current-time="{{ current_lecture_progress.current_time|default:0|floatformat:2 }}"
