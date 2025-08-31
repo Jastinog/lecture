@@ -54,13 +54,16 @@ export class LecturePlayer {
     onLoadProgress(data) {
         console.log(`Loading: ${data.percent.toFixed(1)}% (${data.loadedMB}MB / ${data.totalMB}MB)`);
         this.progressBar.updateLoadingProgress(data.percent);
-        this.showLoadingState(`Загрузка ${data.percent.toFixed(0)}%`);
+
+        this.playlist.syncBufferState(data.percent);
     }
 
     onLoadComplete(data) {
         console.log(`Audio loaded: ${data.sizeMB}MB`);
         this.isFullyLoaded = true;
         this.hideLoadingState();
+
+        this.playlist.syncBufferState(100);
     }
 
     onLoadError(error) {

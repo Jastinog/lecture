@@ -39,7 +39,6 @@ export class ProgressBar {
         });
         this.player.audio.addEventListener('canplaythrough', () => {
             this.isLoadingComplete = true;
-            // Immediately update buffer when audio is ready
             this.updateBuffer();
         });
     }
@@ -50,7 +49,6 @@ export class ProgressBar {
             this.loadingIndicator.style.display = 'block';
         }
         
-        // Disable seeking during loading
         if (this.progressBar) {
             this.progressBar.style.pointerEvents = 'none';
         }
@@ -61,7 +59,6 @@ export class ProgressBar {
             this.loadingIndicator.style.display = 'none';
         }
         
-        // Re-enable seeking
         if (this.progressBar) {
             this.progressBar.style.pointerEvents = 'auto';
         }
@@ -88,7 +85,6 @@ export class ProgressBar {
     }
 
     resetForNewLecture() {
-        // Reset everything for new lecture
         this.resetBuffer();
         this.isLoadingComplete = false;
         if (this.progressFilled) {
@@ -105,13 +101,13 @@ export class ProgressBar {
     updateBuffer() {
         if (!this.bufferIndicator) return;
 
-        // If loaded from cache, show 100% immediately
         if (this.player.currentLectureId && this.player.audioLoader.isLoaded(this.player.currentLectureId)) {
             this.bufferIndicator.style.width = '100%';
+            // Синхронизация буфера с активной карточкой
+            this.player.playlist.syncBufferState(100);
             return;
         }
 
-        // Normal buffering logic for streaming audio
         if (!this.player.audio.duration) return;
 
         const buffered = this.player.audio.buffered;
@@ -123,14 +119,18 @@ export class ProgressBar {
         
         const bufferPercent = Math.min(100, (maxBufferedEnd / this.player.audio.duration) * 100);
         this.bufferIndicator.style.width = `${bufferPercent}%`;
+        
+        // Синхронизация буфера с активной карточкой
+        this.player.playlist.syncBufferState(bufferPercent);
     }
 
     updateLoadingProgress(percent) {
         if (!this.bufferIndicator) return;
-        // Only update if loading is not complete and not loaded from cache
         if (!this.isLoadingComplete && 
             !(this.player.currentLectureId && this.player.audioLoader.isLoaded(this.player.currentLectureId))) {
             this.bufferIndicator.style.width = `${percent}%`;
+            // Синхронизация загрузки с активной карточкой
+            this.player.playlist.syncBufferState(percent);
         }
     }
 
@@ -150,15 +150,15 @@ export class ProgressBar {
         if (this.timeCurrent) {
             this.timeCurrent.textContent = this.player.formatTime(currentTime);
         }
-        
-        console.log("Force updated progress:", percent.toFixed(1) + "%", "time:", currentTime.toFixed(1) + "s");
+
+        // Синхронизация с активной карточкой
+        this.player.playlist.syncPlaybackProgress(currentTime, duration);
     }
 
     updateProgress() {
         if (!this.player.isAudioReady) return;
 
         const currentTime = this.player.audio.currentTime;
-        
         const durationFromData = this.player.currentCard ? parseFloat(this.player.currentCard.dataset.duration || '0') : 0;
         const duration = durationFromData > 0 ? durationFromData : this.player.audio.duration;
 
@@ -174,6 +174,9 @@ export class ProgressBar {
             if (this.timeCurrent) {
                 this.timeCurrent.textContent = this.player.formatTime(currentTime);
             }
+
+            // Синхронизация с активной карточкой в реальном времени
+            this.player.playlist.syncPlaybackProgress(currentTime, duration);
         }
     }
 
@@ -199,7 +202,6 @@ export class ProgressBar {
         const percent = Math.max(0, Math.min(1, clickX / rect.width));
         const newTime = percent * duration;
         
-        console.log("Manual seek to:", newTime);
         this.performSeek(newTime, percent);
     }
 
@@ -212,11 +214,14 @@ export class ProgressBar {
         if (this.timeCurrent) {
             this.timeCurrent.textContent = this.player.formatTime(newTime);
         }
+
+        // Синхронизация с активной карточкой
+        const duration = this.player.currentCard ? parseFloat(this.player.currentCard.dataset.duration || '0') : this.player.audio.duration;
+        this.player.playlist.syncPlaybackProgress(newTime, duration);
         
         this.player.audio.currentTime = newTime;
         
         const onSeeked = () => {
-            console.log("Manual seek completed, time:", this.player.audio.currentTime);
             this.isSeeking = false;
             this.player.audio.removeEventListener('seeked', onSeeked);
             this.player.saveCurrentProgress();
@@ -226,7 +231,6 @@ export class ProgressBar {
         
         setTimeout(() => {
             if (this.isSeeking) {
-                console.log("Manual seek timeout");
                 this.isSeeking = false;
                 this.player.saveCurrentProgress();
             }

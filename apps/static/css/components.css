@@ -186,11 +186,14 @@
     height: 4px;
     background: var(--bg-3);
     overflow: hidden;
+    position: relative;
 }
 
 .progress-bar-fill {
     height: 100%;
     transition: width 0.3s ease;
+    position: relative;
+    z-index: 2;
 }
 
 .progress-bar-fill.completed {
@@ -199,6 +202,41 @@
 
 .progress-bar-fill.in-progress {
     background: #d97706 !important;
+}
+
+/* Буферный индикатор в карточке (копирует стили из основного плеера) */
+.card-buffer-indicator {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100% !important;
+    background: rgba(107, 114, 128, 0.4) !important;
+    background-image: linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.1) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0.1) 75%,
+        transparent 75%,
+        transparent
+    ) !important;
+    background-size: 1rem 1rem !important;
+    animation: progress-bar-stripes 1s linear infinite !important;
+    z-index: 1 !important;
+}
+
+/* Анимация для активного прогресса */
+.progress-bar-fill.playing {
+    background: linear-gradient(135deg, #ea580c, #f97316) !important;
+    box-shadow: 0 0 8px rgba(234, 88, 12, 0.5) !important;
+    animation: progress-pulse 2s ease-in-out infinite !important;
+    z-index: 2 !important;
+}
+
+/* Обеспечиваем позиционирование для буферного индикатора */
+.card-item.active .progress-bar-container {
+    position: relative !important;
 }
 
 .card-status {
@@ -231,7 +269,6 @@
    background: rgba(101, 163, 13, 0.2);
    color: #65a30d;
 }
-
 
 .status-in-progress {
     background: rgba(249, 115, 22, 0.2);
@@ -284,18 +321,6 @@
     background: rgba(255, 215, 0, 0.15);
 }
 
-@keyframes favoriteAnimation {
-    0%, 20%, 50%, 80%, 100% {
-        transform: translateY(0) scale(1);
-    }
-    40% {
-        transform: translateY(-3px) scale(1.15);
-    }
-    60% {
-        transform: translateY(-1px) scale(1.05);
-    }
-}
-
 /* Empty state */
 .empty-state {
     text-align: center;
@@ -307,6 +332,33 @@
     font-size: 3rem;
     margin-bottom: 1rem;
     color: #4B5563;
+}
+
+/* Анимации */
+@keyframes progress-bar-stripes {
+    from { background-position: 1rem 0; }
+    to   { background-position: 0 0; }
+}
+
+@keyframes progress-pulse {
+    0%, 100% { 
+        box-shadow: 0 0 8px rgba(234, 88, 12, 0.5);
+    }
+    50% { 
+        box-shadow: 0 0 12px rgba(234, 88, 12, 0.8);
+    }
+}
+
+@keyframes favoriteAnimation {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0) scale(1);
+    }
+    40% {
+        transform: translateY(-3px) scale(1.15);
+    }
+    60% {
+        transform: translateY(-1px) scale(1.05);
+    }
 }
 
 /* Mobile responsive */

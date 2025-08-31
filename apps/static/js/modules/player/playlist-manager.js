@@ -4,10 +4,8 @@ export class PlaylistManager {
     }
 
     init() {
-        // Updated selector: .lecture-card → .card-item
         document.querySelectorAll('.card-item').forEach(card => {
             card.addEventListener('click', (e) => {
-                // Ignore clicks on favorite button
                 if (e.target.closest('.favorite-btn')) {
                     return;
                 }
@@ -19,7 +17,6 @@ export class PlaylistManager {
     }
 
     loadFirstIncompleteLecture() {
-        // Updated selector: .lecture-card → .card-item
         const cards = document.querySelectorAll('.card-item');
         
         for (const card of cards) {
@@ -38,7 +35,6 @@ export class PlaylistManager {
     playPrevious() {
         if (!this.player.currentCard) return;
         const prev = this.player.currentCard.previousElementSibling;
-        // Updated selector: .lecture-card → .card-item
         if (prev?.classList.contains('card-item')) {
             this.player.playLecture(prev);
         }
@@ -47,31 +43,55 @@ export class PlaylistManager {
     playNext() {
         if (!this.player.currentCard) return;
         const next = this.player.currentCard.nextElementSibling;
-        // Updated selector: .lecture-card → .card-item
         if (next?.classList.contains('card-item')) {
             this.player.playLecture(next);
         }
     }
 
     updateUI() {
-        // Updated selector: .lecture-card → .card-item
         document.querySelectorAll('.card-item').forEach(card => {
             card.classList.toggle('active', card === this.player.currentCard);
         });
+    }
+
+    syncBufferState(percent) {
+        if (!this.player.currentCard) return;
+        
+        const bufferIndicator = this.player.currentCard.querySelector('.card-buffer-indicator');
+        if (bufferIndicator) {
+            bufferIndicator.style.width = `${Math.min(100, percent)}%`;
+        }
+    }
+
+    syncPlaybackProgress(currentTime, duration) {
+        if (!this.player.currentCard) return;
+        
+        const progressFill = this.player.currentCard.querySelector('.progress-bar-fill');
+        if (!progressFill || !duration || duration <= 0) return;
+
+        const percent = (currentTime / duration) * 100;
+        progressFill.style.width = `${Math.min(100, percent)}%`;
+        
+        // Обновляем класс для визуального отличия от статического прогресса
+        progressFill.className = 'progress-bar-fill in-progress playing';
     }
 
     updateLectureUI(lectureId, data) {
         const card = document.querySelector(`[data-id="${lectureId}"]`);
         if (!card) return;
 
-        // Updated selectors to match new CSS classes
         const progressBar = card.querySelector('.progress-bar-fill');
         const statusBadge = card.querySelector('.status-badge');
         const listenCount = card.querySelector('.listen-count');
 
         if (progressBar) {
-            progressBar.style.width = `${data.progress_percentage}%`;
-            progressBar.className = `progress-bar-fill ${data.completed ? 'completed' : 'in-progress'}`;
+            // Если это активная карточка и она проигрывается, не перезаписываем живой прогресс
+            const isActiveAndPlaying = card === this.player.currentCard && !this.player.audio.paused;
+            
+            if (!isActiveAndPlaying) {
+                progressBar.style.width = `${data.progress_percentage}%`;
+                progressBar.className = `progress-bar-fill ${data.completed ? 'completed' : 'in-progress'}`;
+            }
         }
 
         if (statusBadge) {

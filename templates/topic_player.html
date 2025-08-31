@@ -103,6 +103,7 @@
                 {% if user.is_authenticated %}
                     <div class="card-progress">
                         <div class="progress-bar-container">
+                            <div class="card-buffer-indicator" style="width: 0%;"></div>
                             <div class="progress-bar-fill {% if lecture.progress.completed %}completed{% else %}in-progress{% endif %}" 
                                  style="width: {{ lecture.progress.progress_percentage|default:0|floatformat:1 }}%"></div>
                         </div>
