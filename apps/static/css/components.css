@@ -21,7 +21,7 @@
     width: 4rem;
     height: 4rem;
     background: var(--bg-3);
-    border-radius: 0.75rem;
+    border-radius: 0.175rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -129,10 +129,10 @@
 }
 
 .card-icon {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 3rem;
+    height: 3rem;
     background: var(--bg-3);
-    border-radius: 0.375rem;
+    border-radius: 0.175rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -338,8 +338,8 @@
     .card-item { padding: 0.625rem; }
     
     .card-icon {
-        width: 2rem;
-        height: 2rem;
+        width: 3rem;
+        height: 3rem;
         font-size: 0.75rem;
     }
     
