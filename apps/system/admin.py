@@ -8,7 +8,7 @@ from apps.system.models import UserActivity
 class UserActivityAdmin(admin.ModelAdmin):
     list_display = [
         "user_info",
-        "ip_address",
+        "ip_address", 
         "visit_count",
         "last_url_short",
         "session_hash_short",
@@ -17,13 +17,12 @@ class UserActivityAdmin(admin.ModelAdmin):
     ]
     list_filter = ["user", "first_visit", "last_visit"]
     search_fields = ["user__email", "ip_address", "last_url", "session_hash"]
-    readonly_fields = ["session_hash", "first_visit", "user_agent_display"]
+    readonly_fields = ["session_hash", "first_visit", "last_visit", "user_agent_display"]
     ordering = ["-last_visit"]
-
     fieldsets = (
         ("User Information", {"fields": ("user", "session_hash")}),
         (
-            "Request Details",
+            "Request Details", 
             {"fields": ("ip_address", "user_agent_display", "last_url")},
         ),
         ("Activity Stats", {"fields": ("visit_count", "first_visit", "last_visit")}),
