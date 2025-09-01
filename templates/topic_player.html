@@ -76,10 +76,12 @@
             </button>
         </div>
         
+
+                {{ current_lecture_progress.progress_percentage|default:0|floatformat:1 }}
         <div class="player-progress" role="slider" aria-label="Progress bar">
             <span class="time-current">0:00</span>
             <div class="progress-bar">
-                <div class="progress-filled"></div>
+                <div class="progress-filled"{% if current_lecture_progress %} style="width: {{ current_lecture_progress.progress_percentage|default:0|floatformat:1 }}%"{% endif %}></div>
             </div>
             <span class="time-total">0:00</span>
         </div>
@@ -92,7 +94,11 @@
              data-id="{{ lecture.id }}"
              data-url="{{ lecture.audio_file.url }}"
              data-title="{{ lecture.title }}"
-             data-duration="{{ lecture.duration|default:0 }}">
+             data-duration="{{ lecture.duration|default:0 }}"
+             {% if current_lecture and current_lecture.id == lecture.id and current_lecture_progress %}
+             data-current-time="{{ current_lecture_progress.current_time|default:0|floatformat:2 }}"
+             data-progress="{{ current_lecture_progress.progress_percentage|default:0|floatformat:1 }}"
+             {% endif %}>
             
             <div class="card-icon">{{ lecture.order }}</div>
             
@@ -104,8 +110,8 @@
                     <div class="card-progress">
                         <div class="progress-bar-container">
                             <div class="card-buffer-indicator" style="width: 0%;"></div>
-                            <div class="progress-bar-fill {% if lecture.progress.completed %}completed{% else %}in-progress{% endif %}" 
-                                 style="width: {{ lecture.progress.progress_percentage|default:0|floatformat:1 }}%"></div>
+                            <div class="progress-bar-fill {% if lecture.progress.completed %}completed{% elif current_lecture and current_lecture.id == lecture.id %}playing{% else %}in-progress{% endif %}" 
+                                 style="width: {% if current_lecture and current_lecture.id == lecture.id and current_lecture_progress %}{{ current_lecture_progress.progress_percentage|default:0|floatformat:1 }}{% else %}{{ lecture.progress.progress_percentage|default:0|floatformat:1 }}{% endif %}%"></div>
                         </div>
                     </div>
 
@@ -119,7 +125,7 @@
                             {% elif lecture.progress.progress_percentage > 0 %}
                                 <span class="status-badge status-in-progress">
                                     <i class="fas fa-play"></i>
-                                    {{ lecture.progress.progress_percentage|default:0|floatformat:0 }}%
+                                    {% if current_lecture and current_lecture.id == lecture.id and current_lecture_progress %}{{ current_lecture_progress.progress_percentage|default:0|floatformat:0 }}{% else %}{{ lecture.progress.progress_percentage|default:0|floatformat:0 }}{% endif %}%
                                 </span>
                             {% else %}
                                 <span class="status-badge status-not-started">

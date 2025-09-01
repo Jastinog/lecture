@@ -184,7 +184,7 @@
 .progress-bar-container {
     width: 100%;
     height: 4px;
-    background: var(--bg-3);
+    background: #0f0f0f;
     overflow: hidden;
     position: relative;
 }
@@ -197,14 +197,13 @@
 }
 
 .progress-bar-fill.completed {
-   background: #65a30d;
+    background: linear-gradient(180deg, rgba(101, 163, 13, 0.7), rgba(132, 204, 22, 0.6));
 }
 
 .progress-bar-fill.in-progress {
-    background: #d97706 !important;
+    background: linear-gradient(180deg, rgba(234, 88, 12, 0.7), rgba(249, 115, 22, 0.6));
 }
 
-/* Буферный индикатор в карточке (копирует стили из основного плеера) */
 .card-buffer-indicator {
     position: absolute !important;
     top: 0 !important;
@@ -228,7 +227,7 @@
 
 /* Анимация для активного прогресса */
 .progress-bar-fill.playing {
-    background: linear-gradient(135deg, #ea580c, #f97316) !important;
+    background: linear-gradient(135deg, rgba(234, 88, 12, 0.7), rgba(249, 115, 22, 0.6)) !important;
     box-shadow: 0 0 8px rgba(234, 88, 12, 0.5) !important;
     animation: progress-pulse 2s ease-in-out infinite !important;
     z-index: 2 !important;
@@ -342,10 +341,10 @@
 
 @keyframes progress-pulse {
     0%, 100% { 
-        box-shadow: 0 0 8px rgba(234, 88, 12, 0.5);
+        box-shadow: 0 0 6px rgba(234, 88, 12, 0.4);
     }
     50% { 
-        box-shadow: 0 0 12px rgba(234, 88, 12, 0.8);
+        box-shadow: 0 0 10px rgba(234, 88, 12, 0.7);
     }
 }
 
@@ -423,4 +422,16 @@
     .empty-state { padding: 2rem 1rem; }
     
     .empty-state i { font-size: 2rem; }
+}
+
+/* Desktop specific styles (was missing in mobile section) */
+@media (min-width: 769px) {
+    .desktop-nav,
+    .desktop-user-menu {
+        display: block !important;
+    }
+    
+    .mobile-menu-button {
+        display: none !important;
+    }
 }
