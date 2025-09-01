@@ -15,7 +15,7 @@ from apps.lecture.models import (
     LectureHistory,
 )
 
-from .services import LectureImportService
+from .services import LectureImport
 
 logger = Logger(app_name="lecture_admin")
 
@@ -126,7 +126,7 @@ class TopicAdmin(admin.ModelAdmin):
             )
 
             try:
-                service = LectureImportService(topic)
+                service = LectureImport(topic)
                 imported_count = service.import_files(uploaded_files)
 
                 messages.success(

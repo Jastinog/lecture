@@ -4,7 +4,8 @@ from . import views
 app_name = "lecture"
 
 urlpatterns = [
-    path("", views.lecturers_list, name="lecturers_list"),
+    path("", views.home, name="home"),
+    path("lecturers/", views.lecturers_list, name="lecturers_list"),
     path("lecturer/<int:lecturer_id>/", views.lecturer_detail, name="lecturer_detail"),
     path("topic/<int:topic_id>/", views.topic_player, name="topic_player"),
     path("api/audio/<int:lecture_id>/", views.serve_audio, name="serve_audio"),

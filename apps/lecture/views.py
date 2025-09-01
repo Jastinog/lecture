@@ -8,6 +8,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.http import StreamingHttpResponse, Http404, JsonResponse
 
+from apps.lecture.services import TopicPlayerManager
+
 from .models import (
     Lecture,
     Lecturer,
@@ -18,42 +20,49 @@ from .models import (
 )
 
 
-@login_required
-def serve_audio(request, lecture_id):
-    """Load and serve audio file"""
-    lecture = get_object_or_404(Lecture, id=lecture_id)
+def home(request):
+    """Main page with lecturers, topics, lectures, favorites and history"""
 
-    if not lecture.audio_file:
-        raise Http404("Audio file not found")
+    # Get top 5 lecturers (ordered by order field)
+    lecturers = Lecturer.objects.prefetch_related("topics").all()[:5]
 
-    # Check if using S3 or local storage
-    if settings.USE_S3_MEDIA:
-        file_url = lecture.audio_file.url
-    else:
-        file_url = f"{settings.BACKEND_URL}{lecture.audio_file.url}"
+    # Get 5 random topics with their lecturers
+    topics = (
+        Topic.objects.select_related("lecturer").prefetch_related("lectures").all()[:5]
+    )
 
-    try:
-        headers = {}
-        if "HTTP_RANGE" in request.META:
-            headers["Range"] = request.META["HTTP_RANGE"]
+    # Get 5 recent lectures
+    recent_lectures = Lecture.objects.select_related("topic__lecturer").all()[:5]
 
-        file_response = requests.get(file_url, headers=headers, stream=True)
-        file_response.raise_for_status()
+    context = {
+        "lecturers": lecturers,
+        "topics": topics,
+        "recent_lectures": recent_lectures,
+    }
 
-        response = StreamingHttpResponse(
-            file_response.iter_content(chunk_size=8192),
-            content_type=file_response.headers.get("Content-Type", "audio/mpeg"),
-            status=file_response.status_code,
+    # If user is authenticated, add favorites and history
+    if request.user.is_authenticated:
+        # Get user's favorite lectures
+        favorite_lectures = Lecture.objects.select_related("topic__lecturer").filter(
+            favorited_by__user=request.user
+        )[:5]
+
+        # Get user's recent listening history
+        history_lectures = (
+            Lecture.objects.select_related("topic__lecturer")
+            .filter(history_records__user=request.user)
+            .distinct()
+            .order_by("-history_records__listened_at")[:5]
         )
 
-        for header in ["Content-Length", "Content-Range", "Accept-Ranges"]:
-            if header in file_response.headers:
-                response[header] = file_response.headers[header]
+        context.update(
+            {
+                "favorite_lectures": favorite_lectures,
+                "history_lectures": history_lectures,
+            }
+        )
 
-        return response
-
-    except requests.RequestException:
-        raise Http404("Failed to load audio file")
+    return render(request, "home.html", context)
 
 
 def lecturers_list(request):
@@ -77,70 +86,12 @@ def lecturer_detail(request, lecturer_id):
     return render(request, "lecturer_detail.html", context)
 
 
-@login_required(login_url="/auth/login/")
 def topic_player(request, topic_id):
     """Lecture player for a specific topic"""
     topic = get_object_or_404(Topic.objects.select_related("lecturer"), id=topic_id)
-    lectures = topic.lectures.all()
 
-    # Get current lecture for this topic
-    current_lecture = None
-    current_lecture_progress = None
-    if request.user.is_authenticated:
-        current_lecture_obj = CurrentLecture.objects.filter(
-            user=request.user, topic=topic
-        ).first()
-        if current_lecture_obj:
-            current_lecture = current_lecture_obj.lecture
-            # Get progress for current lecture
-            current_lecture_progress = LectureProgress.objects.filter(
-                user=request.user, lecture=current_lecture
-            ).first()
-
-    # Always attach progress data to each lecture
-    if request.user.is_authenticated:
-        progress_records = LectureProgress.objects.filter(
-            user=request.user, lecture__in=lectures
-        ).select_related("lecture")
-
-        progress_dict = {record.lecture.id: record for record in progress_records}
-
-        # Get favorite lectures
-        from .models import FavoriteLecture
-
-        favorite_lectures = set(
-            FavoriteLecture.objects.filter(
-                user=request.user, lecture__in=lectures
-            ).values_list("lecture_id", flat=True)
-        )
-
-        for lecture in lectures:
-            progress = progress_dict.get(lecture.id)
-            if progress:
-                lecture.progress = progress
-            else:
-                # Create default progress object for display
-                lecture.progress = type(
-                    "obj",
-                    (object,),
-                    {
-                        "progress_percentage": 0,
-                        "completed": False,
-                        "listen_count": 0,
-                        "current_time": 0,
-                    },
-                )()
-
-            # Add favorite status
-            lecture.is_favorite = lecture.id in favorite_lectures
-
-    context = {
-        "topic": topic,
-        "lectures": lectures,
-        "lecture_count": lectures.count(),
-        "current_lecture": current_lecture,
-        "current_lecture_progress": current_lecture_progress,
-    }
+    manager = TopicPlayerManager(request.user, topic)
+    context = manager.get_context_data()
 
     return render(request, "topic_player.html", context)
 
@@ -198,10 +149,7 @@ def update_progress(request):
             progress, created = LectureProgress.objects.update_or_create(
                 user=request.user,
                 lecture=lecture,
-                defaults={
-                    "current_time": current_time, 
-                    "completed": completed
-                },
+                defaults={"current_time": current_time, "completed": completed},
             )
 
             if completed:
@@ -315,3 +263,40 @@ def toggle_favorite(request):
 
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+
+def serve_audio(request, lecture_id):
+    """Load and serve audio file"""
+    lecture = get_object_or_404(Lecture, id=lecture_id)
+
+    if not lecture.audio_file:
+        raise Http404("Audio file not found")
+
+    # Check if using S3 or local storage
+    if settings.USE_S3_MEDIA:
+        file_url = lecture.audio_file.url
+    else:
+        file_url = f"{settings.BACKEND_URL}{lecture.audio_file.url}"
+
+    try:
+        headers = {}
+        if "HTTP_RANGE" in request.META:
+            headers["Range"] = request.META["HTTP_RANGE"]
+
+        file_response = requests.get(file_url, headers=headers, stream=True)
+        file_response.raise_for_status()
+
+        response = StreamingHttpResponse(
+            file_response.iter_content(chunk_size=8192),
+            content_type=file_response.headers.get("Content-Type", "audio/mpeg"),
+            status=file_response.status_code,
+        )
+
+        for header in ["Content-Length", "Content-Range", "Accept-Ranges"]:
+            if header in file_response.headers:
+                response[header] = file_response.headers[header]
+
+        return response
+
+    except requests.RequestException:
+        raise Http404("Failed to load audio file")

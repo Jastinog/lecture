@@ -40,6 +40,25 @@ body {
     .header-brand-text {
         font-size: 18px !important;
     }
+
+    .page-container {
+        margin: 0 !important;
+        padding: 1rem !important;
+        border-radius: 0 !important;
+        min-height: 100vh !important;
+    }
+
+    main {
+        padding: 0 !important;
+    }
+
+    .audio-player-section {
+        border-radius: 0 !important;
+    }
+
+    .card-item {
+        border-radius: 0 !important;
+    }
 }
 
 @media (max-width: 480px) {

@@ -10,7 +10,7 @@ from apps.system.services import Logger
 logger = Logger(app_name="lecture_import")
 
 
-class LectureImportService:
+class LectureImport:
 
     def __init__(self, topic):
         self.topic = topic

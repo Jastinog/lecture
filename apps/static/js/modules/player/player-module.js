@@ -52,14 +52,12 @@ export class LecturePlayer {
     }
 
     onLoadProgress(data) {
-        console.log(`Loading: ${data.percent.toFixed(1)}% (${data.loadedMB}MB / ${data.totalMB}MB)`);
         this.progressBar.updateLoadingProgress(data.percent);
 
         this.playlist.syncBufferState(data.percent);
     }
 
     onLoadComplete(data) {
-        console.log(`Audio loaded: ${data.sizeMB}MB`);
         this.isFullyLoaded = true;
         this.hideLoadingState();
 
@@ -67,7 +65,6 @@ export class LecturePlayer {
     }
 
     onLoadError(error) {
-        console.error('Audio loading failed:', error);
         this.isLoading = false;
         this.isFullyLoaded = false;
         this.isAudioReady = false;
@@ -114,12 +111,10 @@ export class LecturePlayer {
     }
 
     onLoadStart() {
-        console.log("Audio load started");
         this.isAudioReady = false;
     }
 
     onMetadataLoaded() {
-        console.log("Metadata loaded, duration:", this.audio.duration);
         const durationFromData = this.currentCard ? parseFloat(this.currentCard.dataset.duration || '0') : 0;
         if (durationFromData === 0) {
             this.progressBar.updateTotalTime(this.audio.duration);
@@ -139,8 +134,6 @@ export class LecturePlayer {
     }
 
     onCanPlayThrough() {
-        console.log("Audio can play through without buffering");
-        
         if (this.isFullyLoaded && !this.isAudioReady) {
             this.isAudioReady = true;
             this.hideLoadingState();
@@ -162,8 +155,6 @@ export class LecturePlayer {
 
     applySavedPosition() {
         if (this.targetSeekTime !== null && this.targetSeekTime > 0 && this.audio.duration) {
-            console.log("Applying saved position:", this.targetSeekTime, "duration:", this.audio.duration);
-            
             const validTime = Math.min(this.targetSeekTime, this.audio.duration - 1);
             
             this.audio.currentTime = validTime;
@@ -195,8 +186,6 @@ export class LecturePlayer {
                 const savedTime = parseFloat(container.dataset.currentTime || '0');
                 const isCompleted = container.dataset.completed === 'true';
                 
-                console.log("Loading current lecture with saved time:", savedTime, "completed:", isCompleted);
-
                 if (savedTime > 0 && !isCompleted) {
                     this.targetSeekTime = savedTime;
                     this.lastSavedTime = savedTime;
@@ -239,7 +228,6 @@ export class LecturePlayer {
         
         try {
             if (this.audioLoader.isLoaded(this.currentLectureId)) {
-                console.log("Audio already loaded from cache");
                 this.showLoadingState('Подготовка из кеша...');
                 this.isFullyLoaded = true;
                 
@@ -249,7 +237,6 @@ export class LecturePlayer {
                     this.audio.src = objectURL;
                 }
             } else {
-                console.log("Loading full audio file...");
                 this.isLoading = true;
                 this.showLoadingState('Начинаем загрузку...');
                 
@@ -260,7 +247,6 @@ export class LecturePlayer {
                 }
             }
         } catch (error) {
-            console.error('Failed to setup lecture:', error);
             if (this.currentLectureId === parseInt(card.dataset.id)) {
                 this.onLoadError(error);
             }
@@ -346,7 +332,6 @@ export class LecturePlayer {
     }
 
     onSeeked() {
-        console.log("Seeked event, current time:", this.audio.currentTime);
         this.progressBar.updateProgress();
     }
 
