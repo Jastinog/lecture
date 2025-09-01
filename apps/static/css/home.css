@@ -204,8 +204,8 @@
 }
 
 .compact-card-icon {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 3rem;
+    height: 3rem;
     background: var(--bg-3);
     border-radius: 0.175rem;
     display: flex;
@@ -325,8 +325,8 @@
     }
     
     .compact-card-icon {
-        width: 2rem;
-        height: 2rem;
+        width: 2.5rem;
+        height: 2.5rem;
         font-size: 0.75rem;
     }
     

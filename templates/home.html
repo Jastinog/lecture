@@ -9,6 +9,8 @@
 
 {% block content %}
 <div class="home-container">
+
+    {% if not user.is_authenticated %}
     <!-- Hero Section -->
     <div class="hero-section">
         <div class="hero-content">
@@ -18,7 +20,6 @@
             <h1 class="hero-title">Система лекций</h1>
             <p class="hero-subtitle">Слушайте качественные лекции от ведущих экспертов</p>
             
-            {% if not user.is_authenticated %}
             <div class="hero-cta">
                 <div class="cta-text">
                     <i class="fas fa-info-circle"></i>
@@ -35,9 +36,9 @@
                     </a>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
+    {% endif %}
 
     <!-- Main Content -->
     <div class="home-sections">
@@ -69,11 +70,6 @@
                         <h3 class="card-title">{{ lecturer.name }}</h3>
                         <div class="card-meta">{{ lecturer.topics.count }} тем</div>
                     </div>
-                    {% if forloop.first %}
-                    <div class="featured-badge">
-                        <i class="fas fa-crown"></i>
-                    </div>
-                    {% endif %}
                 </a>
                 {% endfor %}
             </div>
@@ -118,8 +114,12 @@
             
             {% for lecture in recent_lectures %}
             <a href="{% url 'lecture:topic_player' lecture.topic.id %}" class="compact-card-item">
-                <div class="compact-card-icon lecture-order-icon">
-                    {{ lecture.order }}
+                <div class="compact-card-icon">
+                    {% if lecture.topic.lecturer.photo %}
+                        <img src="{{ lecture.topic.lecturer.photo.url }}" alt="{{ lecture.topic.lecturer.name }}">
+                    {% else %}
+                        <i class="fas fa-user"></i>
+                    {% endif %}
                 </div>
                 <div class="compact-card-content">
                     <h4 class="compact-card-title">{{ lecture.title }}</h4>
@@ -144,8 +144,12 @@
             
             {% for lecture in favorite_lectures %}
             <a href="{% url 'lecture:topic_player' lecture.topic.id %}" class="compact-card-item">
-                <div class="compact-card-icon list-icon-favorite">
-                    <i class="fas fa-star"></i>
+                <div class="compact-card-icon">
+                    {% if lecture.topic.lecturer.photo %}
+                        <img src="{{ lecture.topic.lecturer.photo.url }}" alt="{{ lecture.topic.lecturer.name }}">
+                    {% else %}
+                        <i class="fas fa-user"></i>
+                    {% endif %}
                 </div>
                 <div class="compact-card-content">
                     <h4 class="compact-card-title">{{ lecture.title }}</h4>
@@ -170,8 +174,12 @@
             
             {% for lecture in history_lectures %}
             <a href="{% url 'lecture:topic_player' lecture.topic.id %}" class="compact-card-item">
-                <div class="compact-card-icon list-icon-history">
-                    <i class="fas fa-play"></i>
+                <div class="compact-card-icon">
+                    {% if lecture.topic.lecturer.photo %}
+                        <img src="{{ lecture.topic.lecturer.photo.url }}" alt="{{ lecture.topic.lecturer.name }}">
+                    {% else %}
+                        <i class="fas fa-user"></i>
+                    {% endif %}
                 </div>
                 <div class="compact-card-content">
                     <h4 class="compact-card-title">{{ lecture.title }}</h4>

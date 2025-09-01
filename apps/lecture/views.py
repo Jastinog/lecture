@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.http import StreamingHttpResponse, Http404, JsonResponse
 
-from apps.lecture.services import TopicPlayerManager
+from apps.lecture.services import HomePageManager, TopicPlayerManager
 
 from .models import (
     Lecture,
@@ -22,46 +22,8 @@ from .models import (
 
 def home(request):
     """Main page with lecturers, topics, lectures, favorites and history"""
-
-    # Get top 5 lecturers (ordered by order field)
-    lecturers = Lecturer.objects.prefetch_related("topics").all()[:5]
-
-    # Get 5 random topics with their lecturers
-    topics = (
-        Topic.objects.select_related("lecturer").prefetch_related("lectures").all()[:5]
-    )
-
-    # Get 5 recent lectures
-    recent_lectures = Lecture.objects.select_related("topic__lecturer").all()[:5]
-
-    context = {
-        "lecturers": lecturers,
-        "topics": topics,
-        "recent_lectures": recent_lectures,
-    }
-
-    # If user is authenticated, add favorites and history
-    if request.user.is_authenticated:
-        # Get user's favorite lectures
-        favorite_lectures = Lecture.objects.select_related("topic__lecturer").filter(
-            favorited_by__user=request.user
-        )[:5]
-
-        # Get user's recent listening history
-        history_lectures = (
-            Lecture.objects.select_related("topic__lecturer")
-            .filter(history_records__user=request.user)
-            .distinct()
-            .order_by("-history_records__listened_at")[:5]
-        )
-
-        context.update(
-            {
-                "favorite_lectures": favorite_lectures,
-                "history_lectures": history_lectures,
-            }
-        )
-
+    manager = HomePageManager(request.user)
+    context = manager.get_context_data()
     return render(request, "home.html", context)
 
 
