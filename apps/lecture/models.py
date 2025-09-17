@@ -29,6 +29,12 @@ def topic_cover_path(instance, filename):
 
 
 class Lecturer(models.Model):
+    LEVEL_CHOICES = [
+        (1, "Founder-Acharya"),
+        (2, "Direct Disciple"),
+        (3, "Grand Disciple"),
+    ]
+
     code = models.CharField(max_length=255, unique=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
@@ -36,14 +42,84 @@ class Lecturer(models.Model):
     order = models.PositiveIntegerField(
         default=0, help_text="Order for displaying lecturers"
     )
+    level = models.PositiveSmallIntegerField(
+        choices=LEVEL_CHOICES,
+        default=2,
+        help_text="Spiritual hierarchy level: 1=Founder-Acharya, 2=Direct Disciple, 3=Grand Disciple"
+    )
+    guru = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='disciples',
+        help_text="Spiritual teacher (guru) of this lecturer"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
 
+    def get_level_display_with_icon(self):
+        """Return level display with appropriate icon"""
+        level_icons = {
+            1: "👑",  # Founder
+            2: "🙏",  # Direct disciple
+            3: "📿",  # Grand disciple
+        }
+        return f"{level_icons.get(self.level, '')} {self.get_level_display()}"
+
+    def get_disciples(self):
+        """Get all direct disciples"""
+        return self.disciples.all()
+
+    def get_guru_chain(self):
+        """Get the guru chain up to the founder"""
+        chain = []
+        current = self.guru
+        while current:
+            chain.append(current)
+            current = current.guru
+        return chain
+
+    def clean(self):
+        """Validate guru-disciple relationship"""
+        if self.guru:
+            # Prevent circular references
+            if self.guru == self:
+                raise ValidationError("Lecturer cannot be guru to themselves")
+            
+            # Check for circular chain
+            current = self.guru
+            visited = {self.pk}
+            while current:
+                if current.pk in visited:
+                    raise ValidationError("Circular guru-disciple relationship detected")
+                visited.add(current.pk)
+                current = current.guru
+            
+            # Auto-set level based on guru's level
+            if self.guru.level == 1:  # Guru is founder
+                self.level = 2
+            elif self.guru.level == 2:  # Guru is direct disciple
+                self.level = 3
+            # If guru is level 3, disciple remains level 3
+        
+        # Founder-Acharya validation
+        if self.level == 1:
+            if self.guru:
+                raise ValidationError("Founder-Acharya cannot have a guru")
+            # Check if another founder exists
+            if Lecturer.objects.filter(level=1).exclude(pk=self.pk).exists():
+                raise ValidationError("Only one Founder-Acharya is allowed")
+
     class Meta:
-        ordering = ["order", "name"]
+        ordering = ["level", "order", "name"]
         unique_together = ["order"]
+        indexes = [
+            models.Index(fields=["level", "order"]),
+            models.Index(fields=["guru"]),
+        ]
 
 
 class Topic(models.Model):
