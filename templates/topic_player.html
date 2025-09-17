@@ -138,11 +138,26 @@
                         </span>
                     </div>
 
-                    <button class="favorite-btn {% if lecture.is_favorite %}active{% endif %}" 
-                            data-lecture-id="{{ lecture.id }}"
-                            aria-label="Добавить в избранное">
-                        <i class="fas fa-star"></i>
-                    </button>
+                    <div class="action-buttons">
+                        <button class="action-btn download-btn" 
+                                data-lecture-id="{{ lecture.id }}"
+                                data-download-url="{{ lecture.audio_file.url }}"
+                                aria-label="Скачать лекцию">
+                            <i class="fas fa-cloud-download-alt"></i>
+                        </button>
+
+                        <button class="action-btn share-btn" 
+                                data-lecture-id="{{ lecture.id }}"
+                                aria-label="Поделиться ссылкой">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+
+                        <button class="favorite-btn {% if lecture.is_favorite %}active{% endif %}" 
+                                data-lecture-id="{{ lecture.id }}"
+                                aria-label="Добавить в избранное">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

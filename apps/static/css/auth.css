@@ -113,3 +113,27 @@
 .auth-footer-text {
     color: #9ca3af;
 }
+
+@media (max-width: 768px) {
+    .auth-container {
+        max-width: none;
+        margin: 0;
+        padding: 1rem;
+    }
+    
+    .auth-form {
+        gap: 1.25rem;
+    }
+    
+    .auth-button,
+    .auth-input {
+        padding: 14px 16px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-container {
+        padding: 1rem;
+    }
+}

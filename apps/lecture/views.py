@@ -1,22 +1,14 @@
-import json
-import requests
-
-from django.conf import settings
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from django.http import StreamingHttpResponse, Http404, JsonResponse
+from django.db.models import Max
 
 from apps.lecture.services import HomePageManager, TopicPlayerManager
 
 from .models import (
-    Lecture,
     Lecturer,
     Topic,
-    LectureProgress,
+    Lecture,
     CurrentLecture,
-    FavoriteLecture,
 )
 
 
@@ -58,207 +50,81 @@ def topic_player(request, topic_id):
     return render(request, "topic_player.html", context)
 
 
-@login_required
-@csrf_exempt
-@require_http_methods(["POST", "GET"])
-def update_progress(request):
-    """Get or update lecture progress"""
-    if request.method == "GET":
-        lecture_id = request.GET.get("lecture_id")
-        if not lecture_id:
-            return JsonResponse({"error": "lecture_id required"}, status=400)
-
-        try:
-            lecture = get_object_or_404(Lecture, id=lecture_id)
-            progress = LectureProgress.objects.filter(
-                user=request.user, lecture=lecture
-            ).first()
-
-            if progress:
-                return JsonResponse(
-                    {
-                        "current_time": progress.current_time,
-                        "progress_percentage": progress.progress_percentage,
-                        "completed": progress.completed,
-                        "listen_count": progress.listen_count,
-                    }
-                )
-            else:
-                return JsonResponse(
-                    {
-                        "current_time": 0,
-                        "progress_percentage": 0,
-                        "completed": False,
-                        "listen_count": 0,
-                    }
-                )
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-    elif request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            lecture_id = data.get("lecture_id")
-            current_time = data.get("current_time", 0)
-            duration = data.get("duration", 0)
-            completed = data.get("completed", False)
-
-            if not lecture_id:
-                return JsonResponse({"error": "lecture_id required"}, status=400)
-
-            lecture = get_object_or_404(Lecture, id=lecture_id)
-
-            progress, created = LectureProgress.objects.update_or_create(
-                user=request.user,
-                lecture=lecture,
-                defaults={"current_time": current_time, "completed": completed},
-            )
-
-            if completed:
-                progress.listen_count += 1
-                progress.save(update_fields=["listen_count"])
-
-            return JsonResponse(
-                {
-                    "success": True,
-                    "current_time": progress.current_time,
-                    "progress_percentage": progress.progress_percentage,
-                    "completed": progress.completed,
-                    "listen_count": progress.listen_count,
-                }
-            )
-
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+def topics_list(request):
+    """All topics page"""
+    topics = Topic.objects.select_related("lecturer").prefetch_related("lectures").all()
+    context = {
+        "topics": topics,
+        "page_title": "Все темы",
+    }
+    return render(request, "topics_list.html", context)
 
 
-@login_required
-@csrf_exempt
-@require_http_methods(["POST"])
-def set_current_lecture(request):
-    """Set current lecture for a topic and save to history"""
-    try:
-        data = json.loads(request.body)
-        lecture_id = data.get("lecture_id")
-
-        if not lecture_id:
-            return JsonResponse({"error": "lecture_id required"}, status=400)
-
-        lecture = get_object_or_404(Lecture, id=lecture_id)
-
-        # Update or create current lecture
-        current_lecture, created = CurrentLecture.objects.update_or_create(
-            user=request.user, topic=lecture.topic, defaults={"lecture": lecture}
+def recent_lectures(request):
+    """Recent lectures page"""
+    latest_topic_date = Topic.objects.aggregate(Max("created_at"))["created_at__max"]
+    
+    if latest_topic_date:
+        latest_topics = Topic.objects.filter(created_at__date=latest_topic_date.date())
+        lectures = (
+            Lecture.objects.select_related("topic__lecturer")
+            .filter(topic__in=latest_topics)
+            .order_by("-created_at")
         )
-
-        # Save to lecture history
-        from .models import LectureHistory
-
-        # Get current progress to calculate completion percentage
-        progress = LectureProgress.objects.filter(
-            user=request.user, lecture=lecture
-        ).first()
-
-        completion_percentage = 0.0
-        duration_listened = 0
-
-        if progress:
-            completion_percentage = progress.progress_percentage
-            duration_listened = int(progress.current_time)
-
-        # Update or create history record for today
-        from django.utils import timezone
-
-        today = timezone.now().date()
-
-        LectureHistory.objects.update_or_create(
-            user=request.user,
-            lecture=lecture,
-            listened_at__date=today,
-            defaults={
-                "duration_listened": duration_listened,
-                "completion_percentage": completion_percentage,
-            },
-        )
-
-        return JsonResponse(
-            {"success": True, "current_lecture_id": current_lecture.lecture.id}
-        )
-
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
-
-
-@login_required
-@csrf_exempt
-@require_http_methods(["POST"])
-def toggle_favorite(request):
-    """Add or remove lecture from favorites"""
-    try:
-        data = json.loads(request.body)
-        lecture_id = data.get("lecture_id")
-        action = data.get("action")  # 'add' or 'remove'
-
-        if not lecture_id or not action:
-            return JsonResponse({"error": "lecture_id and action required"}, status=400)
-
-        lecture = get_object_or_404(Lecture, id=lecture_id)
-
-        if action == "add":
-            favorite, created = FavoriteLecture.objects.get_or_create(
-                user=request.user, lecture=lecture
-            )
-            is_favorite = True
-        elif action == "remove":
-            deleted_count, _ = FavoriteLecture.objects.filter(
-                user=request.user, lecture=lecture
-            ).delete()
-            is_favorite = False
-        else:
-            return JsonResponse(
-                {"error": "action must be 'add' or 'remove'"}, status=400
-            )
-
-        return JsonResponse(
-            {"success": True, "is_favorite": is_favorite, "lecture_id": lecture.id}
-        )
-
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
-
-
-def serve_audio(request, lecture_id):
-    """Load and serve audio file"""
-    lecture = get_object_or_404(Lecture, id=lecture_id)
-
-    if not lecture.audio_file:
-        raise Http404("Audio file not found")
-
-    # Check if using S3 or local storage
-    if settings.USE_S3_MEDIA:
-        file_url = lecture.audio_file.url
     else:
-        file_url = f"{settings.BACKEND_URL}{lecture.audio_file.url}"
+        lectures = Lecture.objects.none()
+    
+    context = {
+        "lectures": lectures,
+        "page_title": "Новые лекции",
+    }
+    return render(request, "lectures_list.html", context)
 
-    try:
-        headers = {}
-        if "HTTP_RANGE" in request.META:
-            headers["Range"] = request.META["HTTP_RANGE"]
 
-        file_response = requests.get(file_url, headers=headers, stream=True)
-        file_response.raise_for_status()
+@login_required
+def favorites_list(request):
+    """User's favorites page"""
+    lectures = Lecture.objects.select_related("topic__lecturer").filter(
+        favorited_by__user=request.user
+    ).order_by("-favorited_by__created_at")
+    
+    context = {
+        "lectures": lectures,
+        "page_title": "Избранные лекции",
+    }
+    return render(request, "lectures_list.html", context)
 
-        response = StreamingHttpResponse(
-            file_response.iter_content(chunk_size=8192),
-            content_type=file_response.headers.get("Content-Type", "audio/mpeg"),
-            status=file_response.status_code,
+
+@login_required
+def history_list(request):
+    """User's listening history page"""
+    lectures = (
+        Lecture.objects.select_related("topic__lecturer")
+        .filter(history_records__user=request.user)
+        .distinct()
+        .order_by("-history_records__listened_at")
+    )
+    
+    context = {
+        "lectures": lectures,
+        "page_title": "История прослушивания",
+    }
+    return render(request, "lectures_list.html", context)
+
+
+@login_required
+def now_listening_list(request):
+    """What others are listening to page"""
+    current_sessions = (
+        CurrentLecture.objects.select_related(
+            "lecture__topic__lecturer", "user"
         )
-
-        for header in ["Content-Length", "Content-Range", "Accept-Ranges"]:
-            if header in file_response.headers:
-                response[header] = file_response.headers[header]
-
-        return response
-
-    except requests.RequestException:
-        raise Http404("Failed to load audio file")
+        .exclude(user=request.user)
+        .order_by("-updated_at")
+    )
+    
+    context = {
+        "current_sessions": current_sessions,
+        "page_title": "Сейчас слушают",
+    }
+    return render(request, "now_listening_list.html", context)

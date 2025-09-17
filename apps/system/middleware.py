@@ -21,11 +21,6 @@ class ActivityTrackingMiddleware:
     def track_user_activity(self, request):
         """Track user activity from request"""
         try:
-            # Only track exact main lecture app pages
-            track_paths = [
-                "/",  # lecturers_list (exact match)
-            ]
-
             # Check exact path or lecturer/topic patterns
             should_track = (
                 request.path == "/"

@@ -208,7 +208,7 @@
 
 .progress-filled {
     height: 100%;
-    background: linear-gradient(180deg, rgba(234, 88, 12, 0.8), rgba(249, 115, 22, 0.7)) !important;
+    background: linear-gradient(180deg, rgba(234, 88, 12, 0.9), rgba(249, 115, 22, 0.3)) !important;
     width: 0%;
     position: relative;
     z-index: 3;

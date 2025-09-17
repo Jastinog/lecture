@@ -24,7 +24,7 @@ export class AudioLoader {
             this.currentRequest = xhr;
 
             // Fixed API path
-            xhr.open('GET', `/api/audio/${lectureId}/`, true);
+            xhr.open('GET', `/api/v1/lectures/${lectureId}/audio/`, true);
             xhr.responseType = 'blob';
 
             const csrfToken = this.getCSRFToken();

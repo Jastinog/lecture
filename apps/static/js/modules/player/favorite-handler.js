@@ -19,7 +19,7 @@ export class FavoriteHandler {
         const isActive = button.classList.contains('active');
 
         try {
-            const response = await fetch('/api/favorite/', {
+            const response = await fetch(`/api/v1/lectures/${lectureId}/favorite/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

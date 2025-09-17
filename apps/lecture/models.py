@@ -18,14 +18,14 @@ def lecturer_photo_path(instance, filename):
     """Upload path for lecturer photos"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{instance.code}/{short_name}"
+    return f"lecturers/{instance.code}/photo/{short_name}"
 
 
 def topic_cover_path(instance, filename):
     """Upload path for topic covers"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{instance.lecturer.code}/topics/{instance.code}/{short_name}"
+    return f"lecturers/{instance.lecturer.code}/topics/{instance.code}/cover/{short_name}"
 
 
 class Lecturer(models.Model):
@@ -73,6 +73,12 @@ class Lecture(models.Model):
     file_size = models.BigIntegerField(null=True, blank=True)
     duration = models.IntegerField(null=True, blank=True)
     order = models.PositiveIntegerField()
+    year = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Year of the lecture"
+    )
+    event = models.CharField(
+        max_length=255, blank=True, help_text="Event or occasion of the lecture"
+    )
     file_hash = models.CharField(
         max_length=64,
         blank=True,
@@ -119,6 +125,7 @@ class LectureProgress(models.Model):
         default=0, help_text="Number of times this lecture was played"
     )
     last_listened = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -126,6 +133,7 @@ class LectureProgress(models.Model):
         indexes = [
             models.Index(fields=["user", "lecture"]),
             models.Index(fields=["user", "completed"]),
+            models.Index(fields=["updated_at"]),
         ]
 
     def __str__(self):
@@ -134,10 +142,8 @@ class LectureProgress(models.Model):
     @property
     def progress_percentage(self):
         """Calculate progress percentage if lecture has duration"""
-
         if hasattr(self.lecture, "duration") and self.lecture.duration > 0:
             return min(100, (self.current_time / self.lecture.duration) * 100)
-
         return 60
 
 

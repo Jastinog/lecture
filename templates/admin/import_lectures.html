@@ -1,81 +1,42 @@
 {% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
 
-{% block title %}Import Lectures - {{ topic.title }}{% endblock %}
+{% block title %}{% trans 'Import Lectures' %} - {{ topic.title }}{% endblock %}
 
-{% block extrastyle %}
-{{ block.super }}
-{% load static %}
-<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:lecture_topic_changelist' %}">Topics</a>
+&rsaquo; <a href="{% url 'admin:lecture_topic_change' topic.pk %}">{{ topic.title }}</a>
+&rsaquo; {% trans 'Import Lectures' %}
+</div>
 {% endblock %}
 
 {% block content %}
-<div class="topic-info">
-    <h2>Import Lectures</h2>
-    <div class="subtitle">for "{{ topic.title }}"</div>
-</div>
-
-<div class="import-form">
-    <form enctype="multipart/form-data" method="post" id="import-form">
+<div id="content-main">
+    <form enctype="multipart/form-data" method="post" novalidate>
         {% csrf_token %}
         
-        <div class="form-section">
-            <h3>Select Audio Files</h3>
-            <div class="file-input-wrapper">
-                <input type="file" 
-                       name="lecture_files" 
-                       id="lecture_files" 
-                       class="file-input"
-                       multiple 
-                       accept=".mp3,.wav,.m4a,.flac,.ogg,.aac" 
-                       required>
+        <div>
+            <h1>{% trans 'Import Lectures' %}</h1>
+            <p>{% blocktrans with title=topic.title %}Import audio files for "{{ title }}"{% endblocktrans %}</p>
+            
+            <fieldset class="module aligned">
+                <div class="form-row">
+                    <div>
+                        <label for="id_lecture_files" class="required">{% trans 'Audio Files' %}:</label>
+                        <input type="file" name="lecture_files" id="id_lecture_files" multiple 
+                               accept=".mp3,.wav,.m4a,.flac,.ogg,.aac" required>
+                        <div class="help">{% trans 'Select multiple audio files (MP3, WAV, M4A, FLAC, OGG, AAC)' %}</div>
+                    </div>
+                </div>
+            </fieldset>
+            
+            <div class="submit-row">
+                <input type="submit" value="{% trans 'Import Files' %}" class="default">
             </div>
-            <div class="help-text">
-                Supported formats: MP3, WAV, M4A, FLAC, OGG, AAC
-            </div>
-        </div>
-        
-        <div class="form-actions">
-            <button type="submit" class="btn-primary">
-                <svg class="icon" viewBox="0 0 20 20" style="margin-right: 6px;">
-                    <path d="M10 3v10l4-4m-4 4l-4-4m4 4v4"></path>
-                </svg>
-                Import Files
-            </button>
-            <a href="../" class="btn-secondary">Cancel</a>
+            
         </div>
     </form>
 </div>
-
-<div class="instructions">
-    <h3>
-        <svg class="icon" viewBox="0 0 20 20">
-            <path d="M10 0C4.477 0 0 4.477 0 10s4.477 10 10 10 10-4.477 10-10S15.523 0 10 0zm1 15H9v-2h2v2zm0-4H9V5h2v6z"/>
-        </svg>
-        Import Instructions
-    </h3>
-    <ul>
-        <li>Select multiple audio files to import at once</li>
-        <li>Files will be automatically sorted by filename</li>
-        <li>Order numbers will be assigned sequentially</li>
-        <li>Long filenames will be automatically shortened</li>
-        <li>Duplicate files will be skipped to prevent conflicts</li>
-        <li>Processing may take a few moments for large files</li>
-    </ul>
-</div>
-
-<script>
-document.getElementById('lecture_files').addEventListener('change', function(e) {
-    const fileCount = e.target.files.length;
-    if (fileCount > 0) {
-        const helpText = document.querySelector('.help-text');
-        helpText.innerHTML = `${fileCount} file${fileCount > 1 ? 's' : ''} selected. Supported formats: MP3, WAV, M4A, FLAC, OGG, AAC`;
-    }
-});
-
-document.getElementById('import-form').addEventListener('submit', function(e) {
-    const submitBtn = document.querySelector('.btn-primary');
-    submitBtn.innerHTML = '<svg class="icon" viewBox="0 0 20 20" style="margin-right: 6px; animation: spin 1s linear infinite;"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="31.416" stroke-dashoffset="31.416"><animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/><animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/></circle></svg>Importing...';
-    submitBtn.disabled = true;
-});
-</script>
 {% endblock %}

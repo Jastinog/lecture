@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="back-button">
+        <a href="{% url 'lecture:home' %}" class="back-link">
+            <i class="fas fa-arrow-left"></i>
+            Назад на главную
+        </a>
+    </div>
+    
+    <div class="page-header">
+        <div class="header-avatar">
+            <i class="fas fa-book"></i>
+        </div>
+        <div class="header-content">
+            <h1 class="header-title">{{ page_title }}</h1>
+            <p class="header-subtitle">Все доступные темы лекций</p>
+        </div>
+        <div class="header-meta">{{ topics.count }} тем</div>
+    </div>
+    
+    <div class="card-list">
+        {% for topic in topics %}
+        <a href="{% url 'lecture:topic_player' topic.id %}" class="card-item">
+            <div class="card-icon">
+                {% if topic.cover %}
+                    <img src="{{ topic.cover.url }}" alt="{{ topic.title }}">
+                {% else %}
+                    <i class="fas fa-headphones"></i>
+                {% endif %}
+            </div>
+            
+            <div class="card-content">
+                <h3 class="card-title">{{ topic.title }}</h3>
+                <div class="card-meta">
+                    {{ topic.lecturer.name }} • {{ topic.lectures.count }} лекций • {{ topic.created_at|date:"M Y" }}
+                </div>
+            </div>
+        </a>
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-book"></i>
+            <p>Темы пока не добавлены</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

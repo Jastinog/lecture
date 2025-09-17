@@ -337,7 +337,7 @@ export class LecturePlayer {
 
     async loadProgress(lectureId) {
         try {
-            const response = await fetch(`/api/progress/?lecture_id=${lectureId}`, {
+            const response = await fetch(`/api/v1/lectures/${lectureId}/progress/`, {
                 headers: { 'X-CSRFToken': this.getCSRFToken() }
             });
             return response.ok ? await response.json() : null;
@@ -349,13 +349,13 @@ export class LecturePlayer {
 
     async setCurrentLecture(lectureId) {
         try {
-            await fetch('/api/current-lecture/', {
+            await fetch(`/api/v1/lectures/${lectureId}/set-current/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': this.getCSRFToken()
                 },
-                body: JSON.stringify({ lecture_id: lectureId })
+                body: JSON.stringify({})
             });
         } catch (error) {
             console.error('Failed to set current lecture:', error);
@@ -421,16 +421,14 @@ export class LecturePlayer {
         if (Math.abs(currentTime - this.lastSavedTime) < 2 && !completed) return;
 
         try {
-            const response = await fetch('/api/progress/', {
+            const response = await fetch(`/api/v1/lectures/${this.currentLectureId}/progress/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': this.getCSRFToken()
                 },
                 body: JSON.stringify({
-                    lecture_id: this.currentLectureId,
                     current_time: currentTime,
-                    duration: duration,
                     completed: completed
                 })
             });
@@ -447,16 +445,14 @@ export class LecturePlayer {
 
     async resetCompletedLecture(lectureId) {
         try {
-            const response = await fetch('/api/progress/', {
+            const response = await fetch(`/api/v1/lectures/${lectureId}/progress/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': this.getCSRFToken()
                 },
                 body: JSON.stringify({
-                    lecture_id: lectureId,
                     current_time: 0,
-                    duration: 0,
                     completed: false
                 })
             });

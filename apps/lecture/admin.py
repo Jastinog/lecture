@@ -48,6 +48,8 @@ class LectureInline(admin.TabularInline):
     fields = [
         "title",
         "order",
+        "year",
+        "event",
         "audio_file",
         "duration",
         "file_size_mb",
@@ -146,15 +148,23 @@ class LectureAdmin(admin.ModelAdmin):
         "title",
         "topic",
         "order",
+        "year",
+        "event",
         "file_size_mb",
         "duration",
         "file_hash_short",
         "created_at",
     ]
-    list_filter = ["topic__lecturer", "topic", "created_at"]
-    search_fields = ["title", "topic__title", "topic__lecturer__name", "file_hash"]
+    list_filter = ["topic__lecturer", "topic", "year", "created_at"]
+    search_fields = [
+        "title",
+        "topic__title",
+        "topic__lecturer__name",
+        "event",
+        "file_hash",
+    ]
     ordering = ["topic__lecturer__order", "topic", "order"]
-    list_editable = ["order"]
+    list_editable = ["order", "year", "event"]
     readonly_fields = ["file_hash"]
 
     def file_size_mb(self, obj):

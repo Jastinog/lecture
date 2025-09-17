@@ -13,29 +13,26 @@
     {% if not user.is_authenticated %}
     <!-- Hero Section -->
     <div class="hero-section">
-        <div class="hero-content">
-            <div class="hero-icon">
-                <i class="fas fa-headphones"></i>
-            </div>
-            <h1 class="hero-title">Система лекций</h1>
-            <p class="hero-subtitle">Слушайте качественные лекции от ведущих экспертов</p>
-            
-            <div class="hero-cta">
-                <div class="cta-text">
-                    <i class="fas fa-info-circle"></i>
-                    Для получения полного функционала необходимо войти в систему
-                </div>
-                <div class="cta-buttons">
-                    <a href="{% url 'users:register' %}" class="btn btn-primary">
-                        <i class="fas fa-user-plus"></i>
-                        Регистрация
-                    </a>
-                    <a href="{% url 'users:login' %}" class="btn btn-secondary">
-                        <i class="fas fa-sign-in-alt"></i>
-                        Вход
-                    </a>
-                </div>
-            </div>
+        <div class="cta-text">
+            Войдите в систему или зарегистрируйтесь, чтобы получить доступ к дополнительным возможностям:
+            <ul class="features-list">
+                <li>Сохранение истории прослушивания</li>
+                <li>Прогресс прослушивания</li>
+                <li>Добавление лекций в избранное</li>
+                <li>Добавление заметок</li>
+                <li>Добавление комментариев</li>
+                <li>Скачивание материалов</li>
+            </ul>
+        </div>
+        <div class="cta-buttons">
+            <a href="{% url 'users:login' %}" class="btn btn-secondary">
+                <i class="fas fa-sign-in-alt"></i>
+                Вход
+            </a>
+            <a href="{% url 'users:register' %}" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i>
+                Регистрация
+            </a>
         </div>
     </div>
     {% endif %}
@@ -46,12 +43,12 @@
         <!-- Lecturers Section -->
         <div class="section">
             <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-users"></i>
-                    Лекторы
-                </h2>
-                <a href="{% url 'lecture:lecturers_list' %}" class="section-link">
-                    Все лекторы <i class="fas fa-arrow-right"></i>
+                <a href="{% url 'lecture:lecturers_list' %}" class="section-title-link">
+                    <h2 class="section-title">
+                        <i class="fas fa-users"></i>
+                        Лекторы
+                        <i class="fas fa-arrow-right"></i>
+                    </h2>
                 </a>
             </div>
             
@@ -78,10 +75,13 @@
         <!-- Topics Section -->
         <div class="section">
             <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-book"></i>
-                    Популярные темы
-                </h2>
+                <a href="{% url 'lecture:topics_list' %}" class="section-title-link">
+                    <h2 class="section-title">
+                        <i class="fas fa-book"></i>
+                        Популярные темы
+                        <i class="fas fa-arrow-right"></i>
+                    </h2>
+                </a>
             </div>
             
             {% for topic in topics %}
@@ -106,10 +106,13 @@
         <!-- Recent Lectures Section -->
         <div class="section">
             <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-clock"></i>
-                    Новые лекции
-                </h2>
+                <a href="{% url 'lecture:recent_lectures' %}" class="section-title-link">
+                    <h2 class="section-title">
+                        <i class="fas fa-clock"></i>
+                        Новые лекции
+                        <i class="fas fa-arrow-right"></i>
+                    </h2>
+                </a>
             </div>
             
             {% for lecture in recent_lectures %}
@@ -132,14 +135,50 @@
         </div>
 
         {% if user.is_authenticated %}
+        <!-- Now Listening Section -->
+        {% if now_listening %}
+        <div class="section">
+            <div class="section-header">
+                <a href="{% url 'lecture:now_listening_list' %}" class="section-title-link">
+                    <h2 class="section-title">
+                        <i class="fas fa-broadcast-tower"></i>
+                        Сейчас слушают
+                        <i class="fas fa-arrow-right"></i>
+                    </h2>
+                </a>
+            </div>
+            
+            {% for session in now_listening %}
+            <a href="{% url 'lecture:topic_player' session.lecture.topic.id %}" class="compact-card-item">
+                <div class="compact-card-icon">
+                    {% if session.lecture.topic.lecturer.photo %}
+                        <img src="{{ session.lecture.topic.lecturer.photo.url }}" alt="{{ session.lecture.topic.lecturer.name }}">
+                    {% else %}
+                        <i class="fas fa-user"></i>
+                    {% endif %}
+                </div>
+                <div class="compact-card-content">
+                    <h4 class="compact-card-title">{{ session.lecture.title }}</h4>
+                    <div class="compact-card-meta">
+                        {{ session.user.email|truncatechars:20 }} • {{ session.lecture.topic.lecturer.name }}
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <!-- User's Favorites Section -->
         {% if favorite_lectures %}
         <div class="section">
             <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-star"></i>
-                    Избранные лекции
-                </h2>
+                <a href="{% url 'lecture:favorites_list' %}" class="section-title-link">
+                    <h2 class="section-title">
+                        <i class="fas fa-star"></i>
+                        Избранные лекции
+                        <i class="fas fa-arrow-right"></i>
+                    </h2>
+                </a>
             </div>
             
             {% for lecture in favorite_lectures %}
@@ -166,10 +205,13 @@
         {% if history_lectures %}
         <div class="section">
             <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-history"></i>
-                    История прослушивания
-                </h2>
+                <a href="{% url 'lecture:history_list' %}" class="section-title-link">
+                    <h2 class="section-title">
+                        <i class="fas fa-history"></i>
+                        История прослушивания
+                        <i class="fas fa-arrow-right"></i>
+                    </h2>
+                </a>
             </div>
             
             {% for lecture in history_lectures %}

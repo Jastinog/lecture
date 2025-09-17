@@ -1,6 +1,6 @@
 {
-  "venvPath": "/Users/jastinog/Library/Caches/pypoetry/virtualenvs",
-  "venv": "lecture-Rp5QcYPa-py3.12",
+  "venvPath": "./",
+  "venv": ".venv",
   
   "reportArgumentType": false,
   "reportAttributeAccessIssue": false,

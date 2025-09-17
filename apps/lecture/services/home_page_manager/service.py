@@ -1,8 +1,13 @@
+from django.utils import timezone
+from datetime import timedelta
+
 from django.db.models import Max
 from apps.lecture.models import (
     Lecturer,
     Topic,
     Lecture,
+    CurrentLecture,
+    LectureProgress,
 )
 
 
@@ -89,6 +94,26 @@ class HomePageManager:
             .order_by("-history_records__listened_at")[:5]
         )
 
+
+    def get_now_listening(self):
+        """Get what users are currently listening to (updated within last minute)"""
+        if not self.is_authenticated:
+            return LectureProgress.objects.none()
+
+        one_minute_ago = timezone.now() - timedelta(minutes=1)
+        
+        return (
+            LectureProgress.objects.select_related(
+                "lecture__topic__lecturer", "user"
+            )
+            .exclude(user=self.user)
+            .filter(
+                current_time__gt=0,
+                updated_at__gte=one_minute_ago
+            )
+            .order_by("-updated_at")[:5]
+        )
+
     def get_context_data(self):
         """Get all context data for home template"""
         context = {
@@ -103,6 +128,7 @@ class HomePageManager:
                 {
                     "favorite_lectures": self.get_favorite_lectures(),
                     "history_lectures": self.get_history_lectures(),
+                    "now_listening": self.get_now_listening(),
                 }
             )
 

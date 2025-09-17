@@ -57,77 +57,77 @@ class Command(BaseCommand):
         lecturers_data = [
             {
                 "name": "Srila Prabhupada",
-                "code": "srila-prabhupada",
+                "code": "hg-srila-prabhupada",
                 "description": "Founder-Acharya of ISKCON, author of numerous translations of sacred scriptures. Spread Krishna consciousness worldwide.",
                 "photo": "srila_prabhupada.jpg",
                 "order": 1,  # Most important - founder
             },
             {
                 "name": "Radhanath Swami",
-                "code": "radhanath-swami",
+                "code": "hh-radhanath-swami",
                 "description": 'Author of "The Journey Home", inspiring spiritual teacher and storyteller.',
                 "photo": "radhanath_swami.jpg",
                 "order": 2,  # Very popular and well-known
             },
             {
                 "name": "Indradyumna Swami",
-                "code": "indradyumna-swami",
+                "code": "hh-indradyumna-swami",
                 "description": "ISKCON sankirtana leader, organizer of festivals and spiritual programs worldwide.",
                 "photo": "indradyumna_swami.jpg",
                 "order": 3,  # Popular festival organizer
             },
             {
                 "name": "Bhakti Charu Swami",
-                "code": "bhakti-charu-swami",
+                "code": "hh-bhakti-charu-swami",
                 "description": "ISKCON spiritual teacher, known for inspiring lectures on devotion and spiritual practice.",
                 "photo": "bhakti_charu_swami.jpg",
                 "order": 4,  # Senior disciple
             },
             {
                 "name": "Jayapataka Swami",
-                "code": "jayapataka-swami",
+                "code": "hh-jayapataka-swami",
                 "description": "One of Prabhupada's senior disciples, GBC and experienced spiritual teacher.",
                 "photo": "jayapataka_swami.jpg",
                 "order": 5,  # Senior disciple and GBC
             },
             {
                 "name": "Sivarama Swami",
-                "code": "sivarama-swami",
+                "code": "hh-sivarama-swami",
                 "description": "European GBC, author of many books on Vaishnava philosophy and practice.",
                 "photo": "sivarama_swami.jpg",
                 "order": 6,  # European leader
             },
             {
                 "name": "Achyuta Priya",
-                "code": "achyuta-priya",
+                "code": "hh-achyuta-priya",
                 "description": "Head of ISKCON Ukraine, GBC member. Pioneer of Krishna consciousness in Soviet Ukraine since 1980, expert in devotee care and community development.",
                 "photo": "achyuta_priya.jpg",
                 "order": 7,  # Regional leader - Ukraine
             },
             {
                 "name": "Bhakti Vikasa Swami",
-                "code": "bhakti-vikasa-swami",
+                "code": "hh-bhakti-vikasa-swami",
                 "description": "Senior ISKCON teacher, author of multiple books on Vedic culture and Krishna consciousness.",
                 "photo": "bhakti_vikasa_swami.jpg",
                 "order": 8,
             },
             {
                 "name": "Kadamba Kanana Swami",
-                "code": "kadamba-kanana-swami",
+                "code": "hh-kadamba-kanana-swami",
                 "description": "Senior ISKCON leader, known for deep philosophical lectures and spiritual guidance.",
                 "photo": "kadamba_kanana_swami.jpg",
                 "order": 9,
             },
             {
                 "name": "Bhanu Swami",
-                "code": "bhanu-swami",
+                "code": "hh-bhanu-swami",
                 "description": "Scholar and translator of Vaishnava literature, expert in Sanskrit and philosophy.",
                 "photo": "bhanu_swami.jpg",
                 "order": 10,
             },
             {
                 "name": "Yadunandana Swami",
-                "code": "yadunandana-swami",
+                "code": "hh-yadunandana-swami",
                 "description": "European ISKCON leader, experienced in temple management and devotee training.",
                 "photo": "yadunandana_swami.jpg",
                 "order": 11,

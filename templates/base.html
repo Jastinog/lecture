@@ -18,12 +18,15 @@
     <header class="bg-gray-800 shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <a href="{% url 'lecture:home' %}" class="flex items-center space-x-3">
-                        <i class="fas fa-headphones text-2xl text-orange-400"></i>
-                        <span class="text-xl font-bold text-white header-brand-text">Lectures</span>
-                    </a>
-                </div>
+            <div class="flex items-center">
+                <a href="{% url 'lecture:home' %}" class="flex items-center space-x-3">
+                    <img src="{% static 'image/logo.png' %}" alt="Logo" class="w-12">
+                    <div class="flex flex-col">
+                        <span class="text-xl font-bold text-white header-brand-text">New Purushottama Kshetra</span>
+                        <span class="text-sm text-gray-300">Dnipro</span>
+                    </div>
+                </a>
+            </div>
 
                 <nav class="hidden md:flex space-x-8 desktop-nav">
                     <a href="{% url 'lecture:lecturers_list' %}" 
