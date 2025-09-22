@@ -4,7 +4,7 @@ import mutagen
 
 from django.db import transaction
 from django.core.files.storage import default_storage
-from apps.lecture.models import Lecture
+from apps.lecture.models import Lecture, Language
 from apps.system.services import Logger
 
 logger = Logger(app_name="lecture_import")
@@ -14,6 +14,27 @@ class LectureImport:
 
     def __init__(self, topic):
         self.topic = topic
+        # Get or create Russian language as default
+        self.default_language = self._get_default_language()
+
+    def _get_default_language(self):
+        """Get or create Russian language as default"""
+        try:
+            language, created = Language.objects.get_or_create(
+                code='ru',
+                defaults={
+                    'name': 'Russian',
+                    'native_name': 'Русский',
+                    'is_active': True
+                }
+            )
+            if created:
+                logger.info("Created default Russian language")
+            return language
+        except Exception as e:
+            logger.error(f"Error getting default language: {str(e)}")
+            # Fallback to first available language
+            return Language.objects.filter(is_active=True).first()
 
     def import_files(self, uploaded_files):
         """Import lectures from uploaded files"""
@@ -153,12 +174,13 @@ class LectureImport:
                     )
                     return False
 
-                # Create lecture
+                # Create lecture with default language
                 logger.debug("About to create Lecture object...")
                 lecture = Lecture.objects.create(
                     topic=self.topic,
                     title=title,
                     audio_file=uploaded_file,
+                    language=self.default_language,  # Add this line
                     file_size=file_size,
                     duration=duration,
                     order=order,
@@ -181,6 +203,7 @@ class LectureImport:
                     f"ID: {lecture.id}",
                     f"Title: {lecture.title}",
                     f"Order: {lecture.order}",
+                    f"Language: {lecture.language.code}",
                     f"File: {lecture.audio_file.name}",
                     f"Hash: {file_hash}",
                     f"Storage: {type(default_storage)}",
