@@ -63,7 +63,7 @@ def topics_list(request):
 def recent_lectures(request):
     """Recent lectures page"""
     latest_topic_date = Topic.objects.aggregate(Max("created_at"))["created_at__max"]
-    
+
     if latest_topic_date:
         latest_topics = Topic.objects.filter(created_at__date=latest_topic_date.date())
         lectures = (
@@ -73,7 +73,7 @@ def recent_lectures(request):
         )
     else:
         lectures = Lecture.objects.none()
-    
+
     context = {
         "lectures": lectures,
         "page_title": "Новые лекции",
@@ -84,10 +84,12 @@ def recent_lectures(request):
 @login_required
 def favorites_list(request):
     """User's favorites page"""
-    lectures = Lecture.objects.select_related("topic__lecturer").filter(
-        favorited_by__user=request.user
-    ).order_by("-favorited_by__created_at")
-    
+    lectures = (
+        Lecture.objects.select_related("topic__lecturer")
+        .filter(favorited_by__user=request.user)
+        .order_by("-favorited_by__created_at")
+    )
+
     context = {
         "lectures": lectures,
         "page_title": "Избранные лекции",
@@ -104,7 +106,7 @@ def history_list(request):
         .distinct()
         .order_by("-history_records__listened_at")
     )
-    
+
     context = {
         "lectures": lectures,
         "page_title": "История прослушивания",
@@ -116,13 +118,11 @@ def history_list(request):
 def now_listening_list(request):
     """What others are listening to page"""
     current_sessions = (
-        CurrentLecture.objects.select_related(
-            "lecture__topic__lecturer", "user"
-        )
+        CurrentLecture.objects.select_related("lecture__topic__lecturer", "user")
         .exclude(user=request.user)
         .order_by("-updated_at")
     )
-    
+
     context = {
         "current_sessions": current_sessions,
         "page_title": "Сейчас слушают",

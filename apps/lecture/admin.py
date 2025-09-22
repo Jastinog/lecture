@@ -6,6 +6,8 @@ from django.http import HttpResponseRedirect
 from django.utils.html import format_html
 from apps.system.services import Logger
 from apps.lecture.models import (
+    Language,
+    TopicGroup,
     Lecturer,
     Topic,
     Lecture,
@@ -20,27 +22,57 @@ from .services import LectureImport
 logger = Logger(app_name="lecture_admin")
 
 
+@admin.register(Language)
+class LanguageAdmin(admin.ModelAdmin):
+    list_display = ["code", "name", "native_name", "is_active", "created_at"]
+    list_filter = ["is_active"]
+    search_fields = ["code", "name", "native_name"]
+    ordering = ["name"]
+    list_editable = ["is_active"]
+
+
+@admin.register(TopicGroup)
+class TopicGroupAdmin(admin.ModelAdmin):
+    list_display = ["name", "code", "order", "is_active", "topics_count", "created_at"]
+    list_filter = ["is_active"]
+    search_fields = ["name", "code", "description"]
+    ordering = ["order", "name"]
+    list_editable = ["order", "is_active"]
+
+    def topics_count(self, obj):
+        return obj.topics.count()
+    topics_count.short_description = "Topics"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("topics")
+
+
 @admin.register(Lecturer)
 class LecturerAdmin(admin.ModelAdmin):
-    list_display = ["photo_thumbnail", "name", "level_display", "guru", "order", "disciples_count", "created_at"]
-    list_filter = ["level", "guru"]
+    list_display = [
+        "photo_thumbnail",
+        "name",
+        "level_display",
+        "order",
+        "topics_count",
+        "created_at",
+    ]
+    list_filter = ["level"]
     search_fields = ["name"]
     ordering = ["level", "order", "name"]
     list_editable = ["order"]
     list_display_links = ["name"]
-    raw_id_fields = ["guru"]
-    
+
     fieldsets = (
-        ("Basic Information", {
-            "fields": ("name", "code", "description", "photo")
-        }),
-        ("Hierarchy", {
-            "fields": ("level", "guru"),
-            "description": "Spiritual hierarchy: Level 1=Founder, Level 2=Direct Disciple, Level 3=Grand Disciple"
-        }),
-        ("Display", {
-            "fields": ("order",)
-        })
+        ("Basic Information", {"fields": ("name", "code", "description", "photo")}),
+        (
+            "Hierarchy",
+            {
+                "fields": ("level",),
+                "description": "Spiritual hierarchy: Level 1=Founder, Level 2=Direct Disciple, Level 3=Grand Disciple",
+            },
+        ),
+        ("Display", {"fields": ("order",)}),
     )
 
     def photo_thumbnail(self, obj):
@@ -50,30 +82,22 @@ class LecturerAdmin(admin.ModelAdmin):
                 obj.photo.url,
             )
         return "-"
-
     photo_thumbnail.short_description = "Photo"
 
     def level_display(self, obj):
         return format_html(
             '<span title="{}">{}</span>',
             obj.get_level_display(),
-            obj.get_level_display_with_icon()
+            obj.get_level_display_with_icon(),
         )
-
     level_display.short_description = "Level"
 
-    def disciples_count(self, obj):
-        count = obj.disciples.count()
-
-        if count > 0:
-            return count
-
-        return "-"
-
-    disciples_count.short_description = "Disciples"
+    def topics_count(self, obj):
+        return obj.topics.count()
+    topics_count.short_description = "Topics"
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("guru").prefetch_related("disciples")
+        return super().get_queryset(request).prefetch_related("topics")
 
 
 class LectureInline(admin.TabularInline):
@@ -81,6 +105,7 @@ class LectureInline(admin.TabularInline):
     extra = 0
     fields = [
         "title",
+        "language",
         "order",
         "year",
         "event",
@@ -95,7 +120,6 @@ class LectureInline(admin.TabularInline):
         if obj.file_hash:
             return f"{obj.file_hash[:8]}..."
         return "-"
-
     file_hash_short.short_description = "Hash"
 
 
@@ -105,15 +129,18 @@ class TopicAdmin(admin.ModelAdmin):
         "cover_thumbnail",
         "title",
         "lecturer_with_level",
+        "group",
+        "languages_display",
         "order",
         "lecture_count_with_import",
         "created_at",
     ]
-    list_filter = ["lecturer__level", "lecturer", "created_at"]
+    list_filter = ["lecturer__level", "lecturer", "group", "languages", "created_at"]
     search_fields = ["title", "lecturer__name"]
-    ordering = ["lecturer__level", "lecturer__order", "lecturer__name", "order"]
+    ordering = ["lecturer__level", "lecturer__order", "lecturer__name", "group__order", "order"]
     list_editable = ["order"]
     inlines = [LectureInline]
+    filter_horizontal = ["languages"]
 
     def cover_thumbnail(self, obj):
         if obj.cover:
@@ -122,17 +149,22 @@ class TopicAdmin(admin.ModelAdmin):
                 obj.cover.url,
             )
         return "-"
-
     cover_thumbnail.short_description = "Cover"
 
     def lecturer_with_level(self, obj):
         return format_html(
             '{} <small style="color: #666;">({})</small>',
             obj.lecturer.name,
-            obj.lecturer.get_level_display_with_icon()
+            obj.lecturer.get_level_display_with_icon(),
         )
-
     lecturer_with_level.short_description = "Lecturer"
+
+    def languages_display(self, obj):
+        languages = obj.languages.all()
+        if languages:
+            return ", ".join([lang.code for lang in languages])
+        return "-"
+    languages_display.short_description = "Languages"
 
     def lecture_count_with_import(self, obj):
         count = obj.lectures.count()
@@ -141,7 +173,6 @@ class TopicAdmin(admin.ModelAdmin):
             count,
             obj.id,
         )
-
     lecture_count_with_import.short_description = "Lectures"
 
     def get_urls(self):
@@ -185,7 +216,7 @@ class TopicAdmin(admin.ModelAdmin):
         return render(request, "admin/import_lectures.html", {"topic": topic})
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("lecturer")
+        return super().get_queryset(request).select_related("lecturer", "group").prefetch_related("languages")
 
 
 @admin.register(Lecture)
@@ -193,6 +224,7 @@ class LectureAdmin(admin.ModelAdmin):
     list_display = [
         "title",
         "topic_with_lecturer",
+        "language",
         "order",
         "year",
         "event",
@@ -201,7 +233,14 @@ class LectureAdmin(admin.ModelAdmin):
         "file_hash_short",
         "created_at",
     ]
-    list_filter = ["topic__lecturer__level", "topic__lecturer", "topic", "year", "created_at"]
+    list_filter = [
+        "topic__lecturer__level",
+        "topic__lecturer",
+        "topic",
+        "language",
+        "year",
+        "created_at",
+    ]
     search_fields = [
         "title",
         "topic__title",
@@ -209,7 +248,7 @@ class LectureAdmin(admin.ModelAdmin):
         "event",
         "file_hash",
     ]
-    ordering = ["topic__lecturer__level", "topic__lecturer__order", "topic", "order"]
+    ordering = ["topic__lecturer__level", "topic__lecturer__order", "topic", "language", "order"]
     list_editable = ["order", "year", "event"]
     readonly_fields = ["file_hash"]
 
@@ -217,25 +256,22 @@ class LectureAdmin(admin.ModelAdmin):
         return format_html(
             '{} <small style="color: #666;">- {}</small>',
             obj.topic.lecturer.name,
-            obj.topic.title
+            obj.topic.title,
         )
-
     topic_with_lecturer.short_description = "Lecturer - Topic"
 
     def file_size_mb(self, obj):
         return f"{obj.file_size_mb} MB"
-
     file_size_mb.short_description = "Size"
 
     def file_hash_short(self, obj):
         if obj.file_hash:
             return f"{obj.file_hash[:8]}..."
         return "-"
-
     file_hash_short.short_description = "Hash"
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("topic__lecturer")
+        return super().get_queryset(request).select_related("topic__lecturer", "language")
 
 
 @admin.register(LectureProgress)
@@ -243,13 +279,20 @@ class LectureProgressAdmin(admin.ModelAdmin):
     list_display = [
         "user_email",
         "lecture_title_with_level",
+        "language",
         "progress_percentage_display",
         "completed",
         "listen_count",
         "current_time_display",
         "last_listened",
     ]
-    list_filter = ["completed", "last_listened", "lecture__topic__lecturer__level", "lecture__topic__lecturer"]
+    list_filter = [
+        "completed",
+        "last_listened",
+        "lecture__topic__lecturer__level",
+        "lecture__topic__lecturer",
+        "lecture__language",
+    ]
     search_fields = [
         "user__email",
         "lecture__title",
@@ -261,38 +304,38 @@ class LectureProgressAdmin(admin.ModelAdmin):
 
     def user_email(self, obj):
         return obj.user.email
-
     user_email.short_description = "User"
 
     def lecture_title_with_level(self, obj):
         lecturer = obj.lecture.topic.lecturer
         return format_html(
-            '{} {} - {} - {}',
+            "{} {} - {} - {}",
             lecturer.get_level_display_with_icon(),
             lecturer.name,
             obj.lecture.topic.title,
-            obj.lecture.title
+            obj.lecture.title,
         )
-
     lecture_title_with_level.short_description = "Lecture"
+
+    def language(self, obj):
+        return obj.lecture.language.code
+    language.short_description = "Lang"
 
     def current_time_display(self, obj):
         minutes = int(obj.current_time // 60)
         seconds = int(obj.current_time % 60)
         return f"{minutes}:{seconds:02d}"
-
     current_time_display.short_description = "Position"
 
     def progress_percentage_display(self, obj):
         return f"{obj.progress_percentage:.1f}%"
-
     progress_percentage_display.short_description = "Progress"
 
     def get_queryset(self, request):
         return (
             super()
             .get_queryset(request)
-            .select_related("user", "lecture__topic__lecturer")
+            .select_related("user", "lecture__topic__lecturer", "lecture__language")
         )
 
 
@@ -302,9 +345,10 @@ class CurrentLectureAdmin(admin.ModelAdmin):
         "user_email",
         "topic_title_with_level",
         "lecture_title",
+        "language",
         "updated_at",
     ]
-    list_filter = ["topic__lecturer__level", "topic__lecturer", "topic", "updated_at"]
+    list_filter = ["topic__lecturer__level", "topic__lecturer", "topic", "lecture__language", "updated_at"]
     search_fields = [
         "user__email",
         "topic__title",
@@ -316,30 +360,31 @@ class CurrentLectureAdmin(admin.ModelAdmin):
 
     def user_email(self, obj):
         return obj.user.email
-
     user_email.short_description = "User"
 
     def topic_title_with_level(self, obj):
         lecturer = obj.topic.lecturer
         return format_html(
-            '{} {} - {}',
+            "{} {} - {}",
             lecturer.get_level_display_with_icon(),
             lecturer.name,
-            obj.topic.title
+            obj.topic.title,
         )
-
     topic_title_with_level.short_description = "Topic"
 
     def lecture_title(self, obj):
         return obj.lecture.title
-
     lecture_title.short_description = "Current Lecture"
+
+    def language(self, obj):
+        return obj.lecture.language.code
+    language.short_description = "Lang"
 
     def get_queryset(self, request):
         return (
             super()
             .get_queryset(request)
-            .select_related("user", "topic__lecturer", "lecture")
+            .select_related("user", "topic__lecturer", "lecture__language")
         )
 
 
@@ -350,9 +395,16 @@ class FavoriteLectureAdmin(admin.ModelAdmin):
         "lecture_title",
         "lecturer_with_level",
         "topic_title",
+        "language",
         "created_at",
     ]
-    list_filter = ["lecture__topic__lecturer__level", "lecture__topic__lecturer", "lecture__topic", "created_at"]
+    list_filter = [
+        "lecture__topic__lecturer__level",
+        "lecture__topic__lecturer",
+        "lecture__topic",
+        "lecture__language",
+        "created_at",
+    ]
     search_fields = [
         "user__email",
         "lecture__title",
@@ -364,34 +416,32 @@ class FavoriteLectureAdmin(admin.ModelAdmin):
 
     def user_email(self, obj):
         return obj.user.email
-
     user_email.short_description = "User"
 
     def lecture_title(self, obj):
         return obj.lecture.title
-
     lecture_title.short_description = "Lecture"
 
     def lecturer_with_level(self, obj):
         lecturer = obj.lecture.topic.lecturer
         return format_html(
-            '{} {}',
-            lecturer.get_level_display_with_icon(),
-            lecturer.name
+            "{} {}", lecturer.get_level_display_with_icon(), lecturer.name
         )
-
     lecturer_with_level.short_description = "Lecturer"
 
     def topic_title(self, obj):
         return obj.lecture.topic.title
-
     topic_title.short_description = "Topic"
+
+    def language(self, obj):
+        return obj.lecture.language.code
+    language.short_description = "Lang"
 
     def get_queryset(self, request):
         return (
             super()
             .get_queryset(request)
-            .select_related("user", "lecture__topic__lecturer")
+            .select_related("user", "lecture__topic__lecturer", "lecture__language")
         )
 
 
@@ -400,6 +450,7 @@ class LectureHistoryAdmin(admin.ModelAdmin):
     list_display = [
         "user_email",
         "lecture_title_with_level",
+        "language",
         "duration_listened_display",
         "completion_percentage_display",
         "listened_at",
@@ -409,6 +460,7 @@ class LectureHistoryAdmin(admin.ModelAdmin):
         "lecture__topic__lecturer__level",
         "lecture__topic__lecturer",
         "lecture__topic",
+        "lecture__language",
     ]
     search_fields = [
         "user__email",
@@ -421,36 +473,36 @@ class LectureHistoryAdmin(admin.ModelAdmin):
 
     def user_email(self, obj):
         return obj.user.email
-
     user_email.short_description = "User"
 
     def lecture_title_with_level(self, obj):
         lecturer = obj.lecture.topic.lecturer
         return format_html(
-            '{} {} - {} - {}',
+            "{} {} - {} - {}",
             lecturer.get_level_display_with_icon(),
             lecturer.name,
             obj.lecture.topic.title,
-            obj.lecture.title
+            obj.lecture.title,
         )
-
     lecture_title_with_level.short_description = "Lecture"
+
+    def language(self, obj):
+        return obj.lecture.language.code
+    language.short_description = "Lang"
 
     def duration_listened_display(self, obj):
         minutes = int(obj.duration_listened // 60)
         seconds = int(obj.duration_listened % 60)
         return f"{minutes}:{seconds:02d}"
-
     duration_listened_display.short_description = "Duration"
 
     def completion_percentage_display(self, obj):
         return f"{obj.completion_percentage:.1f}%"
-
     completion_percentage_display.short_description = "Completed"
 
     def get_queryset(self, request):
         return (
             super()
             .get_queryset(request)
-            .select_related("user", "lecture__topic__lecturer")
+            .select_related("user", "lecture__topic__lecturer", "lecture__language")
         )

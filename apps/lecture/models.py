@@ -25,7 +25,38 @@ def topic_cover_path(instance, filename):
     """Upload path for topic covers"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{instance.lecturer.code}/topics/{instance.code}/cover/{short_name}"
+    return (
+        f"lecturers/{instance.lecturer.code}/topics/{instance.code}/cover/{short_name}"
+    )
+
+
+class Language(models.Model):
+    code = models.CharField(max_length=10, unique=True, help_text="Language code (e.g., 'en', 'ru')")
+    name = models.CharField(max_length=100, help_text="Language name (e.g., 'English', 'Russian')")
+    native_name = models.CharField(max_length=100, help_text="Native language name (e.g., 'English', 'Русский')")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.native_name} ({self.code})"
+
+    class Meta:
+        ordering = ['name']
+
+
+class TopicGroup(models.Model):
+    name = models.CharField(max_length=100, unique=True, help_text="Group name (e.g., 'Lectures', 'Kirtans', 'Conversations')")
+    code = models.CharField(max_length=50, unique=True, help_text="Group code (e.g., 'lectures', 'kirtans', 'conversations')")
+    description = models.TextField(blank=True, help_text="Description of the topic group")
+    order = models.PositiveIntegerField(default=0, help_text="Order for displaying groups")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['order', 'name']
 
 
 class Lecturer(models.Model):
@@ -45,15 +76,7 @@ class Lecturer(models.Model):
     level = models.PositiveSmallIntegerField(
         choices=LEVEL_CHOICES,
         default=2,
-        help_text="Spiritual hierarchy level: 1=Founder-Acharya, 2=Direct Disciple, 3=Grand Disciple"
-    )
-    guru = models.ForeignKey(
-        'self',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='disciples',
-        help_text="Spiritual teacher (guru) of this lecturer"
+        help_text="Spiritual hierarchy level: 1=Founder-Acharya, 2=Direct Disciple, 3=Grand Disciple",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -69,56 +92,11 @@ class Lecturer(models.Model):
         }
         return f"{level_icons.get(self.level, '')} {self.get_level_display()}"
 
-    def get_disciples(self):
-        """Get all direct disciples"""
-        return self.disciples.all()
-
-    def get_guru_chain(self):
-        """Get the guru chain up to the founder"""
-        chain = []
-        current = self.guru
-        while current:
-            chain.append(current)
-            current = current.guru
-        return chain
-
-    def clean(self):
-        """Validate guru-disciple relationship"""
-        if self.guru:
-            # Prevent circular references
-            if self.guru == self:
-                raise ValidationError("Lecturer cannot be guru to themselves")
-            
-            # Check for circular chain
-            current = self.guru
-            visited = {self.pk}
-            while current:
-                if current.pk in visited:
-                    raise ValidationError("Circular guru-disciple relationship detected")
-                visited.add(current.pk)
-                current = current.guru
-            
-            # Auto-set level based on guru's level
-            if self.guru.level == 1:  # Guru is founder
-                self.level = 2
-            elif self.guru.level == 2:  # Guru is direct disciple
-                self.level = 3
-            # If guru is level 3, disciple remains level 3
-        
-        # Founder-Acharya validation
-        if self.level == 1:
-            if self.guru:
-                raise ValidationError("Founder-Acharya cannot have a guru")
-            # Check if another founder exists
-            if Lecturer.objects.filter(level=1).exclude(pk=self.pk).exists():
-                raise ValidationError("Only one Founder-Acharya is allowed")
-
     class Meta:
         ordering = ["level", "order", "name"]
         unique_together = ["order"]
         indexes = [
             models.Index(fields=["level", "order"]),
-            models.Index(fields=["guru"]),
         ]
 
 
@@ -130,15 +108,34 @@ class Topic(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     cover = models.ImageField(upload_to=topic_cover_path, blank=True, null=True)
+    group = models.ForeignKey(
+        TopicGroup,
+        on_delete=models.PROTECT,
+        related_name="topics",
+        help_text="Group this topic belongs to"
+    )
+    languages = models.ManyToManyField(
+        Language, 
+        related_name="topics",
+        help_text="Languages available in this topic"
+    )
     order = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.lecturer.name} - {self.title}"
 
+    def get_languages_display(self):
+        """Return comma-separated list of language names"""
+        return ", ".join(self.languages.values_list('native_name', flat=True))
+
     class Meta:
-        ordering = ["lecturer", "order"]
+        ordering = ["lecturer", "group", "order"]
         unique_together = ["lecturer", "order", "code"]
+        indexes = [
+            models.Index(fields=["lecturer", "group"]),
+            models.Index(fields=["group"]),
+        ]
 
 
 class Lecture(models.Model):
@@ -146,6 +143,12 @@ class Lecture(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     audio_file = models.FileField(upload_to=lecture_upload_path)
+    language = models.ForeignKey(
+        Language,
+        on_delete=models.PROTECT,
+        related_name="lectures",
+        help_text="Language of this lecture"
+    )
     file_size = models.BigIntegerField(null=True, blank=True)
     duration = models.IntegerField(null=True, blank=True)
     order = models.PositiveIntegerField()
@@ -163,13 +166,22 @@ class Lecture(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.topic.title} - {self.title}"
+        return f"{self.topic.title} - {self.title} ({self.language.code})"
+
+    def clean(self):
+        """Validate that lecture language is available in topic"""
+        if self.language and self.topic:
+            if not self.topic.languages.filter(pk=self.language.pk).exists():
+                raise ValidationError(
+                    f"Language '{self.language}' is not available in topic '{self.topic.title}'"
+                )
 
     class Meta:
-        ordering = ["topic", "order"]
-        unique_together = ["topic", "order"]
+        ordering = ["topic", "language", "order"]
+        unique_together = ["topic", "order", "language"]
         indexes = [
-            models.Index(fields=["topic", "file_hash"]),
+            models.Index(fields=["topic", "language", "file_hash"]),
+            models.Index(fields=["language"]),
         ]
 
     @property

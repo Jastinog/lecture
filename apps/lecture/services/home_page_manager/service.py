@@ -6,7 +6,6 @@ from apps.lecture.models import (
     Lecturer,
     Topic,
     Lecture,
-    CurrentLecture,
     LectureProgress,
 )
 
@@ -94,23 +93,17 @@ class HomePageManager:
             .order_by("-history_records__listened_at")[:5]
         )
 
-
     def get_now_listening(self):
         """Get what users are currently listening to (updated within last minute)"""
         if not self.is_authenticated:
             return LectureProgress.objects.none()
 
         one_minute_ago = timezone.now() - timedelta(minutes=1)
-        
+
         return (
-            LectureProgress.objects.select_related(
-                "lecture__topic__lecturer", "user"
-            )
+            LectureProgress.objects.select_related("lecture__topic__lecturer", "user")
             .exclude(user=self.user)
-            .filter(
-                current_time__gt=0,
-                updated_at__gte=one_minute_ago
-            )
+            .filter(current_time__gt=0, updated_at__gte=one_minute_ago)
             .order_by("-updated_at")[:5]
         )
 

@@ -1,372 +1,308 @@
-"""
-Django management command to create ISKCON lecturers with spiritual hierarchy
-
-Place this file in: apps/lecture/management/commands/create_iskcon_lecturers.py
-
-Photo folder structure:
-apps/lecture/management/commands/lecturer_photos/
-"""
-
 import os
+import json
 from django.core.management.base import BaseCommand
 from django.core.files import File
-from apps.lecture.models import Lecturer
+from apps.lecture.models import Lecturer, Topic, TopicGroup, Language
+
+
+class LecturerSyncService:
+    """Service for syncing lecturers from JSON file"""
+
+    def __init__(self, json_file_path, lecturers_dir_path):
+        self.json_file_path = json_file_path
+        self.lecturers_dir_path = lecturers_dir_path
+        self.created_count = 0
+        self.updated_count = 0
+        self.topics_created_count = 0
+        self.topics_updated_count = 0
+        self.messages = []
+
+    def add_message(self, message, level="info"):
+        """Add message to log"""
+        self.messages.append({"message": message, "level": level})
+
+    def load_json_data(self):
+        """Load lecturers data from JSON file"""
+        if not os.path.exists(self.json_file_path):
+            raise FileNotFoundError(f"JSON file not found: {self.json_file_path}")
+
+        try:
+            with open(self.json_file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            raise Exception(f"Error reading JSON file: {e}")
+
+    def get_photo_path(self, lecturer_code):
+        """Get full path to photo file: lecturers_dir/{lecturer_code}/photo/photo.jpg"""
+        return os.path.join(
+            self.lecturers_dir_path, lecturer_code, "photo", "photo.jpg"
+        )
+
+    def get_topic_cover_path(self, lecturer_code, topic_code):
+        """Get full path to topic cover: lecturers_dir/{lecturer_code}/topics/{topic_code}/cover/cover.jpg"""
+        return os.path.join(
+            self.lecturers_dir_path,
+            lecturer_code,
+            "topics",
+            topic_code,
+            "cover",
+            "cover.jpg",
+        )
+
+
+
+    def update_lecturer_photo(self, lecturer):
+        """Update lecturer photo if photo.jpg exists"""
+        photo_path = self.get_photo_path(lecturer.code)
+
+        if not os.path.exists(photo_path):
+            self.add_message(f"Photo not found: {photo_path}", "warning")
+            return False
+
+        try:
+            with open(photo_path, "rb") as photo_file:
+                lecturer.photo.save("photo.jpg", File(photo_file), save=False)
+            return True
+        except Exception as e:
+            self.add_message(
+                f"Error updating photo for {lecturer.name}: {e}", "warning"
+            )
+            return False
+
+    def update_topic_cover(self, topic):
+        """Update topic cover if cover.jpg exists"""
+        cover_path = self.get_topic_cover_path(topic.lecturer.code, topic.code)
+
+        if not os.path.exists(cover_path):
+            self.add_message(f"Cover not found: {cover_path}", "warning")
+            return False
+
+        try:
+            with open(cover_path, "rb") as cover_file:
+                topic.cover.save("cover.jpg", File(cover_file), save=False)
+            return True
+        except Exception as e:
+            self.add_message(f"Error updating cover for {topic.title}: {e}", "warning")
+            return False
+
+    def create_lecturer(self, lecturer_data):
+        """Create new lecturer from data"""
+        lecturer = Lecturer(
+            name=lecturer_data["name"],
+            code=lecturer_data["code"],
+            description=lecturer_data["description"],
+            order=lecturer_data["order"],
+            level=lecturer_data["level"],
+        )
+
+        # Add photo.jpg
+        self.update_lecturer_photo(lecturer)
+
+        lecturer.save()
+        self.created_count += 1
+        self.add_message(f"Created lecturer: {lecturer.name}")
+        return lecturer
+
+    def update_lecturer(self, lecturer, lecturer_data):
+        """Update existing lecturer with new data"""
+        updated = False
+
+        # Update basic fields
+        fields_to_update = ["name", "description", "order", "level"]
+        for field in fields_to_update:
+            if getattr(lecturer, field) != lecturer_data[field]:
+                setattr(lecturer, field, lecturer_data[field])
+                updated = True
+
+        # Update photo.jpg
+        if self.update_lecturer_photo(lecturer):
+            updated = True
+
+        if updated:
+            lecturer.save()
+            self.updated_count += 1
+            self.add_message(f"Updated lecturer: {lecturer.name}")
+
+        return updated
+
+    def create_topic(self, lecturer, topic_data):
+        """Create new topic for lecturer"""
+        # Get group and languages from JSON
+        group_code = topic_data["group"]
+        language_codes = topic_data["languages"]
+        
+        try:
+            group = TopicGroup.objects.get(code=group_code)
+        except TopicGroup.DoesNotExist:
+            self.add_message(f"Topic group not found: {group_code}", "error")
+            return None
+
+        topic = Topic(
+            lecturer=lecturer,
+            code=topic_data["code"],
+            title=topic_data["title"],
+            description=topic_data["description"],
+            group=group,
+            order=topic_data["order"],
+        )
+
+        # Add cover.jpg
+        self.update_topic_cover(topic)
+
+        topic.save()
+        
+        # Add languages to topic
+        for lang_code in language_codes:
+            try:
+                language = Language.objects.get(code=lang_code)
+                topic.languages.add(language)
+            except Language.DoesNotExist:
+                self.add_message(f"Language not found: {lang_code}", "warning")
+        
+        self.topics_created_count += 1
+        self.add_message(f"Created topic: {lecturer.name} - {topic.title}")
+        return topic
+
+    def update_topic(self, topic, topic_data):
+        """Update existing topic with new data"""
+        updated = False
+
+        # Update basic fields
+        fields_to_update = ["title", "description", "order"]
+        for field in fields_to_update:
+            if getattr(topic, field) != topic_data[field]:
+                setattr(topic, field, topic_data[field])
+                updated = True
+
+        # Update group if needed
+        group_code = topic_data["group"]
+        try:
+            group = TopicGroup.objects.get(code=group_code)
+            if topic.group != group:
+                topic.group = group
+                updated = True
+        except TopicGroup.DoesNotExist:
+            self.add_message(f"Topic group not found: {group_code}", "warning")
+
+        # Update languages
+        language_codes = topic_data["languages"]
+        current_languages = set(topic.languages.values_list('code', flat=True))
+        new_languages = set(language_codes)
+        
+        if current_languages != new_languages:
+            topic.languages.clear()
+            for lang_code in language_codes:
+                try:
+                    language = Language.objects.get(code=lang_code)
+                    topic.languages.add(language)
+                    updated = True
+                except Language.DoesNotExist:
+                    self.add_message(f"Language not found: {lang_code}", "warning")
+
+        # Update cover.jpg
+        if self.update_topic_cover(topic):
+            updated = True
+
+        if updated:
+            topic.save()
+            self.topics_updated_count += 1
+            self.add_message(f"Updated topic: {topic.lecturer.name} - {topic.title}")
+
+        return updated
+
+    def sync_topics(self, lecturer, topics_data):
+        """Sync topics for lecturer"""
+        if not topics_data:
+            return
+
+        for topic_data in topics_data:
+            try:
+                topic = Topic.objects.get(lecturer=lecturer, code=topic_data["code"])
+                self.update_topic(topic, topic_data)
+            except Topic.DoesNotExist:
+                self.create_topic(lecturer, topic_data)
+
+    def sync_lecturers_data(self, lecturers_data):
+        """Sync lecturers data (create/update with topics)"""
+        for lecturer_data in lecturers_data:
+            try:
+                lecturer = Lecturer.objects.get(code=lecturer_data["code"])
+                self.update_lecturer(lecturer, lecturer_data)
+            except Lecturer.DoesNotExist:
+                lecturer = self.create_lecturer(lecturer_data)
+
+            # Sync topics for this lecturer
+            if "topics" in lecturer_data:
+                self.sync_topics(lecturer, lecturer_data["topics"])
+
+    def sync(self):
+        """Main sync method"""
+        try:
+            # Load data from JSON
+            lecturers_data = self.load_json_data()
+
+            # Sync lecturers data (with topics)
+            self.sync_lecturers_data(lecturers_data)
+
+            # Add summary
+            self.add_message("\nSync completed:")
+            self.add_message(
+                f"Lecturers - Created: {self.created_count}, Updated: {self.updated_count}"
+            )
+            self.add_message(
+                f"Topics - Created: {self.topics_created_count}, Updated: {self.topics_updated_count}"
+            )
+
+            return True
+
+        except Exception as e:
+            self.add_message(f"Sync failed: {e}", "error")
+            return False
+
+    def get_summary(self):
+        """Get sync summary"""
+        return {
+            "created_count": self.created_count,
+            "updated_count": self.updated_count,
+            "topics_created_count": self.topics_created_count,
+            "topics_updated_count": self.topics_updated_count,
+            "messages": self.messages,
+        }
 
 
 class Command(BaseCommand):
-    help = "Create ISKCON lecturers with photos and spiritual hierarchy"
-
-    def add_arguments(self, parser):
-        parser.add_argument(
-            "--clear",
-            action="store_true",
-            help="Delete all existing lecturers before creating new ones",
-        )
-        parser.add_argument(
-            "--update-hierarchy",
-            action="store_true",
-            help="Update hierarchy for existing lecturers without recreating them",
-        )
+    help = "Sync ISKCON lecturers and topics from lecturers.json file"
 
     def handle(self, *args, **options):
-        if options["clear"]:
-            self.stdout.write("Deleting existing lecturers...")
-            Lecturer.objects.all().delete()
-            self.stdout.write(self.style.SUCCESS("All lecturers deleted."))
+        # Setup paths
+        json_file = os.path.join(os.path.dirname(__file__), "lecturers.json")
+        lecturers_dir = os.path.join(os.path.dirname(__file__), "lecturers")
 
-        photos_dir = os.path.join(os.path.dirname(__file__), "lecturer_photos")
+        # Create service instance
+        sync_service = LecturerSyncService(json_file, lecturers_dir)
 
-        # ISKCON lecturers data with spiritual hierarchy
-        lecturers_data = [
-            {
-                "name": "A. C. Bhaktivedanta Swami Prabhupada",
-                "code": "hg-srila-prabhupada",
-                "description": "Founder-Acharya of ISKCON, author of numerous translations of sacred scriptures. Spread Krishna consciousness worldwide.",
-                "photo": "srila_prabhupada.jpg",
-                "order": 1,
-                "level": 1,
-                "guru": None,
-            },
-            {
-                "name": "HH Radhanath Swami",
-                "code": "hh-radhanath-swami",
-                "description": 'Author of "The Journey Home", inspiring spiritual teacher and storyteller.',
-                "photo": "radhanath_swami.jpg",
-                "order": 2,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Indradyumna Swami",
-                "code": "hh-indradyumna-swami",
-                "description": "ISKCON sankirtana leader, organizer of festivals and spiritual programs worldwide.",
-                "photo": "indradyumna_swami.jpg",
-                "order": 3,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Bhakti Charu Swami",
-                "code": "hh-bhakti-charu-swami",
-                "description": "ISKCON spiritual teacher, known for inspiring lectures on devotion and spiritual practice.",
-                "photo": "bhakti_charu_swami.jpg",
-                "order": 4,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Jayapataka Swami",
-                "code": "hh-jayapataka-swami",
-                "description": "One of Prabhupada's senior disciples, GBC and experienced spiritual teacher.",
-                "photo": "jayapataka_swami.jpg",
-                "order": 5,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Sivarama Swami",
-                "code": "hh-sivarama-swami",
-                "description": "European GBC, author of many books on Vaishnava philosophy and practice.",
-                "photo": "sivarama_swami.jpg",
-                "order": 6,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Bhakti Vikasa Swami",
-                "code": "hh-bhakti-vikasa-swami",
-                "description": "Senior ISKCON teacher, author of multiple books on Vedic culture and Krishna consciousness.",
-                "photo": "bhakti_vikasa_swami.jpg",
-                "order": 7,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Kadamba Kanana Swami",
-                "code": "hh-kadamba-kanana-swami",
-                "description": "Senior ISKCON leader, known for deep philosophical lectures and spiritual guidance.",
-                "photo": "kadamba_kanana_swami.jpg",
-                "order": 8,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Bhanu Swami",
-                "code": "hh-bhanu-swami",
-                "description": "Scholar and translator of Vaishnava literature, expert in Sanskrit and philosophy.",
-                "photo": "bhanu_swami.jpg",
-                "order": 9,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Achyuta Priya",
-                "code": "hh-achyuta-priya",
-                "description": "Head of ISKCON Ukraine, GBC member. Pioneer of Krishna consciousness in Soviet Ukraine since 1980.",
-                "photo": "achyuta_priya.jpg",
-                "order": 10,
-                "level": 3,
-                "guru": "hh-radhanath-swami",
-            },
-            {
-                "name": "HH Yadunandana Swami",
-                "code": "hh-yadunandana-swami",
-                "description": "European ISKCON leader, experienced in temple management and devotee training.",
-                "photo": "yadunandana_swami.jpg",
-                "order": 11,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Bhakti Tirtha Swami",
-                "code": "hh-bhakti-tirtha-swami",
-                "description": "Author and spiritual teacher, known for his compassionate approach to Krishna consciousness.",
-                "photo": "bhakti_tirtha_swami.jpg",
-                "order": 12,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Gopal Krishna Goswami",
-                "code": "hh-gopal-krishna-goswami",
-                "description": "Senior ISKCON leader and GBC member, active in India and worldwide preaching.",
-                "photo": "gopal_krishna_goswami.jpg",
-                "order": 13,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Bhakti Vaibhava Swami",
-                "code": "hh-bhakti-vaibhava-swami",
-                "description": "Australian-based ISKCON leader, active in preaching and temple development.",
-                "photo": "bhakti_vaibhava_swami.jpg",
-                "order": 14,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Lokanath Swami",
-                "code": "hh-lokanath-swami",
-                "description": "Padayatra leader, organizer of walking pilgrimages across India.",
-                "photo": "lokanath_swami.jpg",
-                "order": 15,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Niranjana Swami",
-                "code": "hh-niranjana-swami",
-                "description": "ISKCON leader active in Russia and Eastern Europe, known for philosophical depth.",
-                "photo": "niranjana_swami.jpg",
-                "order": 16,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Devamrita Swami",
-                "code": "hh-devamrita-swami",
-                "description": "Author and teacher, known for books on spiritual practice and philosophy.",
-                "photo": "devamrita_swami.jpg",
-                "order": 17,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Bhakti Caitanya Swami",
-                "code": "hh-bhakti-caitanya-swami",
-                "description": "Senior ISKCON leader, experienced in spiritual guidance and community development.",
-                "photo": "bhakti_caitanya_swami.jpg",
-                "order": 18,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-            {
-                "name": "HH Sacinandana Swami",
-                "code": "hh-sacinandana-swami",
-                "description": "German-based spiritual teacher, known for retreats and deep spiritual guidance.",
-                "photo": "sacinandana_swami.jpg",
-                "order": 19,
-                "level": 2,
-                "guru": "hg-srila-prabhupada",
-            },
-        ]
+        # Run sync
+        success = sync_service.sync()
 
-        # Handle update-hierarchy option
-        if options["update_hierarchy"]:
-            self.stdout.write("Updating hierarchy for existing lecturers...")
-            updated_count = 0
+        # Output results
+        summary = sync_service.get_summary()
 
-            for lecturer_data in lecturers_data:
-                try:
-                    lecturer = Lecturer.objects.get(name=lecturer_data["name"])
-                    updated = False
-                    
-                    if lecturer.level != lecturer_data["level"]:
-                        lecturer.level = lecturer_data["level"]
-                        updated = True
-                    
-                    if lecturer.order != lecturer_data["order"]:
-                        lecturer.order = lecturer_data["order"]
-                        updated = True
-                    
-                    if updated:
-                        lecturer.save()
-                        updated_count += 1
-                        self.stdout.write(
-                            self.style.SUCCESS(
-                                f'Updated {lecturer_data["name"]}: level={lecturer_data["level"]}, order={lecturer_data["order"]}'
-                            )
-                        )
-                        
-                except Lecturer.DoesNotExist:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f'Lecturer "{lecturer_data["name"]}" not found, skipping...'
-                        )
-                    )
+        for message_data in summary["messages"]:
+            message = message_data["message"]
+            level = message_data["level"]
 
-            # Set guru relationships
-            for lecturer_data in lecturers_data:
-                if lecturer_data["guru"]:
-                    try:
-                        lecturer = Lecturer.objects.get(code=lecturer_data["code"])
-                        guru = Lecturer.objects.get(code=lecturer_data["guru"])
-                        if lecturer.guru != guru:
-                            lecturer.guru = guru
-                            lecturer.save()
-                            self.stdout.write(
-                                self.style.SUCCESS(f'Set guru for {lecturer.name}: {guru.name}')
-                            )
-                    except Lecturer.DoesNotExist:
-                        pass
-
-            self.stdout.write(
-                self.style.SUCCESS(f"Updated hierarchy for {updated_count} lecturers")
-            )
-            return
-
-        # First pass: Create lecturers without guru relationships
-        self.stdout.write("Creating lecturers...")
-        created_count = 0
-        for lecturer_data in lecturers_data:
-            # Check if lecturer already exists by name
-            if Lecturer.objects.filter(name=lecturer_data["name"]).exists():
-                self.stdout.write(
-                    self.style.WARNING(
-                        f'Lecturer "{lecturer_data["name"]}" already exists, skipping...'
-                    )
-                )
-                continue
-
-            # Create lecturer without guru first
-            lecturer = Lecturer(
-                name=lecturer_data["name"],
-                code=lecturer_data["code"],
-                description=lecturer_data["description"],
-                order=lecturer_data["order"],
-                level=lecturer_data["level"],
-            )
-
-            # Add photo if file exists
-            photo_path = os.path.join(photos_dir, lecturer_data["photo"])
-            if os.path.exists(photo_path):
-                try:
-                    with open(photo_path, "rb") as photo_file:
-                        lecturer.photo.save(
-                            lecturer_data["photo"], File(photo_file), save=False
-                        )
-                    self.stdout.write(f'✓ Photo added for {lecturer_data["name"]}')
-                except Exception as e:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f'Error loading photo for {lecturer_data["name"]}: {e}'
-                        )
-                    )
+            if level == "error":
+                self.stdout.write(self.style.ERROR(message))
+            elif level == "warning":
+                self.stdout.write(self.style.WARNING(message))
             else:
-                self.stdout.write(self.style.WARNING(f"Photo not found: {photo_path}"))
+                self.stdout.write(message)
 
-            try:
-                lecturer.save()
-                created_count += 1
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f'Created lecturer: {lecturer_data["name"]} (level: {lecturer_data["level"]}, order: {lecturer_data["order"]})'
-                    )
+        if success:
+            self.stdout.write("\n" + "=" * 50)
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Sync completed: Lecturers {summary['created_count']}/{summary['updated_count']}, "
+                    f"Topics {summary['topics_created_count']}/{summary['topics_updated_count']}"
                 )
-            except Exception as e:
-                self.stdout.write(
-                    self.style.ERROR(
-                        f'Error creating lecturer {lecturer_data["name"]}: {e}'
-                    )
-                )
-
-        # Second pass: Set guru relationships
-        self.stdout.write("\nSetting guru relationships...")
-        for lecturer_data in lecturers_data:
-            if lecturer_data["guru"]:
-                try:
-                    lecturer = Lecturer.objects.get(code=lecturer_data["code"])
-                    guru = Lecturer.objects.get(code=lecturer_data["guru"])
-                    lecturer.guru = guru
-                    lecturer.save()
-                    self.stdout.write(
-                        self.style.SUCCESS(
-                            f'✓ Set guru for {lecturer.name}: {guru.name}'
-                        )
-                    )
-                except Lecturer.DoesNotExist as e:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f'Could not set guru for {lecturer_data["name"]}: {e}'
-                        )
-                    )
-
-        self.stdout.write("\n" + "=" * 50)
-        self.stdout.write(
-            self.style.SUCCESS(f"Successfully created lecturers: {created_count}")
-        )
-
-        if not os.path.exists(photos_dir):
-            self.stdout.write(
-                "\n"
-                + self.style.WARNING(f"WARNING: Photos folder not found: {photos_dir}")
-            )
-            self.stdout.write(
-                self.style.WARNING("Create the folder and place lecturer photos:")
-            )
-            for lecturer_data in lecturers_data:
-                self.stdout.write(f'  - {lecturer_data["photo"]}')
-
-        self.stdout.write("\nCommand usage:")
-        self.stdout.write("python manage.py create_iskcon_lecturers")
-        self.stdout.write("python manage.py create_iskcon_lecturers --clear")
-        self.stdout.write("python manage.py create_iskcon_lecturers --update-hierarchy")
-
-        # Show final ordering with hierarchy
-        self.stdout.write("\nFinal lecturer ordering with hierarchy:")
-        for lecturer in Lecturer.objects.all().order_by("level", "order"):
-            guru_info = f" (guru: {lecturer.guru.name})" if lecturer.guru else ""
-            level_icon = {1: "👑", 2: "🙏", 3: "📿"}.get(lecturer.level, "")
-            self.stdout.write(
-                f"  {level_icon} Level {lecturer.level} - {lecturer.order}. {lecturer.name}{guru_info}"
             )

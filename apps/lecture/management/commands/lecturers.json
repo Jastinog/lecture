@@ -1,0 +1,172 @@
+[
+  {
+    "name": "A. C. Bhaktivedanta Swami Prabhupada",
+    "code": "hg-a-c-bhaktivedanta-swami-prabhupada",
+    "description": "Founder-Acharya of ISKCON, author of numerous translations of sacred scriptures. Spread Krishna consciousness worldwide.",
+    "order": 1,
+    "level": 1,
+    "topics": [
+      {
+        "code": "ru-conversations",
+        "title": "Беседы",
+        "description": "Беседы Шрилы Прабхупады",
+        "group": "conversations",
+        "languages": ["ru"],
+        "order": 3
+      },
+      {
+        "code": "ru-brahma-samhita",
+        "title": "Брахма Самхита",
+        "description": "Лекции по Брахма Самхите",
+        "group": "lectures",
+        "languages": ["ru"],
+        "order": 4
+      },
+      {
+        "code": "ru-bhagavad-gita",
+        "title": "Бхагавад Гита",
+        "description": "Лекции по Бхагавад Гите",
+        "group": "lectures",
+        "languages": ["ru"],
+        "order": 5
+      },
+      {
+        "code": "ru-interviews",
+        "title": "Интервью",
+        "description": "Интервью Шрилы Прабхупады",
+        "group": "interviews",
+        "languages": ["ru"],
+        "order": 6
+      },
+      {
+        "code": "ru-lectures",
+        "title": "Лекции",
+        "description": "Лекции Шрилы Прабхупады",
+        "group": "lectures",
+        "languages": ["ru"],
+        "order": 7
+      },
+      {
+        "code": "ru-nectar-of-devotion",
+        "title": "Нектар Преданности",
+        "description": "Лекции по Нектару Преданности",
+        "group": "lectures",
+        "languages": ["ru"],
+        "order": 8
+      },
+      {
+        "code": "ru-festivals",
+        "title": "Праздники",
+        "description": "Лекции на праздники",
+        "group": "lectures",
+        "languages": ["ru"],
+        "order": 9
+      },
+      {
+        "code": "ru-miscellaneous",
+        "title": "Разное",
+        "description": "Разные лекции",
+        "group": "lectures",
+        "languages": ["ru"],
+        "order": 10
+      },
+      {
+        "code": "ru-morning-walks",
+        "title": "Утренние Прогулки",
+        "description": "Утренние прогулки с Шрилой Прабхупадой",
+        "group": "walks",
+        "languages": ["ru"],
+        "order": 11
+      },
+      {
+        "code": "ru-chaitanya-charitamrita",
+        "title": "Чайтанья Чаритамрита",
+        "description": "Лекции по Чайтанье Чаритамрите",
+        "group": "lectures",
+        "languages": ["ru"],
+        "order": 12
+      },
+      {
+        "code": "ru-sri-ishopanishad",
+        "title": "Шри Ишопанишад",
+        "description": "Лекции по Шри Ишопанишаду",
+        "group": "lectures",
+        "languages": ["ru"],
+        "order": 13
+      },
+      {
+        "code": "ru-srimad-bhagavatam",
+        "title": "Шримад Бхагаватам",
+        "description": "Лекции по Шримад Бхагаватам на русском",
+        "group": "lectures",
+        "languages": ["ru"],
+        "order": 14
+      }
+    ]
+  },
+    {
+      "name": "HH Radhanath Swami",
+      "code": "hh-radhanath-swami",
+      "description": "Author of \"The Journey Home\", inspiring spiritual teacher and storyteller.",
+      "order": 2,
+      "level": 2,
+      "topics": [
+        {
+          "code": "ru-gosvami-vrindavana",
+          "title": "Госвами Вриндавана",
+          "description": "Лекции о шести Госвами Вриндавана",
+          "group": "lectures",
+          "languages": ["ru"],
+          "order": 1
+        },
+        {
+          "code": "ru-mercy-srila-prabhupada",
+          "title": "Милость Шрилы Прабхупады",
+          "description": "Лекции о милости Шрилы Прабхупады",
+          "group": "lectures",
+          "languages": ["ru"],
+          "order": 2
+        },
+        {
+          "code": "ru-brihad-bhagavatamrita-1999",
+          "title": "Брихад Бхагаватамрита (1999)",
+          "description": "Лекции по Брихад Бхагаватамрите 1999 года",
+          "group": "lectures",
+          "languages": ["ru"],
+          "order": 3
+        },
+        {
+          "code": "ru-essential-qualities-vaishnavas-pune-2002",
+          "title": "Важнейшие качества Вайшнавов (Pune 2002)",
+          "description": "Лекции о важнейших качествах вайшнавов, Пуна 2002",
+          "group": "lectures",
+          "languages": ["ru"],
+          "order": 4
+        },
+        {
+          "code": "ru-journey-home-radhanath-swami",
+          "title": "Путешествие домой - Радханатха Свами",
+          "description": "Лекции по книге Путешествие домой",
+          "group": "books",
+          "languages": ["ru"],
+          "order": 5
+        },
+        {
+          "code": "ru-radhanath-swami-festivals",
+          "title": "Радханатх Свами Фестивали",
+          "description": "Фестивальные лекции Радханатха Свами",
+          "group": "lectures",
+          "languages": ["ru"],
+          "order": 6
+        },
+        {
+          "code": "ru-chaitanya-charitamrita",
+          "title": "Чайтанья Чаритамрита",
+          "description": "Лекции по Чайтанье Чаритамрите",
+          "group": "lectures",
+          "languages": ["ru"],
+          "order": 7
+        }
+      ]
+    }
+]
