@@ -5,14 +5,25 @@ export class PlaylistManager {
 
     init() {
         document.querySelectorAll('.card-item').forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (e.target.closest('.favorite-btn')) {
-                    return;
-                }
-                
-                e.preventDefault();
-                this.player.playLecture(card);
-            });
+            // Add click handler to the card icon (number)
+            const cardIcon = card.querySelector('.card-icon');
+            if (cardIcon) {
+                cardIcon.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.player.playLecture(card);
+                });
+            }
+            
+            // Add click handler to the card title
+            const cardTitle = card.querySelector('.card-title');
+            if (cardTitle) {
+                cardTitle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.player.playLecture(card);
+                });
+            }
         });
     }
 
@@ -72,7 +83,6 @@ export class PlaylistManager {
         const percent = (currentTime / duration) * 100;
         progressFill.style.width = `${Math.min(100, percent)}%`;
         
-        // Обновляем класс для визуального отличия от статического прогресса
         progressFill.className = 'progress-bar-fill in-progress playing';
     }
 
@@ -85,7 +95,6 @@ export class PlaylistManager {
         const listenCount = card.querySelector('.listen-count');
 
         if (progressBar) {
-            // Если это активная карточка и она проигрывается, не перезаписываем живой прогресс
             const isActiveAndPlaying = card === this.player.currentCard && !this.player.audio.paused;
             
             if (!isActiveAndPlaying) {
