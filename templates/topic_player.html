@@ -31,6 +31,10 @@
          data-completed="{{ current_lecture_progress.completed|default:False|yesno:'true,false' }}"
          data-progress="{{ current_lecture_progress.progress_percentage|default:0|floatformat:1 }}"
          data-listen-count="{{ current_lecture_progress.listen_count|default:0 }}"
+         {% endif %}
+         {% if target_lecture_id %}
+         data-target-lecture-id="{{ target_lecture_id }}"
+         data-target-start-time="{{ target_start_time|default:0 }}"
          {% endif %}>
         
         <audio id="audio-player"></audio>
@@ -149,6 +153,7 @@
 
                         <button class="action-btn share-btn" 
                                 data-lecture-id="{{ lecture.id }}"
+                                data-topic-id="{{ topic.id }}"
                                 aria-label="Поделиться ссылкой">
                             <i class="fas fa-share-alt"></i>
                         </button>

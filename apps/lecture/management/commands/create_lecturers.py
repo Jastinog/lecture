@@ -52,9 +52,11 @@ class LecturerSyncService:
     def update_lecturer_photo(self, lecturer):
         """Update lecturer photo if photo.jpg exists - ONLY after lecturer is saved and has ID"""
         if not lecturer.id:
-            self.add_message(f"Cannot update photo for unsaved lecturer: {lecturer.name}", "warning")
+            self.add_message(
+                f"Cannot update photo for unsaved lecturer: {lecturer.name}", "warning"
+            )
             return False
-            
+
         photo_path = self.get_photo_path(lecturer.code)
 
         if not os.path.exists(photo_path):
@@ -74,9 +76,11 @@ class LecturerSyncService:
     def update_topic_cover(self, topic):
         """Update topic cover if cover.jpg exists - ONLY after topic is saved and has ID"""
         if not topic.id:
-            self.add_message(f"Cannot update cover for unsaved topic: {topic.title}", "warning")
+            self.add_message(
+                f"Cannot update cover for unsaved topic: {topic.title}", "warning"
+            )
             return False
-            
+
         cover_path = self.get_topic_cover_path(topic.lecturer.code, topic.code)
 
         if not os.path.exists(cover_path):

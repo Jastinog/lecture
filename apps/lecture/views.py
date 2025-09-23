@@ -40,12 +40,25 @@ def lecturer_detail(request, lecturer_id):
     return render(request, "lecturer_detail.html", context)
 
 
-def topic_player(request, topic_id):
-    """Lecture player for a specific topic"""
+def topic_player(request, topic_id, lecture_id=None, start_time=None):
+    """Lecture player for a specific topic, optionally with specific lecture and start time"""
     topic = get_object_or_404(Topic.objects.select_related("lecturer"), id=topic_id)
+
+    # Validate lecture belongs to topic if specified
+    target_lecture = None
+    if lecture_id:
+        target_lecture = get_object_or_404(topic.lectures.all(), id=lecture_id)
 
     manager = TopicPlayerManager(request.user, topic)
     context = manager.get_context_data()
+
+    # Add URL parameters to context
+    context.update(
+        {
+            "target_lecture_id": lecture_id,
+            "target_start_time": start_time or 0,
+        }
+    )
 
     return render(request, "topic_player.html", context)
 

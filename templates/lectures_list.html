@@ -25,7 +25,7 @@
     
     <div class="card-list">
         {% for lecture in lectures %}
-        <a href="{% url 'lecture:topic_player' lecture.topic.id %}" class="card-item">
+        <a href="{% url 'lecture:topic_player_with_lecture' lecture.topic.id lecture.id %}" class="card-item">
             <div class="card-icon">
                 {% if lecture.topic.lecturer.photo %}
                     <img src="{{ lecture.topic.lecturer.photo.url }}" alt="{{ lecture.topic.lecturer.name }}">

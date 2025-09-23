@@ -25,7 +25,7 @@
     
     <div class="card-list">
         {% for session in current_sessions %}
-        <a href="{% url 'lecture:topic_player' session.lecture.topic.id %}" class="card-item">
+        <a href="{% url 'lecture:topic_player_with_lecture' session.lecture.topic.id session.lecture.id %}" class="card-item">
             <div class="card-icon">
                 {% if session.lecture.topic.lecturer.photo %}
                     <img src="{{ session.lecture.topic.lecturer.photo.url }}" alt="{{ session.lecture.topic.lecturer.name }}">

@@ -4,6 +4,8 @@ import { ProgressBar } from './progress-bar.js';
 import { PlayerHeader } from './player-header.js';
 import { AudioLoader } from './audio-loader.js';
 import { FavoriteHandler } from './favorite-handler.js';
+import { ShareHandler } from './share-handler.js';
+import { DownloadHandler } from './download-handler.js';
 
 export class LecturePlayer {
     constructor() {
@@ -32,9 +34,11 @@ export class LecturePlayer {
         this.progressBar = new ProgressBar(this);
         this.header = new PlayerHeader(this);
         this.favoriteHandler = new FavoriteHandler(this);
+        this.shareHandler = new ShareHandler(this);
+        this.downloadHandler = new DownloadHandler(this);
 
         this.init();
-        this.loadCurrentLecture();
+        this.loadInitialLecture();
     }
 
     setupAudioLoader() {
@@ -53,14 +57,12 @@ export class LecturePlayer {
 
     onLoadProgress(data) {
         this.progressBar.updateLoadingProgress(data.percent);
-
         this.playlist.syncBufferState(data.percent);
     }
 
     onLoadComplete(data) {
         this.isFullyLoaded = true;
         this.hideLoadingState();
-
         this.playlist.syncBufferState(100);
     }
 
@@ -91,6 +93,8 @@ export class LecturePlayer {
         this.progressBar.init();
         this.header.init();
         this.favoriteHandler.init();
+        this.shareHandler.init();
+        this.downloadHandler.init();
 
         // Audio events
         this.audio.addEventListener('loadstart', () => this.onLoadStart());
@@ -176,15 +180,40 @@ export class LecturePlayer {
         }
     }
 
-    async loadCurrentLecture() {
+    async loadInitialLecture() {
         const container = document.querySelector('.audio-player-section');
-        const lectureId = container?.dataset.currentLectureId;
         
-        if (lectureId) {
-            const card = document.querySelector(`[data-id="${lectureId}"]`);
-            if (card) {
+        // First priority: URL parameters (target lecture from link)
+        const targetLectureId = container?.dataset.targetLectureId;
+        const targetStartTime = parseFloat(container?.dataset.targetStartTime || '0');
+        
+        if (targetLectureId) {
+            const targetCard = document.querySelector(`[data-id="${targetLectureId}"]`);
+            if (targetCard) {
+                console.log(`Loading target lecture ${targetLectureId} from URL with start time:`, targetStartTime);
+                
+                // Set target time from URL parameter
+                this.targetSeekTime = targetStartTime;
+                this.lastSavedTime = targetStartTime;
+                
+                await this.setupLecture(targetCard, false);
+                
+                // Update current lecture in backend
+                await this.setCurrentLecture(parseInt(targetLectureId));
+                
+                return;
+            }
+        }
+        
+        // Second priority: Current lecture from server
+        const currentLectureId = container?.dataset.currentLectureId;
+        if (currentLectureId) {
+            const currentCard = document.querySelector(`[data-id="${currentLectureId}"]`);
+            if (currentCard) {
                 const savedTime = parseFloat(container.dataset.currentTime || '0');
                 const isCompleted = container.dataset.completed === 'true';
+                
+                console.log(`Loading current lecture ${currentLectureId} with saved time:`, savedTime);
                 
                 if (savedTime > 0 && !isCompleted) {
                     this.targetSeekTime = savedTime;
@@ -194,15 +223,17 @@ export class LecturePlayer {
                     this.lastSavedTime = 0;
                     
                     if (isCompleted) {
-                        await this.resetCompletedLecture(parseInt(lectureId));
+                        await this.resetCompletedLecture(parseInt(currentLectureId));
                     }
                 }
                 
-                await this.setupLecture(card, false);
+                await this.setupLecture(currentCard, false);
                 return;
             }
         }
         
+        // Third priority: First incomplete lecture
+        console.log('Loading first incomplete lecture as fallback');
         this.playlist.loadFirstIncompleteLecture();
     }
 
