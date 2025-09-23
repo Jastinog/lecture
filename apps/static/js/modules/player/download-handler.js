@@ -70,10 +70,7 @@ export class DownloadHandler {
         const card = button.closest('.card-item');
         const title = card?.dataset.title || 'lecture';
         
-        // Clean filename
-        const cleanTitle = title.replace(/[^\w\s\-\.]/g, '').replace(/\s+/g, '_');
-        
-        return `${cleanTitle}.mp3`;
+        return `${title}.mp3`;
     }
 
     showDownloadFeedback(button, state) {
