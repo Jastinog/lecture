@@ -50,7 +50,11 @@ class LecturerSyncService:
         )
 
     def update_lecturer_photo(self, lecturer):
-        """Update lecturer photo if photo.jpg exists"""
+        """Update lecturer photo if photo.jpg exists - ONLY after lecturer is saved and has ID"""
+        if not lecturer.id:
+            self.add_message(f"Cannot update photo for unsaved lecturer: {lecturer.name}", "warning")
+            return False
+            
         photo_path = self.get_photo_path(lecturer.code)
 
         if not os.path.exists(photo_path):
@@ -59,7 +63,7 @@ class LecturerSyncService:
 
         try:
             with open(photo_path, "rb") as photo_file:
-                lecturer.photo.save("photo.jpg", File(photo_file), save=False)
+                lecturer.photo.save("photo.jpg", File(photo_file), save=True)
             return True
         except Exception as e:
             self.add_message(
@@ -68,7 +72,11 @@ class LecturerSyncService:
             return False
 
     def update_topic_cover(self, topic):
-        """Update topic cover if cover.jpg exists"""
+        """Update topic cover if cover.jpg exists - ONLY after topic is saved and has ID"""
+        if not topic.id:
+            self.add_message(f"Cannot update cover for unsaved topic: {topic.title}", "warning")
+            return False
+            
         cover_path = self.get_topic_cover_path(topic.lecturer.code, topic.code)
 
         if not os.path.exists(cover_path):
@@ -77,7 +85,7 @@ class LecturerSyncService:
 
         try:
             with open(cover_path, "rb") as cover_file:
-                topic.cover.save("cover.jpg", File(cover_file), save=False)
+                topic.cover.save("cover.jpg", File(cover_file), save=True)
             return True
         except Exception as e:
             self.add_message(f"Error updating cover for {topic.title}: {e}", "warning")
@@ -85,6 +93,7 @@ class LecturerSyncService:
 
     def create_lecturer(self, lecturer_data):
         """Create new lecturer from data"""
+        # Create lecturer without photo first
         lecturer = Lecturer(
             name=lecturer_data["name"],
             code=lecturer_data["code"],
@@ -93,12 +102,15 @@ class LecturerSyncService:
             level=lecturer_data["level"],
         )
 
-        # Add photo.jpg
-        self.update_lecturer_photo(lecturer)
-
+        # Save to get ID
         lecturer.save()
         self.created_count += 1
         self.add_message(f"Created lecturer: {lecturer.name}")
+
+        # Now add photo after lecturer has ID
+        if self.update_lecturer_photo(lecturer):
+            self.add_message(f"Added photo for lecturer: {lecturer.name}")
+
         return lecturer
 
     def update_lecturer(self, lecturer, lecturer_data):
@@ -112,14 +124,14 @@ class LecturerSyncService:
                 setattr(lecturer, field, lecturer_data[field])
                 updated = True
 
-        # Update photo.jpg
-        if self.update_lecturer_photo(lecturer):
-            updated = True
-
         if updated:
             lecturer.save()
             self.updated_count += 1
             self.add_message(f"Updated lecturer: {lecturer.name}")
+
+        # Update photo (lecturer already has ID)
+        if self.update_lecturer_photo(lecturer):
+            self.add_message(f"Updated photo for lecturer: {lecturer.name}")
 
         return updated
 
@@ -135,6 +147,7 @@ class LecturerSyncService:
             self.add_message(f"Topic group not found: {group_code}", "error")
             return None
 
+        # Create topic without cover first
         topic = Topic(
             lecturer=lecturer,
             code=topic_data["code"],
@@ -144,9 +157,7 @@ class LecturerSyncService:
             order=topic_data["order"],
         )
 
-        # Add cover.jpg
-        self.update_topic_cover(topic)
-
+        # Save to get ID
         topic.save()
 
         # Add languages to topic
@@ -159,6 +170,11 @@ class LecturerSyncService:
 
         self.topics_created_count += 1
         self.add_message(f"Created topic: {lecturer.name} - {topic.title}")
+
+        # Now add cover after topic has ID
+        if self.update_topic_cover(topic):
+            self.add_message(f"Added cover for topic: {topic.title}")
+
         return topic
 
     def update_topic(self, topic, topic_data):
@@ -197,14 +213,14 @@ class LecturerSyncService:
                 except Language.DoesNotExist:
                     self.add_message(f"Language not found: {lang_code}", "warning")
 
-        # Update cover.jpg
-        if self.update_topic_cover(topic):
-            updated = True
-
         if updated:
             topic.save()
             self.topics_updated_count += 1
             self.add_message(f"Updated topic: {topic.lecturer.name} - {topic.title}")
+
+        # Update cover (topic already has ID)
+        if self.update_topic_cover(topic):
+            self.add_message(f"Updated cover for topic: {topic.title}")
 
         return updated
 
