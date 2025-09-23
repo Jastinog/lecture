@@ -8,32 +8,36 @@ from apps.users.models import User
 
 
 def lecture_upload_path(instance, filename):
-    """Generate nested upload path for lecture files"""
+    """Generate nested upload path for lecture files using IDs"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{instance.topic.lecturer.code}/topics/{instance.topic.code}/lectures/{short_name}"
+    return f"lecturers/{instance.topic.lecturer.id}/topics/{instance.topic.id}/lectures/{short_name}"
 
 
 def lecturer_photo_path(instance, filename):
-    """Upload path for lecturer photos"""
+    """Upload path for lecturer photos using ID"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{instance.code}/photo/{short_name}"
+    return f"lecturers/{instance.id}/photo/{short_name}"
 
 
 def topic_cover_path(instance, filename):
-    """Upload path for topic covers"""
+    """Upload path for topic covers using IDs"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return (
-        f"lecturers/{instance.lecturer.code}/topics/{instance.code}/cover/{short_name}"
-    )
+    return f"lecturers/{instance.lecturer.id}/topics/{instance.id}/cover/{short_name}"
 
 
 class Language(models.Model):
-    code = models.CharField(max_length=10, unique=True, help_text="Language code (e.g., 'en', 'ru')")
-    name = models.CharField(max_length=100, help_text="Language name (e.g., 'English', 'Russian')")
-    native_name = models.CharField(max_length=100, help_text="Native language name (e.g., 'English', 'Русский')")
+    code = models.CharField(
+        max_length=10, unique=True, help_text="Language code (e.g., 'en', 'ru')"
+    )
+    name = models.CharField(
+        max_length=100, help_text="Language name (e.g., 'English', 'Russian')"
+    )
+    native_name = models.CharField(
+        max_length=100, help_text="Native language name (e.g., 'English', 'Русский')"
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -41,14 +45,26 @@ class Language(models.Model):
         return f"{self.native_name} ({self.code})"
 
     class Meta:
-        ordering = ['name']
+        ordering = ["name"]
 
 
 class TopicGroup(models.Model):
-    name = models.CharField(max_length=100, unique=True, help_text="Group name (e.g., 'Lectures', 'Kirtans', 'Conversations')")
-    code = models.CharField(max_length=50, unique=True, help_text="Group code (e.g., 'lectures', 'kirtans', 'conversations')")
-    description = models.TextField(blank=True, help_text="Description of the topic group")
-    order = models.PositiveIntegerField(default=0, help_text="Order for displaying groups")
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Group name (e.g., 'Lectures', 'Kirtans', 'Conversations')",
+    )
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Group code (e.g., 'lectures', 'kirtans', 'conversations')",
+    )
+    description = models.TextField(
+        blank=True, help_text="Description of the topic group"
+    )
+    order = models.PositiveIntegerField(
+        default=0, help_text="Order for displaying groups"
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -56,7 +72,7 @@ class TopicGroup(models.Model):
         return self.name
 
     class Meta:
-        ordering = ['order', 'name']
+        ordering = ["order", "name"]
 
 
 class Lecturer(models.Model):
@@ -112,12 +128,10 @@ class Topic(models.Model):
         TopicGroup,
         on_delete=models.PROTECT,
         related_name="topics",
-        help_text="Group this topic belongs to"
+        help_text="Group this topic belongs to",
     )
     languages = models.ManyToManyField(
-        Language, 
-        related_name="topics",
-        help_text="Languages available in this topic"
+        Language, related_name="topics", help_text="Languages available in this topic"
     )
     order = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -127,7 +141,7 @@ class Topic(models.Model):
 
     def get_languages_display(self):
         """Return comma-separated list of language names"""
-        return ", ".join(self.languages.values_list('native_name', flat=True))
+        return ", ".join(self.languages.values_list("native_name", flat=True))
 
     class Meta:
         ordering = ["lecturer", "group", "order"]
@@ -147,7 +161,7 @@ class Lecture(models.Model):
         Language,
         on_delete=models.PROTECT,
         related_name="lectures",
-        help_text="Language of this lecture"
+        help_text="Language of this lecture",
     )
     file_size = models.BigIntegerField(null=True, blank=True)
     duration = models.IntegerField(null=True, blank=True)

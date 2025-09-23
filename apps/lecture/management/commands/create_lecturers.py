@@ -49,8 +49,6 @@ class LecturerSyncService:
             "cover.jpg",
         )
 
-
-
     def update_lecturer_photo(self, lecturer):
         """Update lecturer photo if photo.jpg exists"""
         photo_path = self.get_photo_path(lecturer.code)
@@ -130,7 +128,7 @@ class LecturerSyncService:
         # Get group and languages from JSON
         group_code = topic_data["group"]
         language_codes = topic_data["languages"]
-        
+
         try:
             group = TopicGroup.objects.get(code=group_code)
         except TopicGroup.DoesNotExist:
@@ -150,7 +148,7 @@ class LecturerSyncService:
         self.update_topic_cover(topic)
 
         topic.save()
-        
+
         # Add languages to topic
         for lang_code in language_codes:
             try:
@@ -158,7 +156,7 @@ class LecturerSyncService:
                 topic.languages.add(language)
             except Language.DoesNotExist:
                 self.add_message(f"Language not found: {lang_code}", "warning")
-        
+
         self.topics_created_count += 1
         self.add_message(f"Created topic: {lecturer.name} - {topic.title}")
         return topic
@@ -186,9 +184,9 @@ class LecturerSyncService:
 
         # Update languages
         language_codes = topic_data["languages"]
-        current_languages = set(topic.languages.values_list('code', flat=True))
+        current_languages = set(topic.languages.values_list("code", flat=True))
         new_languages = set(language_codes)
-        
+
         if current_languages != new_languages:
             topic.languages.clear()
             for lang_code in language_codes:

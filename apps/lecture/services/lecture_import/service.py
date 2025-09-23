@@ -21,12 +21,12 @@ class LectureImport:
         """Get or create Russian language as default"""
         try:
             language, created = Language.objects.get_or_create(
-                code='ru',
+                code="ru",
                 defaults={
-                    'name': 'Russian',
-                    'native_name': 'Русский',
-                    'is_active': True
-                }
+                    "name": "Russian",
+                    "native_name": "Русский",
+                    "is_active": True,
+                },
             )
             if created:
                 logger.info("Created default Russian language")
