@@ -15,10 +15,9 @@ export class DownloadHandler {
 
     async handleDownload(button) {
         const lectureId = button.dataset.lectureId;
-        const downloadUrl = button.dataset.downloadUrl;
         
-        if (!lectureId || !downloadUrl) {
-            console.error('Missing lecture ID or download URL');
+        if (!lectureId) {
+            console.error('Missing lecture ID');
             return;
         }
 
@@ -31,7 +30,13 @@ export class DownloadHandler {
         this.showDownloadFeedback(button, 'starting');
         
         try {
-            const response = await fetch(downloadUrl);
+            // Use the same API endpoint as audio player
+            const response = await fetch(`/api/v1/lectures/${lectureId}/audio/`, {
+                headers: {
+                    'X-CSRFToken': this.getCSRFToken()
+                }
+            });
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -65,7 +70,10 @@ export class DownloadHandler {
         const card = button.closest('.card-item');
         const title = card?.dataset.title || 'lecture';
         
-        return `${title}.mp3`;
+        // Clean filename
+        const cleanTitle = title.replace(/[^\w\s\-\.]/g, '').replace(/\s+/g, '_');
+        
+        return `${cleanTitle}.mp3`;
     }
 
     showDownloadFeedback(button, state) {
@@ -130,5 +138,10 @@ export class DownloadHandler {
         }
         
         button.downloading = false;
+    }
+
+    getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+               document.querySelector('meta[name=csrf-token]')?.content || '';
     }
 }
