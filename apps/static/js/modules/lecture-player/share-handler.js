@@ -4,12 +4,12 @@ export class ShareHandler {
     }
 
     init() {
-        document.querySelectorAll('.share-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.share-btn')) {
                 e.preventDefault();
                 e.stopPropagation();
-                this.handleShare(btn);
-            });
+                this.handleShare(e.target.closest('.share-btn'));
+            }
         });
     }
 
@@ -17,38 +17,37 @@ export class ShareHandler {
         const lectureId = parseInt(button.dataset.lectureId);
         const topicId = parseInt(button.dataset.topicId);
         
-        // Get current time if this is the playing lecture
+        // Get current time if audio is ready
         let currentTime = null;
-        if (this.player.currentLectureId === lectureId && this.player.isAudioReady) {
+        if (this.player.isAudioReady && this.player.audio.currentTime > 0) {
             currentTime = this.player.audio.currentTime;
         }
 
         // Generate share URL (with time if available)
-        const shareUrl = this.generateShareUrl(topicId, lectureId, currentTime);
+        const shareUrl = this.generateShareUrl(lectureId, currentTime);
         
-        // Copy directly to clipboard
+        // Copy to clipboard
         const success = await this.copyUrl(shareUrl, currentTime > 0);
         
         if (success) {
-            // Visual feedback - briefly change button state
             this.showCopyFeedback(button, currentTime > 0);
         }
     }
 
-    generateShareUrl(topicId, lectureId, currentTime = null) {
+    generateShareUrl(lectureId, currentTime = null) {
         const baseUrl = window.location.origin;
         
         if (currentTime && currentTime > 0) {
             const timeInSeconds = Math.floor(currentTime);
-            return `${baseUrl}/topic/${topicId}/lecture/${lectureId}/${timeInSeconds}/`;
+            return `${baseUrl}/lecture/${lectureId}/${timeInSeconds}/`;
         } else {
-            return `${baseUrl}/topic/${topicId}/lecture/${lectureId}/`;
+            return `${baseUrl}/lecture/${lectureId}/`;
         }
     }
 
-    async copyUrl(url, withTime = false) {
+    async copyUrl(shareUrl, withTime = false) {
         try {
-            await navigator.clipboard.writeText(url);
+            await navigator.clipboard.writeText(shareUrl);
             this.showCopySuccess(withTime ? 'Ссылка с временем скопирована!' : 'Ссылка скопирована!');
             return true;
         } catch (err) {
@@ -56,7 +55,7 @@ export class ShareHandler {
             // Fallback for older browsers
             try {
                 const textArea = document.createElement('textarea');
-                textArea.value = url;
+                textArea.value = shareUrl;
                 textArea.style.position = 'fixed';
                 textArea.style.opacity = '0';
                 document.body.appendChild(textArea);
@@ -107,18 +106,32 @@ export class ShareHandler {
         const toast = document.createElement('div');
         toast.className = `share-toast share-toast-${type}`;
         toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#6b7280'};
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            z-index: 1000;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
 
         document.body.appendChild(toast);
 
         // Show toast
         requestAnimationFrame(() => {
-            toast.classList.add('show');
+            toast.style.opacity = '1';
         });
 
         // Auto hide after 3 seconds
         setTimeout(() => {
             if (toast.parentNode) {
-                toast.classList.remove('show');
+                toast.style.opacity = '0';
                 setTimeout(() => {
                     if (toast.parentNode) {
                         toast.remove();

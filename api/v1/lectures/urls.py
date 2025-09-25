@@ -12,6 +12,4 @@ urlpatterns = [
     ),
     # Toggle favorite
     path("<int:lecture_id>/favorite/", views.toggle_favorite, name="toggle_favorite"),
-    # Stream audio
-    path("<int:lecture_id>/audio/", views.serve_audio, name="serve_audio"),
 ]

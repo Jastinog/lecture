@@ -7,7 +7,7 @@ export class AudioLoader {
         this.loadedBlobs = new Map();
     }
 
-    async loadAudio(lectureId) {
+    async loadAudio(lectureId, directUrl) {
         // Check if already loaded
         if (this.loadedBlobs.has(lectureId)) {
             const blob = this.loadedBlobs.get(lectureId);
@@ -19,18 +19,16 @@ export class AudioLoader {
             this.currentRequest.abort();
         }
 
+        if (!directUrl) {
+            throw new Error('Direct URL is required');
+        }
+
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             this.currentRequest = xhr;
 
-            // Fixed API path
-            xhr.open('GET', `/api/v1/lectures/${lectureId}/audio/`, true);
+            xhr.open('GET', directUrl, true);
             xhr.responseType = 'blob';
-
-            const csrfToken = this.getCSRFToken();
-            if (csrfToken) {
-                xhr.setRequestHeader('X-CSRFToken', csrfToken);
-            }
 
             xhr.onprogress = (e) => {
                 if (e.lengthComputable && this.onProgress) {

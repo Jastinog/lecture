@@ -9,6 +9,7 @@ export class ProgressBar {
         this.loadingIndicator = null;
         this.isLoadingComplete = false;
         this.preservedProgress = 0;
+        this.currentBufferPercent = 0;
         
         this.createBufferIndicator();
         this.createLoadingIndicator();
@@ -37,6 +38,7 @@ export class ProgressBar {
         this.player.audio.addEventListener('progress', () => this.updateBuffer());
         this.player.audio.addEventListener('loadstart', () => {
             this.isLoadingComplete = false;
+            this.currentBufferPercent = 0;
         });
         this.player.audio.addEventListener('canplaythrough', () => {
             this.isLoadingComplete = true;
@@ -84,99 +86,46 @@ export class ProgressBar {
         }
     }
 
-    preserveProgress() {
-        if (this.progressFilled) {
-            const width = this.progressFilled.style.width;
-            this.preservedProgress = parseFloat(width) || 0;
-        }
-    }
-
-    restoreProgress() {
-        if (this.preservedProgress > 0 && this.progressFilled) {
-            this.progressFilled.style.width = `${this.preservedProgress}%`;
-        }
-    }
-
-    reset() {
-        if (this.timeCurrent) {
-            this.timeCurrent.textContent = '0:00';
-        }
-        if (this.timeTotal) {
-            this.timeTotal.textContent = '0:00';
-        }
-        this.hideLoading();
-        this.isLoadingComplete = false;
-    }
-
-    resetBuffer() {
-        if (this.bufferIndicator) {
-            this.bufferIndicator.style.width = '0%';
-        }
-    }
-
-    resetForNewLecture() {
-        this.resetBuffer();
-        this.isLoadingComplete = false;
-        
-        this.initializeFromTemplate();
-        
-        if (this.timeTotal) {
-            this.timeTotal.textContent = '0:00';
-        }
-    }
-
-    fullReset() {
-        this.preservedProgress = 0;
-        if (this.progressFilled) {
-            this.progressFilled.style.width = '0%';
-        }
-        if (this.timeCurrent) {
-            this.timeCurrent.textContent = '0:00';
-        }
-        if (this.timeTotal) {
-            this.timeTotal.textContent = '0:00';
-        }
-        this.hideLoading();
-        this.isLoadingComplete = false;
-    }
-
     updateBuffer() {
         if (!this.bufferIndicator) return;
 
-        if (this.player.currentLectureId && this.player.audioLoader.isLoaded(this.player.currentLectureId)) {
-            this.bufferIndicator.style.width = '100%';
-            this.player.playlist.syncBufferState(100);
-            return;
+        let bufferPercent = 0;
+
+        // If audio is fully cached, show 100% buffer
+        if (this.player.lectureId && this.player.audioLoader.isLoaded(this.player.lectureId)) {
+            bufferPercent = 100;
+        } else if (this.player.audio.duration) {
+            // Calculate buffer from audio element
+            const buffered = this.player.audio.buffered;
+            let maxBufferedEnd = 0;
+            
+            for (let i = 0; i < buffered.length; i++) {
+                maxBufferedEnd = Math.max(maxBufferedEnd, buffered.end(i));
+            }
+            
+            bufferPercent = Math.min(100, (maxBufferedEnd / this.player.audio.duration) * 100);
         }
 
-        if (!this.player.audio.duration) return;
-
-        const buffered = this.player.audio.buffered;
-        let maxBufferedEnd = 0;
-        
-        for (let i = 0; i < buffered.length; i++) {
-            maxBufferedEnd = Math.max(maxBufferedEnd, buffered.end(i));
-        }
-        
-        const bufferPercent = Math.min(100, (maxBufferedEnd / this.player.audio.duration) * 100);
+        this.currentBufferPercent = bufferPercent;
         this.bufferIndicator.style.width = `${bufferPercent}%`;
-        
-        this.player.playlist.syncBufferState(bufferPercent);
     }
 
     updateLoadingProgress(percent) {
         if (!this.bufferIndicator) return;
+        
+        // Only update buffer from loading if not already fully loaded
         if (!this.isLoadingComplete && 
-            !(this.player.currentLectureId && this.player.audioLoader.isLoaded(this.player.currentLectureId))) {
+            !(this.player.lectureId && this.player.audioLoader.isLoaded(this.player.lectureId))) {
+            
+            this.currentBufferPercent = percent;
             this.bufferIndicator.style.width = `${percent}%`;
-            this.player.playlist.syncBufferState(percent);
         }
     }
 
     forceUpdateProgress() {
         const currentTime = this.player.audio.currentTime;
-        const durationFromData = this.player.currentCard ? parseFloat(this.player.currentCard.dataset.duration || '0') : 0;
-        const duration = durationFromData > 0 ? durationFromData : this.player.audio.duration;
+        const container = document.querySelector('.audio-player-section');
+        const duration = parseFloat(container?.dataset.duration || '0') || this.player.audio.duration;
 
         if (isNaN(currentTime) || isNaN(duration) || duration <= 0) return;
 
@@ -189,16 +138,14 @@ export class ProgressBar {
         if (this.timeCurrent) {
             this.timeCurrent.textContent = this.player.formatTime(currentTime);
         }
-
-        this.player.playlist.syncPlaybackProgress(currentTime, duration);
     }
 
     updateProgress() {
         if (!this.player.isAudioReady) return;
 
         const currentTime = this.player.audio.currentTime;
-        const durationFromData = this.player.currentCard ? parseFloat(this.player.currentCard.dataset.duration || '0') : 0;
-        const duration = durationFromData > 0 ? durationFromData : this.player.audio.duration;
+        const container = document.querySelector('.audio-player-section');
+        const duration = parseFloat(container?.dataset.duration || '0') || this.player.audio.duration;
 
         if (isNaN(currentTime) || isNaN(duration) || duration <= 0) return;
 
@@ -212,8 +159,6 @@ export class ProgressBar {
             if (this.timeCurrent) {
                 this.timeCurrent.textContent = this.player.formatTime(currentTime);
             }
-
-            this.player.playlist.syncPlaybackProgress(currentTime, duration);
         }
     }
 
@@ -226,8 +171,8 @@ export class ProgressBar {
     }
 
     seek(e) {
-        const durationFromData = this.player.currentCard ? parseFloat(this.player.currentCard.dataset.duration || '0') : 0;
-        const duration = durationFromData > 0 ? durationFromData : this.player.audio.duration;
+        const container = document.querySelector('.audio-player-section');
+        const duration = parseFloat(container?.dataset.duration || '0') || this.player.audio.duration;
         
         if (!this.player.isAudioReady || !duration || this.isSeeking) return;
         
@@ -251,9 +196,6 @@ export class ProgressBar {
         if (this.timeCurrent) {
             this.timeCurrent.textContent = this.player.formatTime(newTime);
         }
-
-        const duration = this.player.currentCard ? parseFloat(this.player.currentCard.dataset.duration || '0') : this.player.audio.duration;
-        this.player.playlist.syncPlaybackProgress(newTime, duration);
         
         this.player.audio.currentTime = newTime;
         

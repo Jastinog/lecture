@@ -8,7 +8,8 @@ from .models import (
     Lecturer,
     Topic,
     Lecture,
-    CurrentLecture,
+    LectureProgress,
+    FavoriteLecture,
 )
 
 
@@ -40,27 +41,66 @@ def lecturer_detail(request, lecturer_id):
     return render(request, "lecturer_detail.html", context)
 
 
-def topic_player(request, topic_id, lecture_id=None, start_time=None):
-    """Lecture player for a specific topic, optionally with specific lecture and start time"""
+def topic_detail(request, topic_id):
+    """Show all lectures for a topic"""
     topic = get_object_or_404(Topic.objects.select_related("lecturer"), id=topic_id)
-
-    # Validate lecture belongs to topic if specified
-    target_lecture = None
-    if lecture_id:
-        target_lecture = get_object_or_404(topic.lectures.all(), id=lecture_id)
 
     manager = TopicPlayerManager(request.user, topic)
     context = manager.get_context_data()
+    
+    # Remove player-specific data, keep only list data
+    context.pop('current_lecture', None)
+    context.pop('current_lecture_progress', None)
+    
+    return render(request, "topic_detail.html", context)
 
-    # Add URL parameters to context
-    context.update(
-        {
-            "target_lecture_id": lecture_id,
-            "target_start_time": start_time or 0,
-        }
+
+def lecture_player(request, lecture_id, start_time=None):
+    """Single lecture player"""
+    lecture = get_object_or_404(
+        Lecture.objects.select_related("topic__lecturer"), id=lecture_id
     )
+    topic = lecture.topic
+    
+    # Get user progress for this lecture
+    lecture_progress = None
+    is_favorite = False
+    
+    if request.user.is_authenticated:
+        lecture_progress = LectureProgress.objects.filter(
+            user=request.user, lecture=lecture
+        ).first()
+        
+        is_favorite = FavoriteLecture.objects.filter(
+            user=request.user, lecture=lecture
+        ).exists()
 
-    return render(request, "topic_player.html", context)
+    # Get navigation lectures (prev/next in same topic)
+    prev_lecture = (
+        topic.lectures.filter(order__lt=lecture.order)
+        .order_by("-order")
+        .first()
+    )
+    next_lecture = (
+        topic.lectures.filter(order__gt=lecture.order)
+        .order_by("order")
+        .first()
+    )
+    
+    total_lectures = topic.lectures.count()
+
+    context = {
+        "lecture": lecture,
+        "topic": topic,
+        "lecture_progress": lecture_progress,
+        "is_favorite": is_favorite,
+        "prev_lecture": prev_lecture,
+        "next_lecture": next_lecture,
+        "total_lectures": total_lectures,
+        "target_start_time": start_time or 0,
+    }
+
+    return render(request, "lecture_player.html", context)
 
 
 def topics_list(request):
@@ -130,6 +170,8 @@ def history_list(request):
 @login_required
 def now_listening_list(request):
     """What others are listening to page"""
+    from .models import CurrentLecture
+    
     current_sessions = (
         CurrentLecture.objects.select_related("lecture__topic__lecturer", "user")
         .exclude(user=request.user)

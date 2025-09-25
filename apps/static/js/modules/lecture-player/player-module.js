@@ -1,4 +1,3 @@
-import { PlaylistManager } from './playlist-manager.js';
 import { PlayerControls } from './player-controls.js';
 import { ProgressBar } from './progress-bar.js';
 import { PlayerHeader } from './player-header.js';
@@ -10,9 +9,8 @@ import { DownloadHandler } from './download-handler.js';
 export class LecturePlayer {
     constructor() {
         this.audio = document.getElementById('audio-player');
-        this.currentCard = null;
         this.isLoading = false;
-        this.currentLectureId = null;
+        this.lectureId = null;
         this.progressUpdateInterval = null;
         this.lastSavedTime = 0;
         this.targetSeekTime = null;
@@ -29,7 +27,6 @@ export class LecturePlayer {
         this.setupAudioLoader();
 
         // Initialize modules
-        this.playlist = new PlaylistManager(this);
         this.controls = new PlayerControls(this);
         this.progressBar = new ProgressBar(this);
         this.header = new PlayerHeader(this);
@@ -38,7 +35,7 @@ export class LecturePlayer {
         this.downloadHandler = new DownloadHandler(this);
 
         this.init();
-        this.loadInitialLecture();
+        this.loadLecture();
     }
 
     setupAudioLoader() {
@@ -57,13 +54,11 @@ export class LecturePlayer {
 
     onLoadProgress(data) {
         this.progressBar.updateLoadingProgress(data.percent);
-        this.playlist.syncBufferState(data.percent);
     }
 
     onLoadComplete(data) {
         this.isFullyLoaded = true;
         this.hideLoadingState();
-        this.playlist.syncBufferState(100);
     }
 
     onLoadError(error) {
@@ -88,7 +83,6 @@ export class LecturePlayer {
     }
 
     init() {
-        this.playlist.init();
         this.controls.init();
         this.progressBar.init();
         this.header.init();
@@ -119,8 +113,10 @@ export class LecturePlayer {
     }
 
     onMetadataLoaded() {
-        const durationFromData = this.currentCard ? parseFloat(this.currentCard.dataset.duration || '0') : 0;
-        if (durationFromData === 0) {
+        const container = document.querySelector('.audio-player-section');
+        const duration = parseFloat(container?.dataset.duration || '0');
+        
+        if (duration === 0) {
             this.progressBar.updateTotalTime(this.audio.duration);
         }
         
@@ -180,167 +176,48 @@ export class LecturePlayer {
         }
     }
 
-    async loadInitialLecture() {
+    async loadLecture() {
         const container = document.querySelector('.audio-player-section');
+        if (!container) return;
         
-        // First priority: URL parameters (target lecture from link)
-        const targetLectureId = container?.dataset.targetLectureId;
-        const targetStartTime = parseFloat(container?.dataset.targetStartTime || '0');
+        this.lectureId = parseInt(container.dataset.lectureId);
+        const audioUrl = container.dataset.audioUrl;
+        const duration = parseFloat(container.dataset.duration || '0');
         
-        if (targetLectureId) {
-            const targetCard = document.querySelector(`[data-id="${targetLectureId}"]`);
-            if (targetCard) {
-                console.log(`Loading target lecture ${targetLectureId} from URL with start time:`, targetStartTime);
-                
-                // Set target time from URL parameter
-                this.targetSeekTime = targetStartTime;
-                this.lastSavedTime = targetStartTime;
-                
-                await this.setupLecture(targetCard, false);
-                
-                // Update current lecture in backend
-                await this.setCurrentLecture(parseInt(targetLectureId));
-                
-                return;
-            }
-        }
-        
-        // Second priority: Current lecture from server
-        const currentLectureId = container?.dataset.currentLectureId;
-        if (currentLectureId) {
-            const currentCard = document.querySelector(`[data-id="${currentLectureId}"]`);
-            if (currentCard) {
-                const savedTime = parseFloat(container.dataset.currentTime || '0');
-                const isCompleted = container.dataset.completed === 'true';
-                
-                console.log(`Loading current lecture ${currentLectureId} with saved time:`, savedTime);
-                
-                if (savedTime > 0 && !isCompleted) {
-                    this.targetSeekTime = savedTime;
-                    this.lastSavedTime = savedTime;
-                } else {
-                    this.targetSeekTime = 0;
-                    this.lastSavedTime = 0;
-                    
-                    if (isCompleted) {
-                        await this.resetCompletedLecture(parseInt(currentLectureId));
-                    }
-                }
-                
-                await this.setupLecture(currentCard, false);
-                return;
-            }
-        }
-        
-        // Third priority: First incomplete lecture
-        console.log('Loading first incomplete lecture as fallback');
-        this.playlist.loadFirstIncompleteLecture();
-    }
+        // Set target time from saved progress or URL parameter
+        this.targetSeekTime = parseFloat(container.dataset.targetStartTime || '0') || 
+                            parseFloat(container.dataset.currentTime || '0');
+        this.lastSavedTime = this.targetSeekTime;
 
-    async setupLecture(card, requestPlay = false) {
-        this.stopCurrentAudio();
-        
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        this.currentCard = card;
-        this.currentLectureId = parseInt(card.dataset.id);
-        this.isAudioReady = false;
-        this.isFullyLoaded = false;
-        this.pendingPlay = requestPlay;
-        this.isLoading = false;
-        
-        const durationFromData = parseFloat(card.dataset.duration || '0');
-        if (durationFromData > 0) {
-            this.progressBar.updateTotalTime(durationFromData);
+        if (duration > 0) {
+            this.progressBar.updateTotalTime(duration);
         }
-        
-        this.header.updateNowPlaying(card.dataset.title);
-        this.playlist.updateUI();
+
+        if (!audioUrl) {
+            this.onLoadError(new Error('No audio URL found'));
+            return;
+        }
         
         try {
-            if (this.audioLoader.isLoaded(this.currentLectureId)) {
+            if (this.audioLoader.isLoaded(this.lectureId)) {
                 this.showLoadingState('Подготовка из кеша...');
                 this.isFullyLoaded = true;
                 
-                const objectURL = await this.audioLoader.loadAudio(this.currentLectureId);
-                
-                if (this.currentLectureId === parseInt(card.dataset.id)) {
-                    this.audio.src = objectURL;
-                }
+                const objectURL = await this.audioLoader.loadAudio(this.lectureId, audioUrl);
+                this.audio.src = objectURL;
             } else {
                 this.isLoading = true;
                 this.showLoadingState('Начинаем загрузку...');
                 
-                const objectURL = await this.audioLoader.loadAudio(this.currentLectureId);
-                
-                if (this.currentLectureId === parseInt(card.dataset.id)) {
-                    this.audio.src = objectURL;
-                }
+                const objectURL = await this.audioLoader.loadAudio(this.lectureId, audioUrl);
+                this.audio.src = objectURL;
             }
         } catch (error) {
-            if (this.currentLectureId === parseInt(card.dataset.id)) {
-                this.onLoadError(error);
-            }
+            this.onLoadError(error);
         }
-    }
-
-    stopCurrentAudio() {
-        this.audioLoader.abort();
-        
-        if (!this.audio.paused) {
-            this.audio.pause();
-        }
-        this.audio.currentTime = 0;
-        this.audio.src = '';
-        
-        this.stopProgressUpdates();
-        this.progressBar.resetForNewLecture();
-        
-        this.isLoading = false;
-        this.isAudioReady = false;
-        this.isFullyLoaded = false;
-        this.pendingPlay = false;
-        this.hideLoadingState();
-    }
-
-    async playLecture(card) {
-        const lectureId = parseInt(card.dataset.id);
-        
-        if (this.currentLectureId && this.currentLectureId !== lectureId) {
-            await this.saveCurrentProgress();
-        }
-
-        if (this.currentCard === card) {
-            if (this.isAudioReady && this.isFullyLoaded) {
-                this.controls.togglePlayPause();
-            }
-            return;
-        }
-
-        const progress = await this.loadProgress(lectureId);
-        if (progress?.current_time > 0 && !progress.completed) {
-            this.targetSeekTime = progress.current_time;
-            this.lastSavedTime = progress.current_time;
-        } else {
-            this.targetSeekTime = 0;
-            this.lastSavedTime = 0;
-            
-            if (progress?.completed) {
-                await this.resetCompletedLecture(lectureId);
-            }
-        }
-
-        await this.setupLecture(card, true);
-        await this.setCurrentLecture(lectureId);
     }
 
     requestPlay() {
-        if (!this.currentCard) {
-            const firstCard = document.querySelector('.card-item');
-            if (firstCard) this.playLecture(firstCard);
-            return;
-        }
-
         if (this.isAudioReady && this.isFullyLoaded) {
             this.startPlayback();
         } else {
@@ -366,33 +243,6 @@ export class LecturePlayer {
         this.progressBar.updateProgress();
     }
 
-    async loadProgress(lectureId) {
-        try {
-            const response = await fetch(`/api/v1/lectures/${lectureId}/progress/`, {
-                headers: { 'X-CSRFToken': this.getCSRFToken() }
-            });
-            return response.ok ? await response.json() : null;
-        } catch (error) {
-            console.error('Failed to load progress:', error);
-            return null;
-        }
-    }
-
-    async setCurrentLecture(lectureId) {
-        try {
-            await fetch(`/api/v1/lectures/${lectureId}/set-current/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': this.getCSRFToken()
-                },
-                body: JSON.stringify({})
-            });
-        } catch (error) {
-            console.error('Failed to set current lecture:', error);
-        }
-    }
-
     onPlay() {
         this.controls.updatePlayPauseBtn(true);
         this.startProgressUpdates();
@@ -405,11 +255,10 @@ export class LecturePlayer {
 
     async onEnded() {
         await this.saveCurrentProgress(true);
-        this.playlist.playNext();
     }
 
     onError(e) {
-        if (!this.audio.src || !this.currentLectureId) {
+        if (!this.audio.src || !this.lectureId) {
             return;
         }
         
@@ -441,18 +290,18 @@ export class LecturePlayer {
     }
 
     async saveCurrentProgress(completed = false) {
-        if (!this.currentLectureId || !this.isAudioReady || !this.isFullyLoaded) return;
+        if (!this.lectureId || !this.isAudioReady || !this.isFullyLoaded) return;
 
         const currentTime = this.audio.currentTime;
-        const durationFromData = this.currentCard ? parseFloat(this.currentCard.dataset.duration || '0') : 0;
-        const duration = durationFromData > 0 ? durationFromData : this.audio.duration;
+        const container = document.querySelector('.audio-player-section');
+        const duration = parseFloat(container?.dataset.duration || '0') || this.audio.duration;
         
         if (!duration) return;
         
         if (Math.abs(currentTime - this.lastSavedTime) < 2 && !completed) return;
 
         try {
-            const response = await fetch(`/api/v1/lectures/${this.currentLectureId}/progress/`, {
+            const response = await fetch(`/api/v1/lectures/${this.lectureId}/progress/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -465,36 +314,10 @@ export class LecturePlayer {
             });
 
             if (response.ok) {
-                const data = await response.json();
-                this.playlist.updateLectureUI(this.currentLectureId, data);
                 this.lastSavedTime = currentTime;
             }
         } catch (error) {
             console.error('Failed to save progress:', error);
-        }
-    }
-
-    async resetCompletedLecture(lectureId) {
-        try {
-            const response = await fetch(`/api/v1/lectures/${lectureId}/progress/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': this.getCSRFToken()
-                },
-                body: JSON.stringify({
-                    current_time: 0,
-                    completed: false
-                })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                this.playlist.updateLectureUI(lectureId, data);
-                console.log('Completed lecture reset to beginning');
-            }
-        } catch (error) {
-            console.error('Failed to reset completed lecture:', error);
         }
     }
 

@@ -29,7 +29,7 @@
     
     <div class="card-list">
         {% for topic in topics %}
-        <a href="{% url 'lecture:topic_player' topic.id %}" class="card-item">
+        <a href="{% url 'lecture:topic_detail' topic.id %}" class="card-item">
             <div class="card-icon">
                 {% if topic.cover %}
                     <img src="{{ topic.cover.url }}" alt="{{ topic.title }}">

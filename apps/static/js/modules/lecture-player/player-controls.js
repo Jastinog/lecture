@@ -2,8 +2,6 @@ export class PlayerControls {
     constructor(player) {
         this.player = player;
         this.playPauseBtn = document.getElementById('btn-play-pause');
-        this.prevBtn = document.getElementById('btn-prev');
-        this.nextBtn = document.getElementById('btn-next');
         this.rewindBtn = document.getElementById('btn-rewind');
         this.forwardBtn = document.getElementById('btn-forward');
     }
@@ -17,8 +15,6 @@ export class PlayerControls {
             });
         }
         
-        this.prevBtn?.addEventListener('click', () => this.player.playlist.playPrevious());
-        this.nextBtn?.addEventListener('click', () => this.player.playlist.playNext());
         this.rewindBtn?.addEventListener('click', () => this.skip(-this.player.SKIP_SECONDS));
         this.forwardBtn?.addEventListener('click', () => this.skip(this.player.SKIP_SECONDS));
 
@@ -54,13 +50,6 @@ export class PlayerControls {
     }
 
     togglePlayPause() {
-        if (!this.player.currentCard) {
-            // Updated selector: .lecture-card → .card-item
-            const firstCard = document.querySelector('.card-item');
-            if (firstCard) this.player.playLecture(firstCard);
-            return;
-        }
-
         if (this.player.audio.paused) {
             this.player.audio.play().catch(e => console.error('Play failed:', e));
         } else {

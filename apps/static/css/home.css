@@ -358,9 +358,9 @@
     }
     
     .card-icon {
-        width: 2.5rem;
-        height: 2.5rem;
-        font-size: 0.75rem;
+        width: 3.5rem;
+        height: 3.5rem;
+        font-size: 0.875rem;
     }
     
     .card-title {
@@ -378,17 +378,17 @@
     }
     
     .compact-card-icon {
-        width: 2.5rem;
-        height: 2.5rem;
-        font-size: 0.75rem;
+        width: 3.5rem;
+        height: 3.5rem;
+        font-size: 0.875rem;
     }
     
     .compact-card-title {
-        font-size: 0.75rem;
+        font-size: 0.875rem;
     }
     
     .compact-card-meta {
-        font-size: 0.625rem;
+        font-size: 0.75rem;
     }
     
     .featured-badge {

@@ -398,9 +398,9 @@
     }
     
     .header-avatar {
-        width: 3rem;
-        height: 3rem;
-        font-size: 1rem;
+        width: 4rem;
+        height: 4rem;
+        font-size: 1.125rem;
     }
     
     .header-title { font-size: 1.125rem; }
@@ -415,9 +415,9 @@
     .card-item { padding: 0.625rem; }
     
     .card-icon {
-        width: 3rem;
-        height: 3rem;
-        font-size: 0.75rem;
+        width: 3.5rem;
+        height: 3.5rem;
+        font-size: 0.875rem;
     }
     
     .card-title { font-size: 0.875rem; }

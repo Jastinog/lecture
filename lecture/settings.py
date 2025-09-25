@@ -28,6 +28,7 @@ env.read_env(str(BASE_DIR) + "/.env")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.str("DEBUG")
+ENVIRONMENT = env.str("ENVIRONMENT")
 
 BACKEND_URL = env.str("BACKEND_URL", "http://127.0.0.1:8000")
 

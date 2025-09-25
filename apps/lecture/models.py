@@ -3,29 +3,39 @@ import os
 import hashlib
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.conf import settings
 
 from apps.users.models import User
+
+
+def get_lecturers_folder():
+    """Get lecturers folder name based on environment"""
+    env = getattr(settings, "ENVIRONMENT", "dev")
+    return "lecturers_dev" if env != "prod" else "lecturers"
 
 
 def lecture_upload_path(instance, filename):
     """Generate nested upload path for lecture files using IDs"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{instance.topic.lecturer.id}/topics/{instance.topic.id}/lectures/{short_name}"
+    folder = get_lecturers_folder()
+    return f"{folder}/{instance.topic.lecturer.id}/topics/{instance.topic.id}/lectures/{short_name}"
 
 
 def lecturer_photo_path(instance, filename):
     """Upload path for lecturer photos using ID"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{instance.id}/photo/{short_name}"
+    folder = get_lecturers_folder()
+    return f"{folder}/{instance.id}/photo/{short_name}"
 
 
 def topic_cover_path(instance, filename):
     """Upload path for topic covers using IDs"""
     ext = os.path.splitext(filename)[1].lower()
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
-    return f"lecturers/{instance.lecturer.id}/topics/{instance.id}/cover/{short_name}"
+    folder = get_lecturers_folder()
+    return f"{folder}/{instance.lecturer.id}/topics/{instance.id}/cover/{short_name}"
 
 
 class Language(models.Model):

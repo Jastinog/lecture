@@ -8,7 +8,7 @@ export class FavoriteHandler {
         document.addEventListener('click', (e) => {
             if (e.target.closest('.favorite-btn')) {
                 e.preventDefault();
-                e.stopPropagation(); // Останавливаем всплытие события
+                e.stopPropagation();
                 this.toggleFavorite(e.target.closest('.favorite-btn'));
             }
         });
@@ -26,7 +26,6 @@ export class FavoriteHandler {
                     'X-CSRFToken': this.getCSRFToken()
                 },
                 body: JSON.stringify({
-                    lecture_id: lectureId,
                     action: isActive ? 'remove' : 'add'
                 })
             });
@@ -34,11 +33,21 @@ export class FavoriteHandler {
             if (response.ok) {
                 button.classList.toggle('active', !isActive);
                 
-                // Optional: Show feedback animation
+                // Update button text if it exists
+                const btnText = button.querySelector('.btn-text');
+                if (btnText) {
+                    btnText.textContent = button.classList.contains('active') 
+                        ? 'Убрать из избранного' 
+                        : 'Добавить в избранное';
+                }
+                
+                // Animate heart
                 const icon = button.querySelector('i');
-                if (!isActive) {
-                    icon.style.animation = 'favoriteAnimation 0.3s ease';
-                    setTimeout(() => icon.style.animation = '', 300);
+                if (!isActive && icon) {
+                    icon.style.animation = 'favoriteAnimation 0.6s ease-in-out';
+                    setTimeout(() => {
+                        icon.style.animation = '';
+                    }, 600);
                 }
             }
         } catch (error) {

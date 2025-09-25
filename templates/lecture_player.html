@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load time_filters %}
+
+{% block title %}{{ lecture.title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/player.css' %}">
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+
+<div class="page-container player-container">
+    <div class="back-button">
+        <a href="{% url 'lecture:topic_detail' topic.id %}" class="back-link">
+            <i class="fas fa-arrow-left"></i>
+            Назад к {{ topic.title|truncatechars:30 }}
+        </a>
+    </div>
+    
+    <!-- Audio Player Section -->
+    <div class="audio-player-section" 
+         data-lecture-id="{{ lecture.id }}"
+         data-audio-url="{{ lecture.audio_file.url }}"
+         data-duration="{{ lecture.duration|default:0 }}"
+         {% if lecture_progress %}
+         data-current-time="{{ lecture_progress.current_time|default:0|floatformat:2 }}"
+         data-completed="{{ lecture_progress.completed|default:False|yesno:'true,false' }}"
+         data-progress="{{ lecture_progress.progress_percentage|default:0|floatformat:1 }}"
+         {% endif %}
+         {% if target_start_time %}
+         data-target-start-time="{{ target_start_time }}"
+         {% endif %}>
+        
+        <audio id="audio-player"></audio>
+
+        <!-- Player Header -->
+        <div class="player-header">
+            <div class="player-avatar">
+                {% if topic.lecturer.photo %}
+                    <img src="{{ topic.lecturer.photo.url }}" alt="{{ topic.lecturer.name }}">
+                {% else %}
+                    <i class="fas fa-user"></i>
+                {% endif %}
+            </div>
+            <div class="player-info">
+                <h1 class="player-lecturer">{{ topic.lecturer.name }}</h1>
+                <p class="player-topic">{{ topic.title }}</p>
+                <div class="player-meta">{{ lecture.order }} из {{ total_lectures }}</div>
+            </div>
+        </div>
+        
+        <div class="player-controls">
+            {% if prev_lecture %}
+            <a href="{% url 'lecture:lecture_player' prev_lecture.id %}" class="btn-control" aria-label="Previous">
+                <i class="fas fa-step-backward"></i>
+            </a>
+            {% else %}
+            <button class="btn-control" disabled aria-label="Previous">
+                <i class="fas fa-step-backward"></i>
+            </button>
+            {% endif %}
+
+            <button class="btn-control" id="btn-rewind" aria-label="Rewind 15s">
+                <i class="fas fa-rotate-left"></i>
+            </button>
+
+            <button class="btn-control btn-play-pause" id="btn-play-pause" aria-label="Play/Pause">
+                <i class="fas fa-play"></i>
+            </button>
+
+            <button class="btn-control" id="btn-forward" aria-label="Forward 15s">
+                <i class="fas fa-rotate-right"></i>
+            </button>
+
+            {% if next_lecture %}
+            <a href="{% url 'lecture:lecture_player' next_lecture.id %}" class="btn-control" aria-label="Next">
+                <i class="fas fa-step-forward"></i>
+            </a>
+            {% else %}
+            <button class="btn-control" disabled aria-label="Next">
+                <i class="fas fa-step-forward"></i>
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="player-progress" role="slider" aria-label="Progress bar">
+            <span class="time-current">0:00</span>
+            <div class="progress-bar">
+                <div class="progress-filled" {% if lecture_progress %}style="width: {{ lecture_progress.progress_percentage|default:0|floatformat:1 }}%"{% endif %}></div>
+            </div>
+            <span class="time-total">{{ lecture.duration|format_duration }}</span>
+        </div>
+    </div>
+
+    <!-- Bottom Controls - separate block -->
+    <div class="player-bottom-controls">
+        <div class="file-size">
+            <i class="fas fa-file-audio"></i>
+            <span>{{ lecture.file_size_mb }} MB</span>
+        </div>
+
+        <div class="player-actions">
+            <button class="action-btn download-btn" 
+                    data-lecture-id="{{ lecture.id }}"
+                    data-download-url="{{ lecture.audio_file.url }}"
+                    aria-label="Скачать лекцию">
+                <i class="fas fa-cloud-download-alt"></i>
+                <span>Скачать</span>
+            </button>
+
+            <button class="action-btn share-btn" 
+                    data-lecture-id="{{ lecture.id }}"
+                    data-topic-id="{{ topic.id }}"
+                    aria-label="Поделиться ссылкой">
+                <i class="fas fa-share-alt"></i>
+                <span>Поделиться</span>
+            </button>
+
+            {% if user.is_authenticated %}
+            <button class="favorite-btn {% if is_favorite %}active{% endif %}" 
+                    data-lecture-id="{{ lecture.id }}"
+                    aria-label="Добавить в избранное">
+                <i class="fas fa-heart"></i>
+                <span>{% if is_favorite %}Убрать из избранного{% else %}Добавить в избранное{% endif %}</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/app.js' %}"></script>
+{% endblock %}

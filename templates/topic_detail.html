@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load time_filters %}
+
+{% block title %}{{ topic.title }} - Лекции{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="back-button">
+        <a href="{% url 'lecture:lecturer_detail' topic.lecturer.id %}" class="back-link">
+            <i class="fas fa-arrow-left"></i>
+            Назад к {{ topic.lecturer.name|truncatechars:30 }}
+        </a>
+    </div>
+    
+    <div class="page-header">
+        <div class="header-avatar">
+            {% if topic.cover %}
+                <img src="{{ topic.cover.url }}" alt="{{ topic.title }}">
+            {% else %}
+                <i class="fas fa-headphones"></i>
+            {% endif %}
+        </div>
+        <div class="header-content">
+            <h1 class="header-title">{{ topic.title }}</h1>
+            <p class="header-subtitle">{{ topic.lecturer.name }}</p>
+        </div>
+        <div class="header-meta">{{ lecture_count }} лекций</div>
+    </div>
+    
+    <div class="card-list">
+        {% for lecture in lectures %}
+        <a href="{% url 'lecture:lecture_player' lecture.id %}" class="card-item">
+            <div class="card-icon">{{ lecture.order }}</div>
+            
+            <div class="card-content">
+                <h3 class="card-title">{{ lecture.title }}</h3>
+                <div class="card-meta">
+                    {{ lecture.file_size_mb }} MB • {{ lecture.duration|format_duration }}
+                    {% if lecture.year %} • {{ lecture.year }}{% endif %}
+                </div>
+
+                {% if user.is_authenticated %}
+                <div class="card-progress">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill {% if lecture.progress.completed %}completed{% elif lecture.progress.progress_percentage > 0 %}in-progress{% endif %}" 
+                             style="width: {{ lecture.progress.progress_percentage|default:0|floatformat:1 }}%"></div>
+                    </div>
+                </div>
+
+                <div class="card-status">
+                    <div class="status-group">
+                        {% if lecture.progress.completed %}
+                            <span class="status-badge status-completed">
+                                <i class="fas fa-check"></i>
+                                Прослушано
+                            </span>
+                        {% elif lecture.progress.progress_percentage > 0 %}
+                            <span class="status-badge status-in-progress">
+                                <i class="fas fa-play"></i>
+                                {{ lecture.progress.progress_percentage|default:0|floatformat:0 }}%
+                            </span>
+                        {% else %}
+                            <span class="status-badge status-not-started">
+                                <i class="fas fa-circle"></i>
+                                Новая
+                            </span>
+                        {% endif %}
+
+                        <span class="listen-count">
+                            <i class="fas fa-repeat"></i>
+                            {{ lecture.progress.listen_count|default:0 }}x
+                        </span>
+                    </div>
+
+                    {% if user.is_authenticated %}
+                    <div class="action-buttons">
+                        <button class="favorite-btn {% if lecture.is_favorite %}active{% endif %}" 
+                                data-lecture-id="{{ lecture.id }}"
+                                onclick="event.preventDefault(); event.stopPropagation(); toggleFavorite(this);"
+                                aria-label="Добавить в избранное">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </a>
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-headphones"></i>
+            <p>В этой теме пока нет лекций</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if user.is_authenticated %}
+<script src="{% static 'js/modules/favorite-handler.js' %}"></script>
+{% endif %}
+{% endblock %}
