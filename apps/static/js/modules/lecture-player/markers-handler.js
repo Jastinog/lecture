@@ -55,11 +55,6 @@ export class MarkersHandler {
     }
 
     attachSingleMarkerHandlers(item) {
-        // Remove existing listeners to prevent duplicates
-        const newItem = item.cloneNode(true);
-        item.parentNode.replaceChild(newItem, item);
-        item = newItem;
-
         // Click on marker to seek
         item.addEventListener('click', (e) => {
             if (e.target.closest('.marker-actions') || e.target.closest('.marker-input')) {
