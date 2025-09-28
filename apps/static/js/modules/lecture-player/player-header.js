@@ -7,47 +7,60 @@ export class PlayerHeader {
     }
 
     init() {
-        // Any header-specific initialization can go here
+        if (this.nowPlayingTitle) {
+            const initialTitle = this.nowPlayingTitle.textContent.trim();
+            if (initialTitle && initialTitle !== '- - -') {
+                this.updateNowPlaying(initialTitle);
+            }
+        }
     }
 
     updateNowPlaying(title) {
-        if (this.nowPlayingTitle && this.nowPlayingContainer) {
-            // Clear any existing timeout
-            if (this.scrollTimeout) {
-                clearTimeout(this.scrollTimeout);
-            }
+        if (!this.nowPlayingTitle || !this.nowPlayingContainer) return;
 
-            // Remove scrolling class and reset
-            this.nowPlayingTitle.classList.remove('scrolling');
-            this.nowPlayingTitle.textContent = title;
-            this.nowPlayingTitle.setAttribute('data-title', title);
+        if (this.scrollTimeout) {
+            clearTimeout(this.scrollTimeout);
+        }
+
+        // Reset animation
+        this.nowPlayingTitle.classList.remove('scrolling');
+        this.nowPlayingTitle.textContent = title;
+        
+        // Force reflow
+        this.nowPlayingTitle.offsetHeight;
+        
+        // Check if scrolling is needed
+        requestAnimationFrame(() => {
+            this.checkAndStartScrolling();
+        });
+    }
+
+    checkAndStartScrolling() {
+        if (!this.nowPlayingTitle || !this.nowPlayingContainer) return;
+
+        const titleWidth = this.nowPlayingTitle.scrollWidth;
+        const containerWidth = this.nowPlayingContainer.offsetWidth;
+        
+        if (titleWidth > containerWidth - 10) {
+            // Calculate the exact distance to move
+            const moveDistance = titleWidth - containerWidth + 20; // 20px padding
             
-            // Force reflow
-            this.nowPlayingTitle.offsetHeight;
+            // Update CSS custom property for animation
+            this.nowPlayingTitle.style.setProperty('--move-distance', `-${moveDistance}px`);
             
-            // Check if scrolling is needed after a brief delay
-            setTimeout(() => {
-                const titleWidth = this.nowPlayingTitle.scrollWidth;
-                const containerWidth = this.nowPlayingContainer.offsetWidth;
-                
-                if (titleWidth > containerWidth) {
-                    // Start scrolling immediately
-                    this.nowPlayingTitle.classList.add('scrolling');
-                }
-            }, 100);
+            // Start animation
+            this.nowPlayingTitle.classList.add('scrolling');
         }
     }
 
     setPlaceholder() {
-        if (this.nowPlayingTitle) {
-            // Clear any existing timeout
-            if (this.scrollTimeout) {
-                clearTimeout(this.scrollTimeout);
-            }
-            
-            this.nowPlayingTitle.textContent = '- - -';
-            this.nowPlayingTitle.classList.remove('scrolling');
-            this.nowPlayingTitle.removeAttribute('data-title');
+        if (!this.nowPlayingTitle) return;
+        
+        if (this.scrollTimeout) {
+            clearTimeout(this.scrollTimeout);
         }
+        
+        this.nowPlayingTitle.classList.remove('scrolling');
+        this.nowPlayingTitle.textContent = '- - -';
     }
 }

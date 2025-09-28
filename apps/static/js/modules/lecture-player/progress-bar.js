@@ -35,7 +35,9 @@ export class ProgressBar {
     }
 
     init() {
-        this.progressBar?.addEventListener('click', (e) => this.seek(e));
+        if (this.progressBar) {
+            this.progressBar.addEventListener('click', (e) => this.seek(e));
+        }
         
         this.player.audio.addEventListener('progress', () => this.updateBuffer());
         this.player.audio.addEventListener('loadstart', () => {
@@ -67,8 +69,6 @@ export class ProgressBar {
             this.timeCurrent.textContent = '0:00';
         }
     }
-
-
 
     hideLoading() {
         if (this.loadingIndicator) {
@@ -175,24 +175,18 @@ export class ProgressBar {
     }
 
     seek(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
         const container = document.querySelector('.audio-player-section');
         const duration = parseFloat(container?.dataset.duration || '0') || this.player.audio.duration;
         
-        if (!this.player.isAudioReady || !duration || this.isSeeking) return;
-        
-        e.preventDefault();
-        e.stopPropagation();
+        if (!duration) return;
         
         const rect = this.progressBar.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const percent = Math.max(0, Math.min(1, clickX / rect.width));
         const newTime = percent * duration;
-        
-        this.performSeek(newTime, percent);
-    }
-
-    performSeek(newTime, percent) {
-        this.isSeeking = true;
         
         if (this.progressFilled) {
             this.progressFilled.style.width = `${percent * 100}%`;
@@ -201,21 +195,29 @@ export class ProgressBar {
             this.timeCurrent.textContent = this.player.formatTime(newTime);
         }
         
-        this.player.audio.currentTime = newTime;
-        
-        const onSeeked = () => {
-            this.isSeeking = false;
-            this.player.audio.removeEventListener('seeked', onSeeked);
-            this.player.saveCurrentProgress();
-        };
-        
-        this.player.audio.addEventListener('seeked', onSeeked);
-        
-        setTimeout(() => {
-            if (this.isSeeking) {
+        if (this.player.audio.src && this.player.audio.readyState >= 1) {
+            this.isSeeking = true;
+            
+            try {
+                this.player.audio.currentTime = newTime;
+                
+                const onSeeked = () => {
+                    this.isSeeking = false;
+                    this.player.audio.removeEventListener('seeked', onSeeked);
+                };
+                
+                this.player.audio.addEventListener('seeked', onSeeked);
+                
+                setTimeout(() => {
+                    if (this.isSeeking) {
+                        this.isSeeking = false;
+                    }
+                }, 1000);
+            } catch (e) {
                 this.isSeeking = false;
-                this.player.saveCurrentProgress();
             }
-        }, 2000);
+        } else {
+            this.player.targetSeekTime = newTime;
+        }
     }
 }

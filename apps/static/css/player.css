@@ -71,15 +71,16 @@
     font-size: 0.75rem;
 }
 
-/* Lecture Title Scrolling */
-.lecture-title {
+/* Now Playing Title Simple Scrolling */
+.now-playing {
     margin-bottom: 1.5rem;
     overflow: hidden;
     position: relative;
     width: 100%;
+    height: 1.5rem;
 }
 
-.lecture-title h2 {
+.now-playing-title {
     margin: 0;
     white-space: nowrap;
     color: #F9FAFB;
@@ -89,24 +90,41 @@
     display: inline-block;
     position: relative;
     transition: transform 0.5s ease-in-out;
+    --move-distance: 0px;
 }
 
-.lecture-title h2.scrolling {
-    animation: scroll-lecture-title 15s linear infinite;
+.now-playing-title.scrolling {
+    animation: slide-and-pause 60s ease-in-out infinite;
 }
 
-@keyframes scroll-lecture-title {
+@keyframes slide-and-pause {
     0% {
-        transform: translateX(100%);
+        transform: translateX(0);
     }
-    10% {
-        transform: translateX(100%);
+    15% {
+        transform: translateX(var(--move-distance));
     }
-    90% {
-        transform: translateX(-100%);
+    85% {
+        transform: translateX(var(--move-distance));
     }
     100% {
-        transform: translateX(-100%);
+        transform: translateX(0);
+    }
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .now-playing {
+        margin-bottom: 1rem;
+        height: 1.25rem;
+    }
+    
+    .now-playing-title {
+        font-size: 1rem;
+    }
+    
+    .now-playing-title.scrolling {
+        animation: slide-and-pause 60s ease-in-out infinite;
     }
 }
 
