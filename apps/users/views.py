@@ -15,8 +15,7 @@ def login_view(request):
         user = authenticate(request, username=email, password=password)
         if user is not None:
             login(request, user)
-            next_url = request.GET.get("next", "lecture:lecturers_list")
-            return redirect(next_url)
+            return redirect("home")
         else:
             messages.error(request, "Invalid email or password.")
 
