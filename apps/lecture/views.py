@@ -10,6 +10,7 @@ from .models import (
     Lecture,
     LectureProgress,
     FavoriteLecture,
+    LectureMarker
 )
 
 
@@ -69,9 +70,9 @@ def lecture_player(request, lecture_id, start_time=None):
     )
     topic = lecture.topic
 
-    # Get user progress for this lecture
     lecture_progress = None
     is_favorite = False
+    markers = []
 
     if request.user.is_authenticated:
         lecture_progress = LectureProgress.objects.filter(
@@ -81,8 +82,11 @@ def lecture_player(request, lecture_id, start_time=None):
         is_favorite = FavoriteLecture.objects.filter(
             user=request.user, lecture=lecture
         ).exists()
+        
+        markers = LectureMarker.objects.filter(
+            user=request.user, lecture=lecture
+        ).order_by('timestamp')
 
-    # Get navigation lectures (prev/next in same topic)
     prev_lecture = (
         topic.lectures.filter(order__lt=lecture.order).order_by("-order").first()
     )
@@ -97,6 +101,7 @@ def lecture_player(request, lecture_id, start_time=None):
         "topic": topic,
         "lecture_progress": lecture_progress,
         "is_favorite": is_favorite,
+        "markers": markers,
         "prev_lecture": prev_lecture,
         "next_lecture": next_lecture,
         "total_lectures": total_lectures,

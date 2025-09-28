@@ -335,3 +335,67 @@ class LectureHistory(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.lecture.title} ({self.listened_at})"
+
+
+class LectureMarker(models.Model):
+    """User markers/notes for specific timestamps in lectures"""
+    
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name="lecture_markers"
+    )
+    lecture = models.ForeignKey(
+        Lecture, 
+        on_delete=models.CASCADE, 
+        related_name="markers"
+    )
+    timestamp = models.FloatField(
+        help_text="Marker timestamp in seconds"
+    )
+    text = models.TextField(
+        help_text="Marker note text"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["lecture", "timestamp"]
+        indexes = [
+            models.Index(fields=["user", "lecture"]),
+            models.Index(fields=["lecture", "timestamp"]),
+            models.Index(fields=["user", "created_at"]),
+        ]
+
+    def __str__(self):
+        text_preview = self.text[:50] + "..." if len(self.text) > 50 else self.text
+        return f"{self.user.email} - {self.lecture.title} ({self.formatted_timestamp}) - {text_preview}"
+
+    @property
+    def formatted_timestamp(self):
+        """Format timestamp as MM:SS or HH:MM:SS"""
+        if self.timestamp is None:
+            return "0:00"
+        
+        total_seconds = int(self.timestamp)
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        
+        if hours > 0:
+            return f"{hours}:{minutes:02d}:{seconds:02d}"
+        return f"{minutes}:{seconds:02d}"
+
+    def clean(self):
+        """Validate timestamp and text"""
+        if self.timestamp is None or self.timestamp < 0:
+            raise ValidationError("Timestamp cannot be negative or empty")
+        
+        if not self.text or not self.text.strip():
+            raise ValidationError("Marker text cannot be empty")
+        
+        if self.lecture and self.lecture.duration:
+            if self.timestamp > self.lecture.duration:
+                raise ValidationError(
+                    f"Timestamp {self.formatted_timestamp} exceeds lecture duration"
+                )

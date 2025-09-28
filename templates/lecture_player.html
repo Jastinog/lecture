@@ -94,6 +94,9 @@
             {% endif %}
         </div>
 
+        <!-- Divider -->
+        <div class="player-divider"></div>
+
         <div class="player-progress" role="slider" aria-label="Progress bar">
             <span class="time-current">0:00</span>
             <div class="progress-bar">
@@ -101,6 +104,40 @@
             </div>
             <span class="time-total">{{ lecture.duration|format_duration }}</span>
         </div>
+
+        <!-- Markers Section -->
+        {% if user.is_authenticated %}
+        <!-- Divider -->
+        <div class="player-divider"></div>
+
+        <div class="markers-header">
+            <span class="markers-title">Метки</span>
+            <button class="add-marker-btn" id="add-marker-btn">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
+        {% if markers %}
+        <div class="markers-list">
+            {% for marker in markers %}
+            <div class="marker-item" data-timestamp="{{ marker.timestamp }}" data-marker-id="{{ marker.id }}">
+                <span class="marker-timestamp">{{ marker.formatted_timestamp }}</span>
+                <span class="marker-text">{{ marker.text }}</span>
+                <div class="marker-actions">
+                    <button class="marker-action-btn marker-edit-btn" 
+                            data-marker-id="{{ marker.id }}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="marker-action-btn marker-delete-btn" 
+                            data-marker-id="{{ marker.id }}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endif %}
 
         <!-- Divider -->
         <div class="player-divider"></div>

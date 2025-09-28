@@ -15,6 +15,7 @@ from apps.lecture.models import (
     CurrentLecture,
     FavoriteLecture,
     LectureHistory,
+    LectureMarker,
 )
 
 from .services import LectureImport
@@ -561,4 +562,65 @@ class LectureHistoryAdmin(admin.ModelAdmin):
             super()
             .get_queryset(request)
             .select_related("user", "lecture__topic__lecturer", "lecture__language")
+        )
+
+
+@admin.register(LectureMarker)
+class LectureMarkerAdmin(admin.ModelAdmin):
+    list_display = [
+        'user_email', 
+        'lecture_title', 
+        'formatted_timestamp', 
+        'text_preview',
+        'created_at'
+    ]
+    list_filter = [
+        'created_at',
+        'lecture__topic__lecturer',
+        'lecture__topic',
+        'lecture__language'
+    ]
+    search_fields = [
+        'user__email',
+        'user__first_name', 
+        'user__last_name',
+        'lecture__title',
+        'lecture__topic__title',
+        'text'
+    ]
+    readonly_fields = ['created_at', 'updated_at', 'formatted_timestamp']
+    raw_id_fields = ['user', 'lecture']
+    ordering = ['-created_at']
+    
+    fieldsets = (
+        (None, {
+            'fields': ('user', 'lecture', 'timestamp', 'formatted_timestamp')
+        }),
+        ('Marker Content', {
+            'fields': ('text',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def user_email(self, obj):
+        return obj.user.email
+    user_email.short_description = 'User'
+    user_email.admin_order_field = 'user__email'
+
+    def lecture_title(self, obj):
+        return obj.lecture.title
+    lecture_title.short_description = 'Lecture'
+    lecture_title.admin_order_field = 'lecture__title'
+
+    def text_preview(self, obj):
+        return obj.text[:100] + "..." if len(obj.text) > 100 else obj.text
+    text_preview.short_description = 'Text Preview'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'user', 
+            'lecture__topic__lecturer'
         )
