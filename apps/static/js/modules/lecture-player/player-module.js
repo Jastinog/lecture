@@ -17,6 +17,7 @@ export class LecturePlayer {
         this.isAudioReady = false;
         this.isFullyLoaded = false;
         this.pendingPlay = false;
+        this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
         // Constants
         this.SKIP_SECONDS = 15;
@@ -59,7 +60,23 @@ export class LecturePlayer {
 
     onLoadComplete(data) {
         this.isFullyLoaded = true;
+        this.isAudioReady = true;
         this.hideLoadingState();
+        
+        this.controls.setReadyState();
+        
+        if (this.targetSeekTime !== null && this.targetSeekTime > 0) {
+            setTimeout(() => {
+                this.applySavedPosition();
+            }, 100);
+        }
+        
+        if (this.pendingPlay) {
+            this.pendingPlay = false;
+            setTimeout(() => {
+                this.startPlayback();
+            }, this.targetSeekTime > 0 ? 200 : 50);
+        }
     }
 
     onLoadError(error) {
@@ -89,6 +106,7 @@ export class LecturePlayer {
         // Audio events
         this.audio.addEventListener('loadstart', () => this.onLoadStart());
         this.audio.addEventListener('loadedmetadata', () => this.onMetadataLoaded());
+        this.audio.addEventListener('loadeddata', () => this.onLoadedData());
         this.audio.addEventListener('canplay', () => this.onCanPlay());
         this.audio.addEventListener('canplaythrough', () => this.onCanPlayThrough());
         this.audio.addEventListener('timeupdate', () => this.onTimeUpdate());
@@ -125,12 +143,27 @@ export class LecturePlayer {
         }
     }
 
+    onLoadedData() {
+        // Этот event не используется
+    }
+
     onCanPlay() {
         console.log("Audio can start playing");
     }
 
     onCanPlayThrough() {
-        if (this.isFullyLoaded && !this.isAudioReady) {
+        // Не используется для проверки готовности
+    }
+
+    checkAudioReadiness() {
+        // Убираем сложную логику - аудио готово когда загрузка завершена
+        if (this.isFullyLoaded && this.audio.src) {
+            this.setAudioReady();
+        }
+    }
+
+    setAudioReady() {
+        if (!this.isAudioReady) {
             this.isAudioReady = true;
             this.hideLoadingState();
             this.controls.setReadyState();
@@ -201,11 +234,21 @@ export class LecturePlayer {
                 
                 const objectURL = await this.audioLoader.loadAudio(this.lectureId, audioUrl);
                 this.audio.src = objectURL;
+                
+                // На iOS принудительно загружаем метаданные
+                if (this.isIOS) {
+                    this.audio.load();
+                }
             } else {
                 this.isLoading = true;
                 
                 const objectURL = await this.audioLoader.loadAudio(this.lectureId, audioUrl);
                 this.audio.src = objectURL;
+                
+                // На iOS принудительно загружаем метаданные
+                if (this.isIOS) {
+                    this.audio.load();
+                }
             }
         } catch (error) {
             this.onLoadError(error);
