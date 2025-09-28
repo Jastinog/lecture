@@ -1,3 +1,7 @@
+/* =============================================================================
+   PLAYER CONTAINER
+   ============================================================================= */
+
 .player-container {
     max-width: 800px;
     margin: 0 auto;
@@ -6,6 +10,10 @@
     border-radius: 12px;
     min-height: calc(100vh - 2rem);
 }
+
+/* =============================================================================
+   AUDIO PLAYER SECTION
+   ============================================================================= */
 
 .audio-player-section {
     flex-shrink: 0;
@@ -16,6 +24,10 @@
     border: 1px solid var(--bg-3);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
+
+/* =============================================================================
+   PLAYER HEADER
+   ============================================================================= */
 
 .player-header {
     display: flex;
@@ -71,7 +83,10 @@
     font-size: 0.75rem;
 }
 
-/* Now Playing Title Simple Scrolling */
+/* =============================================================================
+   NOW PLAYING TITLE
+   ============================================================================= */
+
 .now-playing {
     margin-bottom: 1.5rem;
     overflow: hidden;
@@ -112,21 +127,9 @@
     }
 }
 
-/* Mobile adjustments */
-@media (max-width: 768px) {
-    .now-playing {
-        margin-bottom: 1rem;
-        height: 1.25rem;
-    }
-    
-    .now-playing-title {
-        font-size: 1rem;
-    }
-    
-    .now-playing-title.scrolling {
-        animation: slide-and-pause 60s ease-in-out infinite;
-    }
-}
+/* =============================================================================
+   PLAYER CONTROLS
+   ============================================================================= */
 
 .player-controls {
     display: flex;
@@ -151,7 +154,9 @@
     transition: all 0.2s ease;
 }
 
-.btn-control:hover { background: #4B5563; }
+.btn-control:hover { 
+    background: #4B5563; 
+}
 
 .btn-play-pause {
     background: var(--brand);
@@ -162,7 +167,6 @@
 
 .btn-play-pause.loading {
     background: var(--bg-2);
-
     color: #fff !important;
 }
 
@@ -176,6 +180,10 @@
     font-size: 12px !important;
     color: #fff !important;
 }
+
+/* =============================================================================
+   PLAYER PROGRESS
+   ============================================================================= */
 
 .player-progress {
     display: flex;
@@ -251,12 +259,25 @@
     transition: width 0.3s ease-out;
 }
 
+@keyframes progress-bar-stripes {
+    from { background-position: 1rem 0; }
+    to   { background-position: 0 0; }
+}
+
+/* =============================================================================
+   PLAYER DIVIDER
+   ============================================================================= */
+
 .player-divider {
     width: 100%;
     height: 1px;
     background: var(--bg-3);
     margin: 1.5rem 0 1rem 0;
 }
+
+/* =============================================================================
+   PLAYER ACTIONS SECTION
+   ============================================================================= */
 
 .player-actions-section {
     display: flex;
@@ -339,7 +360,10 @@
     color: #ea580c;
 }
 
-/* Bottom controls section - separate block */
+/* =============================================================================
+   PLAYER BOTTOM CONTROLS SECTION
+   ============================================================================= */
+
 .player-bottom-controls {
     display: flex;
     justify-content: space-between;
@@ -422,7 +446,10 @@
     color: #ea580c;
 }
 
-/* Markers section styles - minimal design */
+/* =============================================================================
+   MARKERS SECTION
+   ============================================================================= */
+
 .markers-header {
     display: flex;
     justify-content: space-between;
@@ -509,7 +536,7 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    opacity: 0;
+    opacity: 1;
     transition: opacity 0.2s ease;
 }
 
@@ -545,22 +572,77 @@
     color: #ef4444;
 }
 
-@keyframes progress-bar-stripes {
-    from { background-position: 1rem 0; }
-    to   { background-position: 0 0; }
+/* =============================================================================
+   MARKER INPUT STYLES
+   ============================================================================= */
+
+.marker-input {
+    background: var(--bg-2);
+    border: 1px solid var(--bg-3);
+    border-radius: 0.25rem;
+    color: #F9FAFB;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.375rem;
+    flex: 1;
+    outline: none;
+    transition: border-color 0.2s ease;
 }
 
+.marker-input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+}
+
+.marker-input::placeholder {
+    color: #6B7280;
+}
+
+/* Save/Cancel button styles for new/editing markers */
+.marker-save-btn {
+    color: #10b981 !important;
+}
+
+.marker-save-btn:hover {
+    color: #059669 !important;
+    background: rgba(16, 185, 129, 0.1) !important;
+}
+
+.marker-cancel-btn {
+    color: #ef4444 !important;
+}
+
+.marker-cancel-btn:hover {
+    color: #dc2626 !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Enhanced marker item styles for editing state */
+.marker-item.editing {
+    background: rgba(17, 24, 39, 0.5);
+    margin: 0 -0.5rem;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    border-bottom: 1px solid rgba(75, 85, 99, 0.2);
+}
+
+/* =============================================================================
+   MOBILE RESPONSIVE STYLES
+   ============================================================================= */
+
 @media (max-width: 768px) {
+    /* Player Container */
     .player-container {
         margin: 0;
         padding: 0.75rem;
     }
 
+    /* Audio Player Section */
     .audio-player-section {
         padding: 0.75rem;
         margin-bottom: 0.75rem;
     }
 
+    /* Player Header */
     .player-header {
         margin-bottom: 1rem;
     }
@@ -583,18 +665,21 @@
         font-size: 0.625rem;
     }
 
-    .lecture-title {
+    /* Now Playing */
+    .now-playing {
         margin-bottom: 1rem;
+        height: 1.25rem;
     }
     
-    .lecture-title h2 {
+    .now-playing-title {
         font-size: 1rem;
     }
     
-    .lecture-title h2.scrolling {
-        animation: scroll-lecture-title 12s linear infinite;
+    .now-playing-title.scrolling {
+        animation: slide-and-pause 60s ease-in-out infinite;
     }
 
+    /* Player Controls */
     .player-controls { 
         gap: 0.5rem; 
         margin-bottom: 0.75rem; 
@@ -612,6 +697,7 @@
         font-size: 1.125rem; 
     }
 
+    /* Player Progress */
     .player-progress { 
         gap: 0.5rem; 
         padding: 0.5rem;
@@ -627,10 +713,12 @@
         height: 0.625rem; 
     }
 
+    /* Player Divider */
     .player-divider {
         margin: 1rem 0 0.75rem 0;
     }
 
+    /* Player Actions Section */
     .player-actions-section {
         gap: 0.75rem;
     }
@@ -657,6 +745,7 @@
         padding: 0.25rem;
     }
 
+    /* Player Bottom Controls */
     .player-bottom-controls {
         flex-direction: row;
         justify-content: space-between;
@@ -693,7 +782,7 @@
         display: none;
     }
 
-    /* Mobile styles for markers */
+    /* Markers Section Mobile */
     .markers-header {
         margin: 1rem 0 0.75rem 0;
     }
@@ -727,6 +816,7 @@
         font-size: 0.5rem;
         padding: 0.125rem 0.25rem;
         min-width: 2rem;
+        border-radius: 0;
     }
 
     .marker-text {
@@ -738,5 +828,25 @@
         height: 1rem;
         font-size: 0.5rem;
         padding: 0.125rem;
+    }
+
+    .marker-actions {
+        opacity: 1;
+    }
+
+    /* Marker Input Mobile */
+    .marker-input {
+        font-size: 0.625rem;
+        padding: 0.125rem 0.25rem;
+    }
+    
+    .marker-item {
+        gap: 0.375rem;
+        padding: 0.25rem 0;
+    }
+    
+    .marker-item.editing {
+        margin: 0 -0.375rem;
+        padding: 0.375rem;
     }
 }

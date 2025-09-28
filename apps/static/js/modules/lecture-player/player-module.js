@@ -5,6 +5,7 @@ import { AudioLoader } from './audio-loader.js';
 import { FavoriteHandler } from './favorite-handler.js';
 import { ShareHandler } from './share-handler.js';
 import { DownloadHandler } from './download-handler.js';
+import { MarkersHandler } from './markers-handler.js';
 
 export class LecturePlayer {
     constructor() {
@@ -31,6 +32,7 @@ export class LecturePlayer {
         this.favoriteHandler = new FavoriteHandler(this);
         this.shareHandler = new ShareHandler(this);
         this.downloadHandler = new DownloadHandler(this);
+        this.markersHandler = new MarkersHandler(this);
 
         this.init();
         this.loadLecture();
@@ -99,6 +101,7 @@ export class LecturePlayer {
         this.favoriteHandler.init();
         this.shareHandler.init();
         this.downloadHandler.init();
+        this.markersHandler.init();
 
         // Audio events
         this.audio.addEventListener('loadstart', () => this.onLoadStart());

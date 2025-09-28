@@ -12,4 +12,7 @@ urlpatterns = [
     ),
     # Toggle favorite
     path("<int:lecture_id>/favorite/", views.toggle_favorite, name="toggle_favorite"),
+
+    path("<int:lecture_id>/markers/", views.lecture_markers, name="lecture_markers"),
+    path("markers/<int:marker_id>/", views.marker_detail, name="marker_detail"),
 ]

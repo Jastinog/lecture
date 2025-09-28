@@ -10,7 +10,7 @@ from .models import (
     Lecture,
     LectureProgress,
     FavoriteLecture,
-    LectureMarker
+    LectureMarker,
 )
 
 
@@ -82,10 +82,10 @@ def lecture_player(request, lecture_id, start_time=None):
         is_favorite = FavoriteLecture.objects.filter(
             user=request.user, lecture=lecture
         ).exists()
-        
+
         markers = LectureMarker.objects.filter(
             user=request.user, lecture=lecture
-        ).order_by('timestamp')
+        ).order_by("timestamp")
 
     prev_lecture = (
         topic.lectures.filter(order__lt=lecture.order).order_by("-order").first()
