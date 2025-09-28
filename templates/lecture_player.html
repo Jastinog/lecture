@@ -51,6 +51,14 @@
                 <div class="player-meta">{{ lecture.order }} из {{ total_lectures }}</div>
             </div>
         </div>
+
+        <!-- Now Playing Section -->
+        <div class="now-playing">
+            <div class="now-playing-title">{{ lecture.title }}</div>
+        </div>
+
+        <!-- Divider -->
+        <div class="player-divider"></div>
         
         <div class="player-controls">
             {% if prev_lecture %}
@@ -67,7 +75,7 @@
                 <i class="fas fa-rotate-left"></i>
             </button>
 
-            <button class="btn-control btn-play-pause" id="btn-play-pause" aria-label="Play/Pause">
+            <button class="btn-control btn-play-pause loading" id="btn-play-pause" aria-label="Play/Pause">
                 <i class="fas fa-play"></i>
             </button>
 
@@ -89,44 +97,44 @@
         <div class="player-progress" role="slider" aria-label="Progress bar">
             <span class="time-current">0:00</span>
             <div class="progress-bar">
-                <div class="progress-filled" {% if lecture_progress %}style="width: {{ lecture_progress.progress_percentage|default:0|floatformat:1 }}%"{% endif %}></div>
+                <div class="progress-filled"></div>
             </div>
             <span class="time-total">{{ lecture.duration|format_duration }}</span>
         </div>
-    </div>
 
-    <!-- Bottom Controls - separate block -->
-    <div class="player-bottom-controls">
-        <div class="file-size">
-            <i class="fas fa-file-audio"></i>
-            <span>{{ lecture.file_size_mb }} MB</span>
-        </div>
+        <!-- Divider -->
+        <div class="player-divider"></div>
 
-        <div class="player-actions">
-            <button class="action-btn download-btn" 
-                    data-lecture-id="{{ lecture.id }}"
-                    data-download-url="{{ lecture.audio_file.url }}"
-                    aria-label="Скачать лекцию">
-                <i class="fas fa-cloud-download-alt"></i>
-                <span>Скачать</span>
-            </button>
+        <!-- Player Actions -->
+        <div class="player-actions-section">
+            <div class="file-size">
+                <i class="fas fa-file-audio"></i>
+                <span>{{ lecture.file_size_mb }} MB</span>
+            </div>
 
-            <button class="action-btn share-btn" 
-                    data-lecture-id="{{ lecture.id }}"
-                    data-topic-id="{{ topic.id }}"
-                    aria-label="Поделиться ссылкой">
-                <i class="fas fa-share-alt"></i>
-                <span>Поделиться</span>
-            </button>
+            <div class="player-actions">
+                <button class="action-btn download-btn" 
+                        data-lecture-id="{{ lecture.id }}"
+                        data-download-url="{{ lecture.audio_file.url }}"
+                        aria-label="Скачать лекцию">
+                    <i class="fas fa-cloud-download-alt"></i>
+                </button>
 
-            {% if user.is_authenticated %}
-            <button class="favorite-btn {% if is_favorite %}active{% endif %}" 
-                    data-lecture-id="{{ lecture.id }}"
-                    aria-label="Добавить в избранное">
-                <i class="fas fa-heart"></i>
-                <span>{% if is_favorite %}Убрать из избранного{% else %}Добавить в избранное{% endif %}</span>
-            </button>
-            {% endif %}
+                <button class="action-btn share-btn" 
+                        data-lecture-id="{{ lecture.id }}"
+                        data-topic-id="{{ topic.id }}"
+                        aria-label="Поделиться ссылкой">
+                    <i class="fas fa-share-alt"></i>
+                </button>
+
+                {% if user.is_authenticated %}
+                <button class="favorite-btn {% if is_favorite %}active{% endif %}" 
+                        data-lecture-id="{{ lecture.id }}"
+                        aria-label="Добавить в избранное">
+                    <i class="fas fa-heart"></i>
+                </button>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

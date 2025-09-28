@@ -4,14 +4,21 @@ export class PlayerControls {
         this.playPauseBtn = document.getElementById('btn-play-pause');
         this.rewindBtn = document.getElementById('btn-rewind');
         this.forwardBtn = document.getElementById('btn-forward');
+        this.originalPlayIcon = 'fas fa-play';
+        this.originalPauseIcon = 'fas fa-pause';
     }
 
     init() {
+        // Set initial disabled state
+        this.setLoadingState();
+        
         // Control buttons
         if (this.playPauseBtn) {
             this.playPauseBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.togglePlayPause();
+                if (!this.playPauseBtn.disabled) {
+                    this.togglePlayPause();
+                }
             });
         }
         
@@ -26,7 +33,9 @@ export class PlayerControls {
                 case ' ':
                 case 'k':
                     e.preventDefault();
-                    this.togglePlayPause();
+                    if (!this.playPauseBtn.disabled) {
+                        this.togglePlayPause();
+                    }
                     break;
                 case 'j':
                 case 'arrowleft':
@@ -42,14 +51,52 @@ export class PlayerControls {
         });
     }
 
+    setLoadingState() {
+        if (this.playPauseBtn) {
+            this.playPauseBtn.disabled = true;
+            this.playPauseBtn.classList.add('loading');
+            // const icon = this.playPauseBtn.querySelector('i');
+            // if (icon) {
+            //     icon.className = 'fas fa-spinner fa-spin';
+            // }
+        }
+    }
+
+    updateLoadingProgress(percent) {
+        if (this.playPauseBtn) {
+            const icon = this.playPauseBtn.querySelector('i');
+            if (icon && percent !== undefined) {
+                // Remove spinner and show percentage
+                icon.className = '';
+                icon.textContent = `${Math.round(percent)}`;
+                icon.style.fontSize = '12px';
+            }
+        }
+    }
+
+    setReadyState() {
+        if (this.playPauseBtn) {
+            this.playPauseBtn.disabled = false;
+            this.playPauseBtn.classList.remove('loading');
+            const icon = this.playPauseBtn.querySelector('i');
+            if (icon) {
+                icon.textContent = '';
+                icon.style.fontSize = '';
+                icon.className = this.originalPlayIcon;
+            }
+        }
+    }
+
     skip(seconds) {
-        if (!this.player.audio.duration) return;
+        if (!this.player.audio.duration || this.playPauseBtn.disabled) return;
         this.player.audio.currentTime = Math.max(0, 
             Math.min(this.player.audio.duration, this.player.audio.currentTime + seconds)
         );
     }
 
     togglePlayPause() {
+        if (this.playPauseBtn.disabled) return;
+        
         if (this.player.audio.paused) {
             this.player.audio.play().catch(e => console.error('Play failed:', e));
         } else {
@@ -58,9 +105,11 @@ export class PlayerControls {
     }
 
     updatePlayPauseBtn(isPlaying) {
+        if (this.playPauseBtn.disabled) return;
+        
         const icon = this.playPauseBtn?.querySelector('i');
         if (icon) {
-            icon.className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+            icon.className = isPlaying ? this.originalPauseIcon : this.originalPlayIcon;
         }
     }
 }

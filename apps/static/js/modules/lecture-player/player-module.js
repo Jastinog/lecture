@@ -54,6 +54,7 @@ export class LecturePlayer {
 
     onLoadProgress(data) {
         this.progressBar.updateLoadingProgress(data.percent);
+        this.controls.updateLoadingProgress(data.percent);
     }
 
     onLoadComplete(data) {
@@ -67,11 +68,6 @@ export class LecturePlayer {
         this.isAudioReady = false;
         this.pendingPlay = false;
         this.hideLoadingState();
-        this.showError('Ошибка загрузки аудио');
-    }
-
-    showLoadingState(message = 'Загрузка...') {
-        this.progressBar.showLoading(message);
     }
 
     hideLoadingState() {
@@ -137,6 +133,7 @@ export class LecturePlayer {
         if (this.isFullyLoaded && !this.isAudioReady) {
             this.isAudioReady = true;
             this.hideLoadingState();
+            this.controls.setReadyState();
             
             if (this.targetSeekTime !== null && this.targetSeekTime > 0) {
                 setTimeout(() => {
@@ -200,14 +197,12 @@ export class LecturePlayer {
         
         try {
             if (this.audioLoader.isLoaded(this.lectureId)) {
-                this.showLoadingState('Подготовка из кеша...');
                 this.isFullyLoaded = true;
                 
                 const objectURL = await this.audioLoader.loadAudio(this.lectureId, audioUrl);
                 this.audio.src = objectURL;
             } else {
                 this.isLoading = true;
-                this.showLoadingState('Начинаем загрузку...');
                 
                 const objectURL = await this.audioLoader.loadAudio(this.lectureId, audioUrl);
                 this.audio.src = objectURL;
@@ -222,7 +217,6 @@ export class LecturePlayer {
             this.startPlayback();
         } else {
             this.pendingPlay = true;
-            this.showLoadingState('Подготовка к воспроизведению...');
         }
     }
 
@@ -271,7 +265,6 @@ export class LecturePlayer {
         this.isFullyLoaded = false;
         this.pendingPlay = false;
         this.hideLoadingState();
-        this.showError('Ошибка воспроизведения');
     }
 
     startProgressUpdates() {

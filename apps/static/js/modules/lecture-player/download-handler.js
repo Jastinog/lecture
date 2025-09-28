@@ -1,6 +1,7 @@
 export class DownloadHandler {
-    constructor(player) {
+    constructor(player, audioLoader) {
         this.player = player;
+        this.audioLoader = audioLoader;
     }
 
     init() {
@@ -14,7 +15,7 @@ export class DownloadHandler {
     }
 
     async handleDownload(button) {
-        const lectureId = button.dataset.lectureId;
+        const lectureId = parseInt(button.dataset.lectureId);
         const downloadUrl = button.dataset.downloadUrl;
         
         if (!lectureId) {
@@ -30,24 +31,38 @@ export class DownloadHandler {
         this.showDownloadFeedback(button, 'starting');
         
         try {
-            if (downloadUrl) {
-                this.downloadFile(downloadUrl, this.generateFileName(lectureId));
+            let blob;
+            
+            if (this.audioLoader && this.audioLoader.isLoaded(lectureId)) {
+                blob = this.audioLoader.loadedBlobs.get(lectureId);
+                this.downloadBlob(blob, this.generateFileName(lectureId));
+                this.showDownloadFeedback(button, 'success');
             } else {
-                const response = await fetch(`/api/v1/lectures/${lectureId}/audio/`, {
-                    headers: { 'X-CSRFToken': this.getCSRFToken() }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                if (downloadUrl) {
+                    const response = await fetch(downloadUrl);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    blob = await response.blob();
+                } else {
+                    const response = await fetch(`/api/v1/lectures/${lectureId}/audio/`, {
+                        headers: { 'X-CSRFToken': this.getCSRFToken() }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    blob = await response.blob();
                 }
-
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                this.downloadFile(url, this.generateFileName(lectureId));
-                window.URL.revokeObjectURL(url);
+                
+                if (this.audioLoader) {
+                    this.audioLoader.loadedBlobs.set(lectureId, blob);
+                }
+                
+                this.downloadBlob(blob, this.generateFileName(lectureId));
+                this.showDownloadFeedback(button, 'success');
             }
             
-            this.showDownloadFeedback(button, 'success');
         } catch (error) {
             console.error('Download failed:', error);
             this.showDownloadFeedback(button, 'error');
@@ -56,7 +71,8 @@ export class DownloadHandler {
         }
     }
 
-    downloadFile(url, filename) {
+    downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
@@ -65,11 +81,14 @@ export class DownloadHandler {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        URL.revokeObjectURL(url);
     }
 
     generateFileName(lectureId) {
-        const titleElement = document.querySelector('.now-playing-title') || 
-                           document.querySelector('h1');
+        const titleElement = document.querySelector('.player-lecturer') || 
+                           document.querySelector('h1') || 
+                           document.querySelector('.now-playing-title');
         const title = titleElement?.textContent?.trim() || 'lecture';
         return `${title}.mp3`;
     }
@@ -90,16 +109,16 @@ export class DownloadHandler {
         
         switch (state) {
             case 'starting':
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 button.disabled = true;
                 break;
             case 'success':
-                button.innerHTML = '<i class="fas fa-check"></i> Готово';
+                button.innerHTML = '<i class="fas fa-check"></i>';
                 button.disabled = false;
                 button.resetTimeout = setTimeout(() => this.resetButton(button), 2000);
                 break;
             case 'error':
-                button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Ошибка';
+                button.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
                 button.disabled = false;
                 button.resetTimeout = setTimeout(() => this.resetButton(button), 3000);
                 break;

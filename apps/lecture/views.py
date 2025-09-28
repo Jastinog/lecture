@@ -32,7 +32,11 @@ def lecturers_list(request):
 def lecturer_detail(request, lecturer_id):
     """Show all topics for a lecturer"""
     lecturer = get_object_or_404(Lecturer, id=lecturer_id)
-    topics = lecturer.topics.prefetch_related("lectures").all()
+    topics = (
+        lecturer.topics.select_related("group")
+        .prefetch_related("lectures", "languages")
+        .all()
+    )
 
     context = {
         "lecturer": lecturer,
@@ -43,50 +47,49 @@ def lecturer_detail(request, lecturer_id):
 
 def topic_detail(request, topic_id):
     """Show all lectures for a topic"""
-    topic = get_object_or_404(Topic.objects.select_related("lecturer"), id=topic_id)
+    topic = get_object_or_404(
+        Topic.objects.select_related("lecturer", "group").prefetch_related("languages"),
+        id=topic_id,
+    )
 
     manager = TopicPlayerManager(request.user, topic)
     context = manager.get_context_data()
-    
+
     # Remove player-specific data, keep only list data
-    context.pop('current_lecture', None)
-    context.pop('current_lecture_progress', None)
-    
+    context.pop("current_lecture", None)
+    context.pop("current_lecture_progress", None)
+
     return render(request, "topic_detail.html", context)
 
 
 def lecture_player(request, lecture_id, start_time=None):
     """Single lecture player"""
     lecture = get_object_or_404(
-        Lecture.objects.select_related("topic__lecturer"), id=lecture_id
+        Lecture.objects.select_related("topic__lecturer", "language"), id=lecture_id
     )
     topic = lecture.topic
-    
+
     # Get user progress for this lecture
     lecture_progress = None
     is_favorite = False
-    
+
     if request.user.is_authenticated:
         lecture_progress = LectureProgress.objects.filter(
             user=request.user, lecture=lecture
         ).first()
-        
+
         is_favorite = FavoriteLecture.objects.filter(
             user=request.user, lecture=lecture
         ).exists()
 
     # Get navigation lectures (prev/next in same topic)
     prev_lecture = (
-        topic.lectures.filter(order__lt=lecture.order)
-        .order_by("-order")
-        .first()
+        topic.lectures.filter(order__lt=lecture.order).order_by("-order").first()
     )
     next_lecture = (
-        topic.lectures.filter(order__gt=lecture.order)
-        .order_by("order")
-        .first()
+        topic.lectures.filter(order__gt=lecture.order).order_by("order").first()
     )
-    
+
     total_lectures = topic.lectures.count()
 
     context = {
@@ -105,7 +108,11 @@ def lecture_player(request, lecture_id, start_time=None):
 
 def topics_list(request):
     """All topics page"""
-    topics = Topic.objects.select_related("lecturer").prefetch_related("lectures").all()
+    topics = (
+        Topic.objects.select_related("lecturer", "group")
+        .prefetch_related("lectures", "languages")
+        .all()
+    )
     context = {
         "topics": topics,
         "page_title": "Все темы",
@@ -120,7 +127,7 @@ def recent_lectures(request):
     if latest_topic_date:
         latest_topics = Topic.objects.filter(created_at__date=latest_topic_date.date())
         lectures = (
-            Lecture.objects.select_related("topic__lecturer")
+            Lecture.objects.select_related("topic__lecturer", "language")
             .filter(topic__in=latest_topics)
             .order_by("-created_at")
         )
@@ -138,7 +145,7 @@ def recent_lectures(request):
 def favorites_list(request):
     """User's favorites page"""
     lectures = (
-        Lecture.objects.select_related("topic__lecturer")
+        Lecture.objects.select_related("topic__lecturer", "language")
         .filter(favorited_by__user=request.user)
         .order_by("-favorited_by__created_at")
     )
@@ -154,7 +161,7 @@ def favorites_list(request):
 def history_list(request):
     """User's listening history page"""
     lectures = (
-        Lecture.objects.select_related("topic__lecturer")
+        Lecture.objects.select_related("topic__lecturer", "language")
         .filter(history_records__user=request.user)
         .distinct()
         .order_by("-history_records__listened_at")
@@ -171,9 +178,11 @@ def history_list(request):
 def now_listening_list(request):
     """What others are listening to page"""
     from .models import CurrentLecture
-    
+
     current_sessions = (
-        CurrentLecture.objects.select_related("lecture__topic__lecturer", "user")
+        CurrentLecture.objects.select_related(
+            "lecture__topic__lecturer", "lecture__language", "user"
+        )
         .exclude(user=request.user)
         .order_by("-updated_at")
     )

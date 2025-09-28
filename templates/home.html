@@ -96,7 +96,10 @@
                 <div class="compact-card-content">
                     <h4 class="compact-card-title">{{ topic.title }}</h4>
                     <div class="compact-card-meta">
-                        {{ topic.lecturer.name }} • {{ topic.lectures.count }} лекций
+                        {{ topic.lecturer.name }} • {{ topic.group.name }} • {{ topic.lectures.count }} лекций
+                        {% if topic.languages.exists %}
+                        ({% for lang in topic.languages.all %}{{ lang.code }}{% if not forloop.last %}, {% endif %}{% endfor %})
+                        {% endif %}
                     </div>
                 </div>
             </a>
@@ -128,6 +131,7 @@
                     <h4 class="compact-card-title">{{ lecture.title }}</h4>
                     <div class="compact-card-meta">
                         {{ lecture.topic.lecturer.name }} • {{ lecture.topic.title }}
+                        {% if lecture.language %} ({{ lecture.language.code }}){% endif %}
                     </div>
                 </div>
             </a>

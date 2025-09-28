@@ -282,6 +282,13 @@
     animation: pulse 2s infinite;
 }
 
+.languages-info,
+.language-info {
+    color: #6B7280;
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
@@ -395,5 +402,10 @@
         top: 0.5rem;
         right: 0.5rem;
         font-size: 0.875rem;
+    }
+
+    .languages-info,
+    .language-info {
+        font-size: 0.7rem;
     }
 }

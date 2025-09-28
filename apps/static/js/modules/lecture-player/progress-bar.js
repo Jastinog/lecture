@@ -10,6 +10,8 @@ export class ProgressBar {
         this.isLoadingComplete = false;
         this.preservedProgress = 0;
         this.currentBufferPercent = 0;
+        this.savedProgressPercent = 0;
+        this.isInitialProgressAnimationRunning = false;
         
         this.createBufferIndicator();
         this.createLoadingIndicator();
@@ -55,26 +57,18 @@ export class ProgressBar {
         const savedProgress = parseFloat(container.dataset.progress || '0');
         const savedTime = parseFloat(container.dataset.currentTime || '0');
         
-        if (savedProgress > 0 && this.progressFilled) {
-            this.progressFilled.style.width = `${savedProgress}%`;
-            this.preservedProgress = savedProgress;
+        this.savedProgressPercent = savedProgress;
+        
+        if (this.progressFilled) {
+            this.progressFilled.style.width = '0%';
         }
 
         if (this.timeCurrent) {
-            this.timeCurrent.textContent = this.player.formatTime(savedTime);
+            this.timeCurrent.textContent = '0:00';
         }
     }
 
-    showLoading(message = 'Загрузка...') {
-        if (this.loadingIndicator) {
-            this.loadingIndicator.textContent = message;
-            this.loadingIndicator.style.display = 'block';
-        }
-        
-        if (this.progressBar) {
-            this.progressBar.style.pointerEvents = 'none';
-        }
-    }
+
 
     hideLoading() {
         if (this.loadingIndicator) {
@@ -91,11 +85,9 @@ export class ProgressBar {
 
         let bufferPercent = 0;
 
-        // If audio is fully cached, show 100% buffer
         if (this.player.lectureId && this.player.audioLoader.isLoaded(this.player.lectureId)) {
             bufferPercent = 100;
         } else if (this.player.audio.duration) {
-            // Calculate buffer from audio element
             const buffered = this.player.audio.buffered;
             let maxBufferedEnd = 0;
             
@@ -119,6 +111,23 @@ export class ProgressBar {
             
             this.currentBufferPercent = percent;
             this.bufferIndicator.style.width = `${percent}%`;
+            
+            // Fill движется вместе с буфером, но не превышает savedProgressPercent
+            if (this.savedProgressPercent > 0) {
+                const fillPercent = Math.min(percent, this.savedProgressPercent);
+                
+                if (this.progressFilled) {
+                    this.progressFilled.style.width = `${fillPercent}%`;
+                }
+                
+                // Обновляем время пропорционально fill
+                if (this.timeCurrent) {
+                    const container = document.querySelector('.audio-player-section');
+                    const savedTime = parseFloat(container?.dataset.currentTime || '0');
+                    const currentTimeValue = savedTime * (fillPercent / this.savedProgressPercent);
+                    this.timeCurrent.textContent = this.player.formatTime(currentTimeValue);
+                }
+            }
         }
     }
 

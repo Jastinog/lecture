@@ -37,7 +37,8 @@
             <div class="card-content">
                 <h3 class="card-title">{{ topic.title }}</h3>
                 <div class="card-meta">
-                    {{ topic.lecturer.name }} • {{ topic.lectures.count }} лекций • {{ topic.created_at|date:"M Y" }}
+                    {{ topic.lecturer.name }} • {{ topic.group.name }} • {{ topic.lectures.count }} лекций • {{ topic.created_at|date:"M Y" }}
+                    {% if topic.languages.exists %}({% for lang in topic.languages.all %}{{ lang.code }}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
                 </div>
             </div>
         </a>
