@@ -19,15 +19,12 @@ export class LecturePlayer {
         this.pendingPlay = false;
         this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-        // Constants
         this.SKIP_SECONDS = 15;
         this.PROGRESS_UPDATE_INTERVAL = 5000;
 
-        // Initialize AudioLoader
         this.audioLoader = new AudioLoader();
         this.setupAudioLoader();
 
-        // Initialize modules
         this.controls = new PlayerControls(this);
         this.progressBar = new ProgressBar(this);
         this.header = new PlayerHeader(this);
@@ -144,7 +141,6 @@ export class LecturePlayer {
     }
 
     onLoadedData() {
-        // Этот event не используется
     }
 
     onCanPlay() {
@@ -152,11 +148,9 @@ export class LecturePlayer {
     }
 
     onCanPlayThrough() {
-        // Не используется для проверки готовности
     }
 
     checkAudioReadiness() {
-        // Убираем сложную логику - аудио готово когда загрузка завершена
         if (this.isFullyLoaded && this.audio.src) {
             this.setAudioReady();
         }
@@ -235,7 +229,6 @@ export class LecturePlayer {
                 const objectURL = await this.audioLoader.loadAudio(this.lectureId, audioUrl);
                 this.audio.src = objectURL;
                 
-                // На iOS принудительно загружаем метаданные
                 if (this.isIOS) {
                     this.audio.load();
                 }
@@ -245,7 +238,6 @@ export class LecturePlayer {
                 const objectURL = await this.audioLoader.loadAudio(this.lectureId, audioUrl);
                 this.audio.src = objectURL;
                 
-                // На iOS принудительно загружаем метаданные
                 if (this.isIOS) {
                     this.audio.load();
                 }
