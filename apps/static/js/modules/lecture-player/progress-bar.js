@@ -105,14 +105,12 @@ export class ProgressBar {
     updateLoadingProgress(percent) {
         if (!this.bufferIndicator) return;
         
-        // Only update buffer from loading if not already fully loaded
         if (!this.isLoadingComplete && 
             !(this.player.lectureId && this.player.audioLoader.isLoaded(this.player.lectureId))) {
             
             this.currentBufferPercent = percent;
             this.bufferIndicator.style.width = `${percent}%`;
             
-            // Fill движется вместе с буфером, но не превышает savedProgressPercent
             if (this.savedProgressPercent > 0) {
                 const fillPercent = Math.min(percent, this.savedProgressPercent);
                 
@@ -120,7 +118,6 @@ export class ProgressBar {
                     this.progressFilled.style.width = `${fillPercent}%`;
                 }
                 
-                // Обновляем время пропорционально fill
                 if (this.timeCurrent) {
                     const container = document.querySelector('.audio-player-section');
                     const savedTime = parseFloat(container?.dataset.currentTime || '0');
@@ -150,23 +147,21 @@ export class ProgressBar {
     }
 
     updateProgress() {
-        if (!this.player.isAudioReady) return;
-
         const currentTime = this.player.audio.currentTime;
         const container = document.querySelector('.audio-player-section');
         const duration = parseFloat(container?.dataset.duration || '0') || this.player.audio.duration;
 
         if (isNaN(currentTime) || isNaN(duration) || duration <= 0) return;
 
+        if (this.timeCurrent) {
+            this.timeCurrent.textContent = this.player.formatTime(currentTime);
+        }
+
         if (!this.isSeeking) {
             const percent = (currentTime / duration) * 100;
             
             if (this.progressFilled) {
                 this.progressFilled.style.width = `${percent}%`;
-            }
-            
-            if (this.timeCurrent) {
-                this.timeCurrent.textContent = this.player.formatTime(currentTime);
             }
         }
     }

@@ -263,9 +263,7 @@ export class LecturePlayer {
     }
 
     onTimeUpdate() {
-        if (this.isAudioReady && this.isFullyLoaded) {
-            this.progressBar.updateProgress();
-        }
+        this.progressBar.updateProgress();
     }
 
     onSeeked() {
