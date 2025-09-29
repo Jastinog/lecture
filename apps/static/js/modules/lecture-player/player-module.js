@@ -6,6 +6,7 @@ import { FavoriteHandler } from './favorite-handler.js';
 import { ShareHandler } from './share-handler.js';
 import { DownloadHandler } from './download-handler.js';
 import { MarkersHandler } from './markers-handler.js';
+import { EqualizerVisualizer } from './equalizer-visualizer.js';
 
 export class LecturePlayer {
     constructor() {
@@ -33,6 +34,7 @@ export class LecturePlayer {
         this.shareHandler = new ShareHandler(this);
         this.downloadHandler = new DownloadHandler(this);
         this.markersHandler = new MarkersHandler(this);
+        this.equalizer = new EqualizerVisualizer(this);
 
         this.init();
         this.loadLecture();
@@ -79,6 +81,7 @@ export class LecturePlayer {
     }
 
     onLoadError(error) {
+        console.error('Load error:', error);
         this.isLoading = false;
         this.isFullyLoaded = false;
         this.isAudioReady = false;
@@ -90,10 +93,6 @@ export class LecturePlayer {
         this.progressBar.hideLoading();
     }
 
-    showError(message) {
-        console.error(message);
-    }
-
     init() {
         this.controls.init();
         this.progressBar.init();
@@ -102,6 +101,7 @@ export class LecturePlayer {
         this.shareHandler.init();
         this.downloadHandler.init();
         this.markersHandler.init();
+        this.equalizer.init();
 
         // Audio events
         this.audio.addEventListener('loadstart', () => this.onLoadStart());
@@ -144,6 +144,7 @@ export class LecturePlayer {
     }
 
     onLoadedData() {
+        // Audio loaded
     }
 
     onCanPlay() {
@@ -151,33 +152,7 @@ export class LecturePlayer {
     }
 
     onCanPlayThrough() {
-    }
-
-    checkAudioReadiness() {
-        if (this.isFullyLoaded && this.audio.src) {
-            this.setAudioReady();
-        }
-    }
-
-    setAudioReady() {
-        if (!this.isAudioReady) {
-            this.isAudioReady = true;
-            this.hideLoadingState();
-            this.controls.setReadyState();
-            
-            if (this.targetSeekTime !== null && this.targetSeekTime > 0) {
-                setTimeout(() => {
-                    this.applySavedPosition();
-                }, 100);
-            }
-            
-            if (this.pendingPlay) {
-                this.pendingPlay = false;
-                setTimeout(() => {
-                    this.startPlayback();
-                }, this.targetSeekTime > 0 ? 200 : 50);
-            }
-        }
+        // Audio can play through
     }
 
     applySavedPosition() {
@@ -271,6 +246,8 @@ export class LecturePlayer {
 
     onSeeked() {
         this.progressBar.updateProgress();
+        // Force save progress after seek
+        this.saveCurrentProgress();
     }
 
     onPlay() {
@@ -281,6 +258,8 @@ export class LecturePlayer {
     onPause() {
         this.controls.updatePlayPauseBtn(false);
         this.stopProgressUpdates();
+        // Save progress immediately on pause
+        this.saveCurrentProgress();
     }
 
     async onEnded() {
@@ -314,20 +293,35 @@ export class LecturePlayer {
         if (this.progressUpdateInterval) {
             clearInterval(this.progressUpdateInterval);
             this.progressUpdateInterval = null;
-            this.saveCurrentProgress();
         }
     }
 
     async saveCurrentProgress(completed = false) {
-        if (!this.lectureId || !this.isAudioReady || !this.isFullyLoaded) return;
+        if (!this.lectureId) {
+            console.log('No lecture ID for progress save');
+            return;
+        }
 
-        const currentTime = this.audio.currentTime;
+        if (!this.audio || !this.audio.src) {
+            console.log('No audio source for progress save');
+            return;
+        }
+
+        const currentTime = this.audio.currentTime || 0;
         const container = document.querySelector('.audio-player-section');
         const duration = parseFloat(container?.dataset.duration || '0') || this.audio.duration;
         
-        if (!duration) return;
-        
-        if (Math.abs(currentTime - this.lastSavedTime) < 2 && !completed) return;
+        if (!duration || duration <= 0) {
+            console.log('No valid duration for progress save');
+            return;
+        }
+
+        // Skip if time hasn't changed much (unless completed)
+        if (Math.abs(currentTime - this.lastSavedTime) < 2 && !completed) {
+            return;
+        }
+
+        console.log(`Saving progress: ${currentTime}s of ${duration}s (completed: ${completed})`);
 
         try {
             const response = await fetch(`/api/v1/lectures/${this.lectureId}/progress/`, {
@@ -343,7 +337,11 @@ export class LecturePlayer {
             });
 
             if (response.ok) {
+                const data = await response.json();
                 this.lastSavedTime = currentTime;
+                console.log('Progress saved successfully:', data);
+            } else {
+                console.error('Failed to save progress:', response.status, response.statusText);
             }
         } catch (error) {
             console.error('Failed to save progress:', error);

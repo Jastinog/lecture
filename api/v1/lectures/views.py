@@ -125,6 +125,7 @@ def toggle_favorite(request, lecture_id):
         {"success": True, "is_favorite": is_favorite, "lecture_id": lecture.id}
     )
 
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def lecture_markers(request, lecture_id):
@@ -135,16 +136,18 @@ def lecture_markers(request, lecture_id):
         markers = LectureMarker.objects.filter(
             user=request.user, lecture=lecture
         ).order_by("timestamp")
-        
+
         data = []
         for marker in markers:
-            data.append({
-                "id": marker.id,
-                "timestamp": marker.timestamp,
-                "text": marker.text,
-                "formatted_timestamp": marker.formatted_timestamp,
-            })
-        
+            data.append(
+                {
+                    "id": marker.id,
+                    "timestamp": marker.timestamp,
+                    "text": marker.text,
+                    "formatted_timestamp": marker.formatted_timestamp,
+                }
+            )
+
         return Response({"markers": data})
 
     elif request.method == "POST":
@@ -152,66 +155,54 @@ def lecture_markers(request, lecture_id):
         text = request.data.get("text", "").strip()
 
         if timestamp is None or timestamp < 0:
-            return Response(
-                {"error": "Timestamp required"}, 
-                status=400
-            )
+            return Response({"error": "Timestamp required"}, status=400)
 
         if not text:
-            return Response(
-                {"error": "Text required"}, 
-                status=400
-            )
+            return Response({"error": "Text required"}, status=400)
 
         marker = LectureMarker.objects.create(
-            user=request.user,
-            lecture=lecture,
-            timestamp=timestamp,
-            text=text
+            user=request.user, lecture=lecture, timestamp=timestamp, text=text
         )
 
-        return Response({
-            "success": True,
-            "marker": {
-                "id": marker.id,
-                "timestamp": marker.timestamp,
-                "text": marker.text,
-                "formatted_timestamp": marker.formatted_timestamp,
+        return Response(
+            {
+                "success": True,
+                "marker": {
+                    "id": marker.id,
+                    "timestamp": marker.timestamp,
+                    "text": marker.text,
+                    "formatted_timestamp": marker.formatted_timestamp,
+                },
             }
-        })
+        )
 
 
 @api_view(["PUT", "DELETE"])
 @permission_classes([IsAuthenticated])
 def marker_detail(request, marker_id):
     """Update or delete marker"""
-    marker = get_object_or_404(
-        LectureMarker, 
-        id=marker_id, 
-        user=request.user
-    )
+    marker = get_object_or_404(LectureMarker, id=marker_id, user=request.user)
 
     if request.method == "PUT":
         text = request.data.get("text", "").strip()
-        
+
         if not text:
-            return Response(
-                {"error": "Text required"}, 
-                status=400
-            )
+            return Response({"error": "Text required"}, status=400)
 
         marker.text = text
         marker.save()
 
-        return Response({
-            "success": True,
-            "marker": {
-                "id": marker.id,
-                "timestamp": marker.timestamp,
-                "text": marker.text,
-                "formatted_timestamp": marker.formatted_timestamp,
+        return Response(
+            {
+                "success": True,
+                "marker": {
+                    "id": marker.id,
+                    "timestamp": marker.timestamp,
+                    "text": marker.text,
+                    "formatted_timestamp": marker.formatted_timestamp,
+                },
             }
-        })
+        )
 
     elif request.method == "DELETE":
         marker.delete()

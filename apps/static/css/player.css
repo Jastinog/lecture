@@ -128,6 +128,101 @@
 }
 
 /* =============================================================================
+   EQUALIZER VISUALIZER
+   ============================================================================= */
+
+.equalizer-visualizer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 160px;
+    padding: 0;
+    margin: 0.5rem 0;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    gap: 3px;
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.frequency-band {
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: flex-start;
+    align-items: center;
+    height: 100%;
+    flex: 1;
+    gap: 2px;
+    min-width: 0;
+}
+
+.eq-bar {
+    width: 100%;
+    height: 6px;
+    border-radius: 1px;
+    opacity: 0.05;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+/* Bar colors - modern player style */
+.eq-bar.bar-1,
+.eq-bar.bar-2,
+.eq-bar.bar-3,
+.eq-bar.bar-4,
+.eq-bar.bar-5 {
+    background: #10b981; /* Green for bass */
+}
+
+.eq-bar.bar-6,
+.eq-bar.bar-7,
+.eq-bar.bar-8,
+.eq-bar.bar-9,
+.eq-bar.bar-10,
+.eq-bar.bar-11,
+.eq-bar.bar-12,
+.eq-bar.bar-13,
+.eq-bar.bar-14,
+.eq-bar.bar-15 {
+    background: var(--brand); /* Orange for mids */
+}
+
+.eq-bar.bar-16,
+.eq-bar.bar-17,
+.eq-bar.bar-18,
+.eq-bar.bar-19,
+.eq-bar.bar-20 {
+    background: #3b82f6; /* Blue for treble */
+}
+
+/* Active state */
+.eq-bar.active {
+    opacity: 1;
+    /* box-shadow: 0 0 6px currentColor; */
+}
+
+/* Animation for bars */
+.equalizer-visualizer.playing .eq-bar {
+    animation: eq-pulse 0.15s ease-in-out;
+}
+
+@keyframes eq-pulse {
+    0% { 
+        transform: scaleY(0.9); 
+        opacity: 0.4;
+    }
+    50% { 
+        transform: scaleY(1.2); 
+        opacity: 1;
+    }
+    100% { 
+        transform: scaleY(1); 
+        opacity: 0.7;
+    }
+}
+
+/* =============================================================================
    PLAYER CONTROLS
    ============================================================================= */
 
@@ -178,6 +273,7 @@
 
 .btn-play-pause.loading i {
     font-size: 12px !important;
+    font-style: normal !important;
     color: #fff !important;
 }
 
