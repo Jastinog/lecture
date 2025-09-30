@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load time_filters %}
+{% load version_tags %}
 
 {% block title %}{{ lecture.title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/player.css' %}">
+<link rel="stylesheet" href="{% static 'css/player.css' %}?v={% version %}">
 {% endblock %}
 
 {% block content %}
@@ -56,20 +57,6 @@
         <div class="now-playing">
             <div class="now-playing-title">{{ lecture.title }}</div>
         </div>
-
-        <!-- Divider -->
-        <div class="player-divider"></div>
-
-        <!-- Equalizer Visualizer Section -->
-        <!-- <div class="equalizer-visualizer" id="equalizer-visualizer"> -->
-        <!--     {% for band in "xxxxxxxxxxxxxxxxxxxxxxxx"|make_list %} -->
-        <!--         <div class="frequency-band"> -->
-        <!--             {% for bar in "xxxxxxxxxxxxxxxxxxxx"|make_list %} -->
-        <!--                 <div class="eq-bar bar-{{ forloop.counter }}"></div> -->
-        <!--             {% endfor %} -->
-        <!--         </div> -->
-        <!--     {% endfor %} -->
-        <!-- </div> -->
 
         <!-- Divider -->
         <div class="player-divider"></div>
@@ -198,5 +185,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/app.js' %}"></script>
+<script src="{% static 'js/app.js' %}?v={% version %}"></script>
 {% endblock %}
