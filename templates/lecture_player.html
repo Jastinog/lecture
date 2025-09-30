@@ -161,6 +161,12 @@
             <div class="file-size">
                 <i class="fas fa-file-audio"></i>
                 <span>{{ lecture.file_size_mb }} MB</span>
+                {% if user.is_authenticated and lecture_progress %}
+                    <i class="fas fa-chart-line" style="margin-left: 0.25rem;"></i>
+                    <span>{{ lecture_progress.progress_percentage|default:0|floatformat:0 }}%</span>
+                    <i class="fas fa-repeat" style="margin-left: 0.25rem;"></i>
+                    <span>{{ lecture_progress.listen_count|default:0 }}x</span>
+                {% endif %}
             </div>
 
             <div class="player-actions">
