@@ -6,7 +6,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/player.css' %}">
-<link rel="stylesheet" href="{% static 'css/equalizer.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -62,15 +61,15 @@
         <div class="player-divider"></div>
 
         <!-- Equalizer Visualizer Section -->
-        <div class="equalizer-visualizer" id="equalizer-visualizer">
-            {% for band in "xxxxxxxxxxxxxxxxxxxxxxxx"|make_list %}
-                <div class="frequency-band">
-                    {% for bar in "xxxxxxxxxxxxxxxxxxxx"|make_list %}
-                        <div class="eq-bar bar-{{ forloop.counter }}"></div>
-                    {% endfor %}
-                </div>
-            {% endfor %}
-        </div>
+        <!-- <div class="equalizer-visualizer" id="equalizer-visualizer"> -->
+        <!--     {% for band in "xxxxxxxxxxxxxxxxxxxxxxxx"|make_list %} -->
+        <!--         <div class="frequency-band"> -->
+        <!--             {% for bar in "xxxxxxxxxxxxxxxxxxxx"|make_list %} -->
+        <!--                 <div class="eq-bar bar-{{ forloop.counter }}"></div> -->
+        <!--             {% endfor %} -->
+        <!--         </div> -->
+        <!--     {% endfor %} -->
+        <!-- </div> -->
 
         <!-- Divider -->
         <div class="player-divider"></div>
@@ -125,33 +124,33 @@
         <!-- Divider -->
         <div class="player-divider"></div>
 
-        <div class="markers-header">
-            <span class="markers-title">Метки</span>
-            <button class="add-marker-btn" id="add-marker-btn">
-                <i class="fas fa-plus"></i>
-            </button>
-        </div>
-
-        {% if markers %}
-        <div class="markers-list">
-            {% for marker in markers %}
-            <div class="marker-item" data-timestamp="{{ marker.timestamp }}" data-marker-id="{{ marker.id }}">
-                <span class="marker-timestamp">{{ marker.formatted_timestamp }}</span>
-                <span class="marker-text">{{ marker.text }}</span>
-                <div class="marker-actions">
-                    <button class="marker-action-btn marker-edit-btn" 
-                            data-marker-id="{{ marker.id }}">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="marker-action-btn marker-delete-btn" 
-                            data-marker-id="{{ marker.id }}">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
+        <div class="markers-section">
+            <div class="markers-header">
+                <span class="markers-title">Метки</span>
+                <button class="add-marker-btn" id="add-marker-btn">
+                    <i class="fas fa-plus"></i>
+                </button>
             </div>
-            {% endfor %}
+
+            <div class="markers-list">
+                {% for marker in markers %}
+                <div class="marker-item" data-timestamp="{{ marker.timestamp }}" data-marker-id="{{ marker.id }}">
+                    <span class="marker-timestamp">{{ marker.formatted_timestamp }}</span>
+                    <span class="marker-text">{{ marker.text }}</span>
+                    <div class="marker-actions">
+                        <button class="marker-action-btn marker-edit-btn" 
+                                data-marker-id="{{ marker.id }}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="marker-action-btn marker-delete-btn" 
+                                data-marker-id="{{ marker.id }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
-        {% endif %}
         {% endif %}
 
         <!-- Divider -->

@@ -1,21 +1,16 @@
 export class MarkersHandler {
     constructor(player) {
         this.player = player;
+
         this.addMarkerBtn = document.getElementById('add-marker-btn');
         this.markersList = document.querySelector('.markers-list');
-        this.markersContainer = document.querySelector('.markers-header')?.parentElement;
+        this.markersContainer = document.querySelector('.markers-section');
+
         this.lectureId = null;
         this.editingMarkerId = null;
         
-        console.log('MarkersHandler initialized:', {
-            addMarkerBtn: !!this.addMarkerBtn,
-            markersList: !!this.markersList,
-            markersContainer: !!this.markersContainer
-        });
-        
         // Create markers list if it doesn't exist
         if (!this.markersList && this.markersContainer) {
-            console.log('Creating markers list');
             this.markersList = document.createElement('div');
             this.markersList.className = 'markers-list';
             this.markersContainer.appendChild(this.markersList);
@@ -23,17 +18,11 @@ export class MarkersHandler {
     }
 
     init() {
-        console.log('MarkersHandler init called');
-        
         const container = document.querySelector('.audio-player-section');
         this.lectureId = container ? parseInt(container.dataset.lectureId) : null;
         
-        console.log('Lecture ID:', this.lectureId);
-        
         if (this.addMarkerBtn) {
-            console.log('Attaching click handler to add marker button');
             this.addMarkerBtn.addEventListener('click', (e) => {
-                console.log('Add marker button clicked');
                 e.preventDefault();
                 e.stopPropagation();
                 this.createNewMarker();
@@ -62,7 +51,6 @@ export class MarkersHandler {
             }
             
             const timestamp = parseFloat(item.dataset.timestamp);
-            console.log('Seeking to timestamp:', timestamp);
             if (!isNaN(timestamp)) {
                 this.seekToTimestamp(timestamp);
             }
@@ -88,25 +76,13 @@ export class MarkersHandler {
     }
 
     createNewMarker() {
-        console.log('createNewMarker called');
-        
         if (!this.player) {
-            console.error('Player not available');
             return;
         }
         
         if (!this.player.audio) {
-            console.error('Audio not available');
             return;
         }
-        
-        console.log('Player state:', {
-            isAudioReady: this.player.isAudioReady,
-            currentTime: this.player.audio.currentTime,
-            duration: this.player.audio.duration,
-            readyState: this.player.audio.readyState,
-            src: !!this.player.audio.src
-        });
 
         // Check if audio is actually playable (has duration and current time)
         const isAudioPlayable = this.player.audio.duration > 0 && 
@@ -114,7 +90,6 @@ export class MarkersHandler {
                                this.player.audio.src;
 
         if (!isAudioPlayable) {
-            console.error('Audio not playable');
             this.showError('Аудио еще не загружено');
             return;
         }
@@ -124,8 +99,6 @@ export class MarkersHandler {
             console.error('Invalid current time');
             return;
         }
-
-        console.log('Creating marker at time:', currentTime);
 
         if (!this.markersList) {
             console.error('Markers list not found');
@@ -140,7 +113,6 @@ export class MarkersHandler {
             formatted_timestamp: this.formatTimestamp(currentTime)
         }, true);
 
-        console.log('Marker element created, appending to list');
         this.markersList.appendChild(markerItem);
         
         // Focus on input
@@ -157,8 +129,6 @@ export class MarkersHandler {
     }
 
     createMarkerElement(marker, isNew = false) {
-        console.log('Creating marker element:', marker, 'isNew:', isNew);
-        
         const item = document.createElement('div');
         item.className = 'marker-item';
         item.dataset.timestamp = marker.timestamp;
@@ -239,12 +209,8 @@ export class MarkersHandler {
     }
 
     async saveNewMarker(item) {
-        console.log('saveNewMarker called');
-        
         const input = item.querySelector('.marker-input');
         const text = input.value.trim();
-
-        console.log('Marker text:', text);
 
         if (!text) {
             this.showError('Текст заметки не может быть пустым');
@@ -252,7 +218,6 @@ export class MarkersHandler {
         }
 
         const timestamp = parseFloat(item.dataset.timestamp);
-        console.log('Saving marker:', { timestamp, text, lectureId: this.lectureId });
 
         try {
             const response = await fetch(`/api/v1/lectures/${this.lectureId}/markers/`, {
@@ -267,16 +232,13 @@ export class MarkersHandler {
                 })
             });
 
-            console.log('Response status:', response.status);
             const data = await response.json();
-            console.log('Response data:', data);
 
             if (response.ok && data.success) {
                 // Replace with permanent marker
                 const newMarker = this.createMarkerElement(data.marker, false);
                 item.replaceWith(newMarker);
                 this.sortMarkers();
-                console.log('Marker saved successfully');
             } else {
                 this.showError(data.error || 'Ошибка при сохранении');
             }
@@ -287,7 +249,6 @@ export class MarkersHandler {
     }
 
     cancelNewMarker(item) {
-        console.log('Canceling new marker');
         item.remove();
     }
 
@@ -374,7 +335,6 @@ export class MarkersHandler {
                 this.restoreMarkerDisplay(item, originalText);
             }
         } catch (error) {
-            console.error('Failed to update marker:', error);
             this.showError('Ошибка при сохранении');
             this.restoreMarkerDisplay(item, originalText);
         }
