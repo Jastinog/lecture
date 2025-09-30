@@ -6,7 +6,7 @@ import { FavoriteHandler } from './favorite-handler.js';
 import { ShareHandler } from './share-handler.js';
 import { DownloadHandler } from './download-handler.js';
 import { MarkersHandler } from './markers-handler.js';
-import { EqualizerVisualizer } from './equalizer-visualizer.js';
+// import { EqualizerVisualizer } from './equalizer-visualizer.js';
 
 export class LecturePlayer {
     constructor() {
@@ -34,7 +34,7 @@ export class LecturePlayer {
         this.shareHandler = new ShareHandler(this);
         this.downloadHandler = new DownloadHandler(this);
         this.markersHandler = new MarkersHandler(this);
-        this.equalizer = new EqualizerVisualizer(this);
+        // this.equalizer = new EqualizerVisualizer(this);
 
         this.init();
         this.loadLecture();
@@ -101,7 +101,7 @@ export class LecturePlayer {
         this.shareHandler.init();
         this.downloadHandler.init();
         this.markersHandler.init();
-        this.equalizer.init();
+        // this.equalizer.init();
 
         // Audio events
         this.audio.addEventListener('loadstart', () => this.onLoadStart());
