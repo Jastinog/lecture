@@ -86,8 +86,8 @@ export class DownloadHandler {
     }
 
     generateFileName(lectureId) {
-        const titleElement = document.querySelector('.now-playing-title');
-        const title = titleElement?.textContent?.trim() || 'lecture';
+        const playerSection = document.querySelector('.audio-player-section');
+        const title = playerSection?.dataset.lectureTitle || 'lecture';
         return `${title}.mp3`;
     }
 

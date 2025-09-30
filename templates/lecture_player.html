@@ -24,6 +24,7 @@
     <!-- Audio Player Section -->
     <div class="audio-player-section" 
          data-lecture-id="{{ lecture.id }}"
+         data-lecture-title="{{ lecture.title }}"
          data-audio-url="{{ lecture.audio_file.url }}"
          data-duration="{{ lecture.duration|default:0 }}"
          {% if lecture_progress %}
