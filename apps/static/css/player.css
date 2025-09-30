@@ -104,26 +104,19 @@
     line-height: 1.3;
     display: inline-block;
     position: relative;
-    transition: transform 0.5s ease-in-out;
     --move-distance: 0px;
 }
 
 .now-playing-title.scrolling {
-    animation: slide-and-pause 60s ease-in-out infinite;
+    animation: slide-infinite 30s linear infinite;
 }
 
-@keyframes slide-and-pause {
+@keyframes slide-infinite {
     0% {
         transform: translateX(0);
     }
-    15% {
-        transform: translateX(var(--move-distance));
-    }
-    85% {
-        transform: translateX(var(--move-distance));
-    }
     100% {
-        transform: translateX(0);
+        transform: translateX(var(--move-distance));
     }
 }
 
@@ -767,10 +760,6 @@
     
     .now-playing-title {
         font-size: 1rem;
-    }
-    
-    .now-playing-title.scrolling {
-        animation: slide-and-pause 60s ease-in-out infinite;
     }
 
     /* Player Controls */

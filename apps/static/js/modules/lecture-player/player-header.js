@@ -22,14 +22,11 @@ export class PlayerHeader {
             clearTimeout(this.scrollTimeout);
         }
 
-        // Reset animation
         this.nowPlayingTitle.classList.remove('scrolling');
-        this.nowPlayingTitle.textContent = title;
-        
-        // Force reflow
+        this.nowPlayingTitle.textContent = title + '  •  ' + title;
+
         this.nowPlayingTitle.offsetHeight;
         
-        // Check if scrolling is needed
         requestAnimationFrame(() => {
             this.checkAndStartScrolling();
         });
@@ -38,17 +35,14 @@ export class PlayerHeader {
     checkAndStartScrolling() {
         if (!this.nowPlayingTitle || !this.nowPlayingContainer) return;
 
-        const titleWidth = this.nowPlayingTitle.scrollWidth;
+        const titleWidth = this.nowPlayingTitle.scrollWidth / 2;
         const containerWidth = this.nowPlayingContainer.offsetWidth;
         
         if (titleWidth > containerWidth - 10) {
-            // Calculate the exact distance to move
-            const moveDistance = titleWidth - containerWidth + 20; // 20px padding
+            const moveDistance = titleWidth;
             
-            // Update CSS custom property for animation
             this.nowPlayingTitle.style.setProperty('--move-distance', `-${moveDistance}px`);
             
-            // Start animation
             this.nowPlayingTitle.classList.add('scrolling');
         }
     }
