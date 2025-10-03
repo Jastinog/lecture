@@ -1,7 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load time_filters %}
-{% load version_tags %}
 
 {% block title %}{{ topic.title }} - Лекции{% endblock %}
 
@@ -100,6 +99,6 @@
 
 {% block extra_js %}
 {% if user.is_authenticated %}
-<script src="{% static 'js/modules/favorite-handler.js' %}?v={% version %}"></script>
+<script src="{% static 'js/modules/favorite-handler.js' %}"></script>
 {% endif %}
 {% endblock %}

@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load static_hash %}
 {% load time_filters %}
-{% load version_tags %}
 
 {% block title %}{{ lecture.title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/player.css' %}?v={% version %}">
+<link rel="stylesheet" href="{% static_hash 'css/player.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -186,5 +186,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/app.js' %}?v={% version %}"></script>
+<script src="{% static_hash 'js/app.js' %}"></script>
 {% endblock %}

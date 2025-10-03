@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load version_tags %}
+{% load static_hash %}
 
 {% block title %}Главная{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/home.css' %}?v={% version %}">
+<link rel="stylesheet" href="{% static_hash 'css/home.css' %}">
 {% endblock %}
 
 {% block content %}

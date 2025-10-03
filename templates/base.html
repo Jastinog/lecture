@@ -1,5 +1,5 @@
 {% load static %}
-{% load version_tags %}
+{% load static_hash %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -11,9 +11,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <link rel="stylesheet" href="{% static 'css/base.css' %}?v={% version %}">
-    <link rel="stylesheet" href="{% static 'css/layout.css' %}?v={% version %}">
-    <link rel="stylesheet" href="{% static 'css/components.css' %}?v={% version %}">
+    <link rel="stylesheet" href="{% static_hash 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static_hash 'css/layout.css' %}">
+    <link rel="stylesheet" href="{% static_hash 'css/components.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="min-h-screen bg-gray-900 text-gray-100">
