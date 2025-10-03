@@ -1,4 +1,3 @@
-# Add to apps/system/admin.py
 from django.contrib import admin
 from django.utils.html import format_html
 from apps.system.models import UserActivity
@@ -24,6 +23,7 @@ class UserActivityAdmin(admin.ModelAdmin):
         "user_agent_display",
     ]
     ordering = ["-last_visit"]
+
     fieldsets = (
         ("User Information", {"fields": ("user", "session_hash")}),
         (
@@ -39,11 +39,13 @@ class UserActivityAdmin(admin.ModelAdmin):
         return format_html('<span style="color: #888;">Anonymous</span>')
 
     user_info.short_description = "User"
+    user_info.admin_order_field = "user"
 
     def session_hash_short(self, obj):
         return f"{obj.session_hash[:8]}..."
 
     session_hash_short.short_description = "Session"
+    session_hash_short.admin_order_field = "session_hash"
 
     def last_url_short(self, obj):
         url = obj.last_url
@@ -52,6 +54,7 @@ class UserActivityAdmin(admin.ModelAdmin):
         return url
 
     last_url_short.short_description = "Last URL"
+    last_url_short.admin_order_field = "last_url"
 
     def user_agent_display(self, obj):
         return obj.user_agent
@@ -59,4 +62,4 @@ class UserActivityAdmin(admin.ModelAdmin):
     user_agent_display.short_description = "User Agent"
 
     def has_add_permission(self, request):
-        return False  # Disable manual creation
+        return False

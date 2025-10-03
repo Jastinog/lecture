@@ -1,7 +1,5 @@
-# apps/system/models.py
 import hashlib
 from django.db import models
-
 from apps.users.models import User
 
 
@@ -22,6 +20,8 @@ class UserActivity(models.Model):
             models.Index(fields=["user", "-last_visit"]),
             models.Index(fields=["-last_visit"]),
         ]
+        verbose_name = "User Activity"
+        verbose_name_plural = "User Activities"
 
     def __str__(self):
         user_info = self.user.email if self.user else f"Anonymous ({self.ip_address})"
@@ -29,18 +29,15 @@ class UserActivity(models.Model):
 
     @staticmethod
     def generate_session_hash(ip_address, user_agent):
-        """Generate hash from IP and User Agent"""
         data = f"{ip_address}:{user_agent}".encode("utf-8")
         return hashlib.sha256(data).hexdigest()
 
     @classmethod
     def track_activity(cls, request):
-        """Track user activity from request"""
         ip = cls.get_client_ip(request)
         user_agent = request.META.get("HTTP_USER_AGENT", "")
         session_hash = cls.generate_session_hash(ip, user_agent)
 
-        # Get or create activity record
         activity, created = cls.objects.get_or_create(
             session_hash=session_hash,
             defaults={
@@ -52,7 +49,6 @@ class UserActivity(models.Model):
         )
 
         if not created:
-            # Update existing record
             activity.visit_count += 1
             activity.last_url = request.get_full_path()
             if request.user.is_authenticated and not activity.user:
@@ -65,7 +61,6 @@ class UserActivity(models.Model):
 
     @staticmethod
     def get_client_ip(request):
-        """Get client IP from request"""
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
             return x_forwarded_for.split(",")[0].strip()

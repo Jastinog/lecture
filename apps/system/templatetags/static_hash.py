@@ -2,7 +2,6 @@ from django import template
 from django.templatetags.static import static
 from django.conf import settings
 import hashlib
-import os
 from pathlib import Path
 
 register = template.Library()
@@ -21,4 +20,3 @@ def static_hash(path: str) -> str:
         return f"{url}?v={file_hash}"
 
     return f"{url}?v=0"
-
