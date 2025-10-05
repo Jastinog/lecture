@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Max
 
 from apps.lecture.services import HomePageManager, TopicPlayerManager
+from apps.system.decorators import track_activity
 
 from .models import (
     Lecturer,
@@ -14,15 +15,15 @@ from .models import (
 )
 
 
+@track_activity
 def home(request):
-    """Main page with lecturers, topics, lectures, favorites and history"""
     manager = HomePageManager(request.user)
     context = manager.get_context_data()
     return render(request, "home.html", context)
 
 
+@track_activity
 def lecturers_list(request):
-    """List all lecturers"""
     lecturers = Lecturer.objects.prefetch_related("topics").all()
     context = {
         "lecturers": lecturers,
@@ -30,8 +31,8 @@ def lecturers_list(request):
     return render(request, "lecturers_list.html", context)
 
 
+@track_activity
 def lecturer_detail(request, lecturer_id):
-    """Show all topics for a lecturer"""
     lecturer = get_object_or_404(Lecturer, id=lecturer_id)
     topics = (
         lecturer.topics.select_related("group")
@@ -46,8 +47,8 @@ def lecturer_detail(request, lecturer_id):
     return render(request, "lecturer_detail.html", context)
 
 
+@track_activity
 def topic_detail(request, topic_id):
-    """Show all lectures for a topic"""
     topic = get_object_or_404(
         Topic.objects.select_related("lecturer", "group").prefetch_related("languages"),
         id=topic_id,
@@ -56,15 +57,14 @@ def topic_detail(request, topic_id):
     manager = TopicPlayerManager(request.user, topic)
     context = manager.get_context_data()
 
-    # Remove player-specific data, keep only list data
     context.pop("current_lecture", None)
     context.pop("current_lecture_progress", None)
 
     return render(request, "topic_detail.html", context)
 
 
+@track_activity
 def lecture_player(request, lecture_id, start_time=None):
-    """Single lecture player"""
     lecture = get_object_or_404(
         Lecture.objects.select_related("topic__lecturer", "language"), id=lecture_id
     )
@@ -111,8 +111,8 @@ def lecture_player(request, lecture_id, start_time=None):
     return render(request, "lecture_player.html", context)
 
 
+@track_activity
 def topics_list(request):
-    """All topics page"""
     topics = (
         Topic.objects.select_related("lecturer", "group")
         .prefetch_related("lectures", "languages")
@@ -125,8 +125,8 @@ def topics_list(request):
     return render(request, "topics_list.html", context)
 
 
+@track_activity
 def recent_lectures(request):
-    """Recent lectures page"""
     latest_topic_date = Topic.objects.aggregate(Max("created_at"))["created_at__max"]
 
     if latest_topic_date:
@@ -147,8 +147,8 @@ def recent_lectures(request):
 
 
 @login_required
+@track_activity
 def favorites_list(request):
-    """User's favorites page"""
     lectures = (
         Lecture.objects.select_related("topic__lecturer", "language")
         .filter(favorited_by__user=request.user)
@@ -163,8 +163,8 @@ def favorites_list(request):
 
 
 @login_required
+@track_activity
 def history_list(request):
-    """User's listening history page"""
     lectures = (
         Lecture.objects.select_related("topic__lecturer", "language")
         .filter(history_records__user=request.user)
@@ -180,8 +180,8 @@ def history_list(request):
 
 
 @login_required
+@track_activity
 def now_listening_list(request):
-    """What others are listening to page"""
     from .models import CurrentLecture
 
     current_sessions = (
