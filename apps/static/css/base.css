@@ -1,12 +1,37 @@
 :root {
-    --bg-0: #111827;
-    --bg-1: #1a1d23;
-    --bg-2: #2a2d35;
-    --bg-3: #374151;
+    /* Ayu Dark Background */
+    --bg-0: #0b0e14;
+    --bg-1: #0d1017;
+    --bg-2: #131721;
+    --bg-3: #1c212b;
+    --bg-4: #273747;
 
-    --brand: #d97706;
-    --brand-2: #f59e0b;
+    /* Ayu Dark Foreground */
+    --fg-0: #e6e1cf;
+    --fg-1: #bfbdb6;
+    --fg-2: #9da5b4;
+    --fg-3: #6c7380;
+    --fg-4: #565b66;
 
+    /* Ayu Orange (brand) */
+    --brand: #ff8f40;
+    --brand-2: #ffb454;
+
+    /* Ayu Colors */
+    --red: #f07178;
+    --red-bright: #ff8080;
+    --green: #aad94c;
+    --green-bright: #c2d94c;
+    --yellow: #e6b450;
+    --yellow-bright: #ffb454;
+    --blue: #39bae6;
+    --blue-bright: #59c2ff;
+    --purple: #d2a6ff;
+    --purple-bright: #e6b0ff;
+    --aqua: #95e6cb;
+    --aqua-bright: #a6f0dc;
+
+    /* Font sizes */
     --fs-xxl: 1.75rem;
     --fs-xl:  1.5rem;
     --fs-lg:  1.25rem;
@@ -14,13 +39,27 @@
     --fs-sm:  0.875rem;
     --fs-xs:  0.75rem;
 
-    --g-start: #14161b;
-    --g-mid:   #1b1f26;
-    --g-end:   #171e21;
+    /* Semi-transparent colors */
+    --brand-alpha-10: rgba(255, 143, 64, 0.1);
+    --brand-alpha-20: rgba(255, 143, 64, 0.2);
+    --brand-alpha-30: rgba(255, 143, 64, 0.3);
+
+    --red-alpha-10: rgba(240, 113, 120, 0.1);
+    --green-alpha-20: rgba(170, 217, 76, 0.2);
+    --yellow-alpha-10: rgba(230, 180, 80, 0.1);
+    --aqua-alpha-10: rgba(149, 230, 203, 0.1);
+    --purple-alpha-10: rgba(210, 166, 255, 0.1);
+    --blue-alpha-10: rgba(57, 186, 230, 0.1);
+    --fg4-alpha-10: rgba(86, 91, 102, 0.1);
+    --fg4-alpha-40: rgba(86, 91, 102, 0.4);
+    --bg3-alpha-20: rgba(28, 33, 43, 0.2);
+    --white-alpha-10: rgba(255, 255, 255, 0.1);
+    --white-alpha-20: rgba(255, 255, 255, 0.2);
 }
 
-body { 
-    background: var(--bg-0); 
+body {
+    background: var(--bg-0);
+    color: var(--fg-1);
 }
 
 .hidden {
@@ -32,11 +71,11 @@ body {
     .desktop-user-menu {
         display: none !important;
     }
-    
+
     .mobile-menu-button {
         display: block !important;
     }
-    
+
     .header-brand-text {
         font-size: 18px !important;
     }

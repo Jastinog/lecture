@@ -9,6 +9,42 @@
     <title>{% block title %}Lecture System{% endblock %}</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ayu: {
+                            bg0: '#0b0e14',
+                            bg1: '#0d1017',
+                            bg2: '#131721',
+                            bg3: '#1c212b',
+                            bg4: '#273747',
+                            fg0: '#e6e1cf',
+                            fg1: '#bfbdb6',
+                            fg2: '#9da5b4',
+                            fg3: '#6c7380',
+                            fg4: '#565b66',
+                            red: '#f07178',
+                            redBright: '#ff8080',
+                            green: '#aad94c',
+                            greenBright: '#c2d94c',
+                            yellow: '#e6b450',
+                            yellowBright: '#ffb454',
+                            blue: '#39bae6',
+                            blueBright: '#59c2ff',
+                            purple: '#d2a6ff',
+                            purpleBright: '#e6b0ff',
+                            aqua: '#95e6cb',
+                            aquaBright: '#a6f0dc',
+                            orange: '#ff8f40',
+                            orangeBright: '#ffb454',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <link rel="stylesheet" href="{% static_hash 'css/base.css' %}">
@@ -16,23 +52,23 @@
     <link rel="stylesheet" href="{% static_hash 'css/components.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
-<body class="min-h-screen bg-gray-900 text-gray-100">
-    <header class="bg-gray-800 shadow-lg">
+<body class="min-h-screen bg-ayu-bg0 text-ayu-fg1">
+    <header class="bg-ayu-bg1 shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
             <div class="flex items-center">
                 <a href="{% url 'lecture:home' %}" class="flex items-center space-x-3">
                     <img src="{% static 'image/logo.png' %}" alt="Logo" class="w-12">
                     <div class="flex flex-col">
-                        <span class="text-xl font-bold text-white header-brand-text">New Purushottama Kshetra</span>
-                        <span class="text-sm text-gray-300">Ukraine</span>
+                        <span class="text-xl font-bold text-ayu-fg0 header-brand-text">New Purushottama Kshetra</span>
+                        <span class="text-sm text-ayu-fg3">Ukraine</span>
                     </div>
                 </a>
             </div>
 
                 <nav class="hidden md:flex space-x-8 desktop-nav">
-                    <a href="{% url 'lecture:lecturers_list' %}" 
-                       class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    <a href="{% url 'lecture:lecturers_list' %}"
+                       class="text-ayu-fg3 hover:text-ayu-fg0 px-3 py-2 rounded-md text-sm font-medium transition-colors">
                         Лекторы
                     </a>
                 </nav>
@@ -40,21 +76,21 @@
                 <div class="flex items-center space-x-4 desktop-user-menu">
                     {% if user.is_authenticated %}
                         <div class="flex items-center space-x-3">
-                            <span class="text-sm text-gray-300">{{ user.email }}</span>
-                            <a href="{% url 'users:logout' %}" 
-                               class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                            <span class="text-sm text-ayu-fg3">{{ user.email }}</span>
+                            <a href="{% url 'users:logout' %}"
+                               class="bg-ayu-red hover:bg-ayu-redBright text-ayu-fg0 px-4 py-2 rounded-md text-sm font-medium transition-colors">
                                 <i class="fas fa-sign-out-alt mr-1"></i>
                                 Выйти
                             </a>
                         </div>
                     {% else %}
                         <div class="flex items-center space-x-2">
-                            <a href="{% url 'users:login' %}" 
-                               class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                            <a href="{% url 'users:login' %}"
+                               class="text-ayu-fg3 hover:text-ayu-fg0 px-3 py-2 rounded-md text-sm font-medium transition-colors">
                                 Вход
                             </a>
-                            <a href="{% url 'users:register' %}" 
-                               class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                            <a href="{% url 'users:register' %}"
+                               class="bg-ayu-orange hover:bg-ayu-orangeBright text-ayu-fg0 px-4 py-2 rounded-md text-sm font-medium transition-colors">
                                 Регистрация
                             </a>
                         </div>
@@ -62,37 +98,37 @@
                 </div>
 
                 <div class="md:hidden mobile-menu-button">
-                    <button type="button" 
+                    <button type="button"
                             id="mobile-menu-button"
-                            class="text-gray-300 hover:text-white focus:outline-none focus:text-white p-2">
+                            class="text-ayu-fg3 hover:text-ayu-fg0 focus:outline-none focus:text-ayu-fg0 p-2">
                         <i class="fas fa-bars text-xl"></i>
                     </button>
                 </div>
             </div>
 
             <div class="md:hidden hidden" id="mobile-menu">
-                <div class="px-2 pt-2 pb-3 space-y-1 border-t border-gray-700">
-                    <a href="{% url 'lecture:lecturers_list' %}" 
-                       class="block px-3 py-2 text-gray-300 hover:text-white rounded-md text-base font-medium">
+                <div class="px-2 pt-2 pb-3 space-y-1 border-t border-ayu-bg3">
+                    <a href="{% url 'lecture:lecturers_list' %}"
+                       class="block px-3 py-2 text-ayu-fg3 hover:text-ayu-fg0 rounded-md text-base font-medium">
                         Лекторы
                     </a>
                     {% if user.is_authenticated %}
-                        <div class="border-t border-gray-700 pt-3 mt-3">
-                            <div class="px-3 py-2 text-sm text-gray-400">{{ user.email }}</div>
-                            <a href="{% url 'users:logout' %}" 
-                               class="block px-3 py-2 text-red-400 hover:text-red-300 rounded-md text-base font-medium">
+                        <div class="border-t border-ayu-bg3 pt-3 mt-3">
+                            <div class="px-3 py-2 text-sm text-ayu-fg4">{{ user.email }}</div>
+                            <a href="{% url 'users:logout' %}"
+                               class="block px-3 py-2 text-ayu-redBright hover:text-ayu-red rounded-md text-base font-medium">
                                 <i class="fas fa-sign-out-alt mr-1"></i>
                                 Выйти
                             </a>
                         </div>
                     {% else %}
-                        <div class="border-t border-gray-700 pt-3 mt-3">
-                            <a href="{% url 'users:login' %}" 
-                               class="block px-3 py-2 text-gray-300 hover:text-white rounded-md text-base font-medium">
+                        <div class="border-t border-ayu-bg3 pt-3 mt-3">
+                            <a href="{% url 'users:login' %}"
+                               class="block px-3 py-2 text-ayu-fg3 hover:text-ayu-fg0 rounded-md text-base font-medium">
                                 Вход
                             </a>
-                            <a href="{% url 'users:register' %}" 
-                               class="block px-3 py-2 text-orange-400 hover:text-orange-300 rounded-md text-base font-medium">
+                            <a href="{% url 'users:register' %}"
+                               class="block px-3 py-2 text-ayu-orangeBright hover:text-ayu-orange rounded-md text-base font-medium">
                                 Регистрация
                             </a>
                         </div>
@@ -105,7 +141,7 @@
     {% if messages %}
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
             {% for message in messages %}
-                <div class="mb-4 p-4 rounded-lg {% if message.tags == 'error' %}bg-red-900 text-red-100 border border-red-800{% elif message.tags == 'success' %}bg-green-900 text-green-100 border border-green-800{% else %}bg-blue-900 text-blue-100 border border-blue-800{% endif %}">
+                <div class="mb-4 p-4 rounded-lg {% if message.tags == 'error' %}bg-ayu-bg2 text-ayu-redBright border border-ayu-red{% elif message.tags == 'success' %}bg-ayu-bg2 text-ayu-greenBright border border-ayu-green{% else %}bg-ayu-bg2 text-ayu-blueBright border border-ayu-blue{% endif %}">
                     {{ message }}
                 </div>
             {% endfor %}

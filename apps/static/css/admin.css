@@ -1,10 +1,9 @@
 .import-form {
-    background: #fff;
-    border: 1px solid #ddd;
+    background: var(--bg-1);
+    border: 1px solid var(--bg-3);
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .form-section {
@@ -13,7 +12,7 @@
 
 .form-section h3 {
     margin: 0 0 12px 0;
-    color: #333;
+    color: var(--fg-1);
     font-size: 16px;
     font-weight: 600;
 }
@@ -27,26 +26,27 @@
 .file-input {
     width: 100%;
     padding: 12px;
-    border: 2px dashed #417690;
+    border: 2px dashed var(--blue);
     border-radius: 6px;
-    background: #f8f9fa;
+    background: var(--bg-2);
+    color: var(--fg-1);
     font-size: 14px;
     transition: all 0.3s ease;
 }
 
 .file-input:hover {
-    border-color: #205067;
-    background: #f0f8ff;
+    border-color: var(--blue-bright);
+    background: var(--bg-3);
 }
 
 .file-input:focus {
     outline: none;
-    border-color: #205067;
-    box-shadow: 0 0 0 3px rgba(65, 118, 144, 0.1);
+    border-color: var(--blue-bright);
+    box-shadow: 0 0 0 3px var(--blue-alpha-10);
 }
 
 .help-text {
-    color: #666;
+    color: var(--fg-4);
     font-size: 13px;
     margin-top: 8px;
     font-style: italic;
@@ -57,12 +57,12 @@
     gap: 12px;
     align-items: center;
     padding-top: 16px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--bg-3);
 }
 
 .btn-primary {
-    background: #417690;
-    color: white;
+    background: var(--blue);
+    color: var(--fg-0);
     padding: 12px 24px;
     border: none;
     border-radius: 6px;
@@ -73,12 +73,12 @@
 }
 
 .btn-primary:hover {
-    background: #205067;
+    background: var(--blue-bright);
 }
 
 .btn-secondary {
-    background: #6c757d;
-    color: white;
+    background: var(--bg-4);
+    color: var(--fg-1);
     padding: 12px 24px;
     border: none;
     border-radius: 6px;
@@ -89,19 +89,19 @@
 }
 
 .btn-secondary:hover {
-    background: #545b62;
+    background: var(--bg-3);
 }
 
 .instructions {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
+    background: var(--bg-2);
+    border: 1px solid var(--bg-3);
     border-radius: 8px;
     padding: 20px;
 }
 
 .instructions h3 {
     margin: 0 0 16px 0;
-    color: #495057;
+    color: var(--fg-2);
     font-size: 16px;
     display: flex;
     align-items: center;
@@ -116,13 +116,13 @@
 
 .instructions li {
     margin-bottom: 8px;
-    color: #6c757d;
+    color: var(--fg-4);
     line-height: 1.5;
 }
 
 .topic-info {
-    background: linear-gradient(135deg, #417690 0%, #205067 100%);
-    color: white;
+    background: var(--blue);
+    color: var(--fg-0);
     padding: 20px;
     border-radius: 8px;
     margin-bottom: 24px;

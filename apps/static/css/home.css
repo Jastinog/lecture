@@ -2,7 +2,7 @@
     max-width: 800px;
     margin: 0 auto;
     padding: 1.5rem;
-    background: #1b1f26;
+    background: var(--bg-1);
     border-radius: 12px;
     min-height: calc(100vh - 2rem);
 }
@@ -10,14 +10,14 @@
 .hero-section {
     text-align: center;
     padding: 2rem 1rem;
-    background: linear-gradient(135deg, var(--g-start) 0%, var(--g-mid) 50%, var(--g-end) 100%);
+    background: var(--bg-2);
     border-radius: 12px;
     margin-bottom: 3rem;
     border: 1px solid var(--bg-3);
 }
 
 .cta-text {
-    color: #D1D5DB;
+    color: var(--fg-2);
     margin-bottom: 1.5rem;
     font-size: 1rem;
     line-height: 1.5;
@@ -37,7 +37,7 @@
 }
 
 .features-list li {
-    color: #9CA3AF;
+    color: var(--fg-4);
     font-size: 0.875rem;
     padding: 0.25rem 0;
     display: flex;
@@ -72,23 +72,23 @@
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--brand), var(--brand-2));
-    color: white;
+    background: var(--brand);
+    color: var(--fg-0);
 }
 
 .btn-primary:hover {
-    filter: brightness(1.1);
+    background: var(--brand-2);
 }
 
 .btn-secondary {
-    background: var(--bg-2);
-    color: #D1D5DB;
-    border: 1px solid var(--bg-3);
+    background: var(--bg-3);
+    color: var(--fg-2);
+    border: 1px solid var(--bg-4);
 }
 
 .btn-secondary:hover {
-    background: var(--bg-3);
-    color: white;
+    background: var(--bg-4);
+    color: var(--fg-0);
 }
 
 .home-sections {
@@ -116,7 +116,7 @@
     gap: 0.5rem;
     font-size: var(--fs-xl);
     font-weight: 600;
-    color: #F9FAFB;
+    color: var(--fg-0);
     margin: 0;
     transition: transform 0.3s ease;
 }
@@ -167,51 +167,51 @@
     font-size: 0.75rem;
 }
 
-/* Используем существующие классы card-list и card-item */
+/* Featured lecturer card */
 .featured-lecturer {
-    background: linear-gradient(135deg, #7c2d12 0%, #431407 100%) !important;
-    border-color: #f97316 !important;
-    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.3) !important;
+    background: var(--bg-3) !important;
+    border-color: var(--brand-2) !important;
+    box-shadow: 0 0 0 1px var(--brand-alpha-30) !important;
     position: relative;
 }
 
 .featured-lecturer .card-icon {
-    background: #f97316 !important;
-    color: white !important;
+    background: var(--brand-2) !important;
+    color: var(--bg-0) !important;
 }
 
 .featured-badge {
     position: absolute;
     top: 0.75rem;
     right: 0.75rem;
-    color: #ffd700;
+    color: var(--yellow-bright);
     font-size: 1rem;
 }
 
-/* Стили для специальных иконок */
+/* Special icon styles */
 .list-icon-favorite {
-    background: rgba(255, 215, 0, 0.1) !important;
-    color: #ffd700 !important;
+    background: var(--yellow-alpha-10) !important;
+    color: var(--yellow-bright) !important;
 }
 
 .list-icon-history {
-    background: rgba(234, 88, 12, 0.1) !important;
+    background: var(--brand-alpha-10) !important;
     color: var(--brand) !important;
 }
 
 .lecture-order-icon {
     background: var(--bg-3) !important;
-    color: #F9FAFB !important;
+    color: var(--fg-0) !important;
     font-weight: 600 !important;
 }
 
-/* Компактная версия карточек для списков */
+/* Compact card items for lists */
 .compact-card-item {
     display: flex;
     align-items: center;
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
-    background: linear-gradient(135deg, var(--g-start) 0%, var(--g-mid) 60%, var(--g-end) 100%);
+    background: var(--bg-2);
     border: 1px solid var(--bg-3);
     text-decoration: none;
     color: inherit;
@@ -221,8 +221,8 @@
 }
 
 .compact-card-item:hover {
-    background: linear-gradient(135deg, var(--g-start) 0%, var(--g-mid) 40%, var(--g-end) 100%);
-    border-color: #4a5568;
+    background: var(--bg-3);
+    border-color: var(--bg-4);
 }
 
 .compact-card-icon {
@@ -236,7 +236,7 @@
     margin-right: 1rem;
     flex-shrink: 0;
     overflow: hidden;
-    color: #9CA3AF;
+    color: var(--fg-4);
     font-size: 0.875rem;
     font-weight: 600;
 }
@@ -257,19 +257,19 @@
     margin: 0 0 0.25rem 0;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #F9FAFB;
+    color: var(--fg-0);
     line-height: 1.25;
 }
 
 .compact-card-meta {
-    color: #9CA3AF;
+    color: var(--fg-4);
     font-size: 0.75rem;
     line-height: 1.25;
 }
 
-/* Стили для индикатора "сейчас слушают" */
+/* Live indicator styles */
 .live-indicator {
-    color: #ef4444;
+    color: var(--red-bright);
     font-size: 0.75rem;
     font-weight: 500;
     display: inline-flex;
@@ -284,7 +284,7 @@
 
 .languages-info,
 .language-info {
-    color: #6B7280;
+    color: var(--fg-4);
     font-size: 0.75rem;
     font-style: italic;
 }
@@ -301,103 +301,103 @@
         border-radius: 0;
         min-height: 100vh;
     }
-    
+
     .hero-section {
         padding: 1.5rem 1rem;
         margin-bottom: 2rem;
         border-radius: 0;
     }
-    
+
     .cta-text {
         font-size: 0.875rem;
         margin-bottom: 1rem;
     }
-    
+
     .features-list {
         grid-template-columns: 1fr;
         gap: 0.375rem;
         text-align: left;
     }
-    
+
     .features-list li {
         font-size: 0.8125rem;
         justify-content: left;
     }
-    
+
     .cta-buttons {
         flex-direction: column;
         gap: 0.75rem;
         margin-top: 1rem;
     }
-    
+
     .btn {
         padding: 0.625rem 1.25rem;
         font-size: 0.8125rem;
     }
-    
+
     .home-sections {
         gap: 1.5rem;
     }
-    
+
     .section {
         margin-bottom: 1.5rem;
     }
-    
+
     .section-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.5rem;
         margin-bottom: 1rem;
     }
-    
+
     .section-title {
         font-size: 1.125rem;
     }
-    
+
     .section-title .fa-arrow-right {
         margin-left: 0.375rem;
         font-size: 0.675rem;
     }
-    
+
     .card-item {
         padding: 0.75rem;
         border-radius: 0;
     }
-    
+
     .card-icon {
         width: 3.5rem;
         height: 3.5rem;
         font-size: 0.875rem;
     }
-    
+
     .card-title {
         font-size: 0.875rem;
     }
-    
+
     .card-meta {
         font-size: 0.75rem;
     }
-    
+
     .compact-card-item {
         padding: 0.625rem;
         border-radius: 0;
         margin-bottom: 0.375rem;
     }
-    
+
     .compact-card-icon {
         width: 3.5rem;
         height: 3.5rem;
         font-size: 0.875rem;
     }
-    
+
     .compact-card-title {
         font-size: 0.875rem;
     }
-    
+
     .compact-card-meta {
         font-size: 0.75rem;
     }
-    
+
     .featured-badge {
         top: 0.5rem;
         right: 0.5rem;
