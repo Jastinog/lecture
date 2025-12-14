@@ -170,6 +170,14 @@ export class LecturePlayer {
 
     async startPlayback() {
         if (this.isAudioReady && this.isFullyLoaded) {
+            // Ensure saved position is applied before playing (guards against race condition)
+            if (this.targetSeekTime !== null && this.targetSeekTime > 0 && this.audio.duration) {
+                const validTime = Math.min(this.targetSeekTime, this.audio.duration - 1);
+                this.audio.currentTime = validTime;
+                this.targetSeekTime = null;
+                this.progressBar.forceUpdateProgress();
+            }
+
             try {
                 await this.audio.play();
             } catch (e) {

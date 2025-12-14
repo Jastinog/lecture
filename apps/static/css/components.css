@@ -446,13 +446,4 @@
     .empty-state i { font-size: 2rem; }
 }
 
-@media (min-width: 769px) {
-    .desktop-nav,
-    .desktop-user-menu {
-        display: block !important;
-    }
-
-    .mobile-menu-button {
-        display: none !important;
-    }
-}
+/* Desktop nav visibility handled by Tailwind */

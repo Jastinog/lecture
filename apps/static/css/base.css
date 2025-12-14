@@ -1,4 +1,32 @@
-:root {
+/* Header responsive visibility */
+@media (min-width: 768px) {
+    .desktop-nav {
+        display: flex !important;
+    }
+    .mobile-controls,
+    .mobile-menu {
+        display: none !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .desktop-nav {
+        display: none !important;
+    }
+    .mobile-controls {
+        display: flex !important;
+    }
+    .mobile-menu.hidden {
+        display: none !important;
+    }
+    .mobile-menu:not(.hidden) {
+        display: block !important;
+    }
+}
+
+/* Dark theme (default) */
+:root,
+html.dark {
     /* Ayu Dark Background */
     --bg-0: #0b0e14;
     --bg-1: #0d1017;
@@ -57,6 +85,58 @@
     --white-alpha-20: rgba(255, 255, 255, 0.2);
 }
 
+/* Light theme */
+html.light {
+    /* Ayu Light Background */
+    --bg-0: #fafafa;
+    --bg-1: #f3f4f5;
+    --bg-2: #e8e9eb;
+    --bg-3: #d8dae0;
+    --bg-4: #c8ccd4;
+
+    /* Ayu Light Foreground */
+    --fg-0: #242936;
+    --fg-1: #5c6166;
+    --fg-2: #787b80;
+    --fg-3: #8a9199;
+    --fg-4: #acb6bf;
+
+    /* Ayu Orange (brand) - slightly darker for light theme */
+    --brand: #e85d04;
+    --brand-2: #f07624;
+
+    /* Ayu Light Colors - adjusted for light background */
+    --red: #e65050;
+    --red-bright: #f14c4c;
+    --green: #6cbf43;
+    --green-bright: #7fcc4e;
+    --yellow: #e6a323;
+    --yellow-bright: #f0ad2d;
+    --blue: #399ee6;
+    --blue-bright: #4baef7;
+    --purple: #a37acc;
+    --purple-bright: #b48eda;
+    --aqua: #4cbf99;
+    --aqua-bright: #5dd3a8;
+
+    /* Semi-transparent colors for light theme */
+    --brand-alpha-10: rgba(232, 93, 4, 0.1);
+    --brand-alpha-20: rgba(232, 93, 4, 0.2);
+    --brand-alpha-30: rgba(232, 93, 4, 0.3);
+
+    --red-alpha-10: rgba(230, 80, 80, 0.1);
+    --green-alpha-20: rgba(108, 191, 67, 0.2);
+    --yellow-alpha-10: rgba(230, 163, 35, 0.1);
+    --aqua-alpha-10: rgba(76, 191, 153, 0.1);
+    --purple-alpha-10: rgba(163, 122, 204, 0.1);
+    --blue-alpha-10: rgba(57, 158, 230, 0.1);
+    --fg4-alpha-10: rgba(172, 182, 191, 0.1);
+    --fg4-alpha-40: rgba(172, 182, 191, 0.4);
+    --bg3-alpha-20: rgba(216, 218, 224, 0.2);
+    --white-alpha-10: rgba(0, 0, 0, 0.05);
+    --white-alpha-20: rgba(0, 0, 0, 0.1);
+}
+
 body {
     background: var(--bg-0);
     color: var(--fg-1);
@@ -67,19 +147,6 @@ body {
 }
 
 @media (max-width: 768px) {
-    .desktop-nav,
-    .desktop-user-menu {
-        display: none !important;
-    }
-
-    .mobile-menu-button {
-        display: block !important;
-    }
-
-    .header-brand-text {
-        font-size: 18px !important;
-    }
-
     .page-container {
         margin: 0 !important;
         padding: 1rem !important;
@@ -100,8 +167,3 @@ body {
     }
 }
 
-@media (max-width: 480px) {
-    .header-brand-text {
-        font-size: 16px !important;
-    }
-}

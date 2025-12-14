@@ -2,8 +2,14 @@
 {% load static_hash %}
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.className = theme;
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>{% block title %}Lecture System{% endblock %}</title>
@@ -15,30 +21,30 @@
                 extend: {
                     colors: {
                         ayu: {
-                            bg0: '#0b0e14',
-                            bg1: '#0d1017',
-                            bg2: '#131721',
-                            bg3: '#1c212b',
-                            bg4: '#273747',
-                            fg0: '#e6e1cf',
-                            fg1: '#bfbdb6',
-                            fg2: '#9da5b4',
-                            fg3: '#6c7380',
-                            fg4: '#565b66',
-                            red: '#f07178',
-                            redBright: '#ff8080',
-                            green: '#aad94c',
-                            greenBright: '#c2d94c',
-                            yellow: '#e6b450',
-                            yellowBright: '#ffb454',
-                            blue: '#39bae6',
-                            blueBright: '#59c2ff',
-                            purple: '#d2a6ff',
-                            purpleBright: '#e6b0ff',
-                            aqua: '#95e6cb',
-                            aquaBright: '#a6f0dc',
-                            orange: '#ff8f40',
-                            orangeBright: '#ffb454',
+                            bg0: 'var(--bg-0)',
+                            bg1: 'var(--bg-1)',
+                            bg2: 'var(--bg-2)',
+                            bg3: 'var(--bg-3)',
+                            bg4: 'var(--bg-4)',
+                            fg0: 'var(--fg-0)',
+                            fg1: 'var(--fg-1)',
+                            fg2: 'var(--fg-2)',
+                            fg3: 'var(--fg-3)',
+                            fg4: 'var(--fg-4)',
+                            red: 'var(--red)',
+                            redBright: 'var(--red-bright)',
+                            green: 'var(--green)',
+                            greenBright: 'var(--green-bright)',
+                            yellow: 'var(--yellow)',
+                            yellowBright: 'var(--yellow-bright)',
+                            blue: 'var(--blue)',
+                            blueBright: 'var(--blue-bright)',
+                            purple: 'var(--purple)',
+                            purpleBright: 'var(--purple-bright)',
+                            aqua: 'var(--aqua)',
+                            aquaBright: 'var(--aqua-bright)',
+                            orange: 'var(--brand)',
+                            orangeBright: 'var(--brand-2)',
                         }
                     }
                 }
@@ -53,82 +59,163 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="min-h-screen bg-ayu-bg0 text-ayu-fg1">
-    <header class="bg-ayu-bg1 shadow-lg">
+    <header class="bg-ayu-bg1 border-b border-ayu-bg3">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-            <div class="flex items-center">
-                <a href="{% url 'lecture:home' %}" class="flex items-center space-x-3">
-                    <img src="{% static 'image/logo.png' %}" alt="Logo" class="w-12">
-                    <div class="flex flex-col">
-                        <span class="text-xl font-bold text-ayu-fg0 header-brand-text">New Purushottama Kshetra</span>
-                        <span class="text-sm text-ayu-fg3">Ukraine</span>
+            <div class="flex justify-between items-center h-14 md:h-16">
+                <!-- Logo -->
+                <a href="{% url 'lecture:home' %}" class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+                    <img src="{% static 'image/logo.png' %}" alt="Logo" class="w-9 h-9 sm:w-11 sm:h-11">
+                    <div class="flex flex-col leading-tight">
+                        <span class="text-sm sm:text-lg font-semibold text-ayu-fg0 whitespace-nowrap">New Purushottama Kshetra</span>
+                        <span class="text-xs text-ayu-fg4 hidden sm:block">Ukraine</span>
                     </div>
                 </a>
-            </div>
 
-                <nav class="hidden md:flex space-x-8 desktop-nav">
-                    <a href="{% url 'lecture:lecturers_list' %}"
-                       class="text-ayu-fg3 hover:text-ayu-fg0 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                        Лекторы
-                    </a>
-                </nav>
+                <!-- Desktop Navigation -->
+                <div class="desktop-nav items-center space-x-4" style="display: none;">
+                    <nav class="flex items-center space-x-1">
+                        <a href="{% url 'lecture:home' %}"
+                           class="text-ayu-fg3 hover:text-ayu-fg0 hover:bg-ayu-bg2 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                            <i class="fas fa-home mr-1.5 text-ayu-fg4"></i>Главная
+                        </a>
+                        <a href="{% url 'lecture:lecturers_list' %}"
+                           class="text-ayu-fg3 hover:text-ayu-fg0 hover:bg-ayu-bg2 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                            <i class="fas fa-users mr-1.5 text-ayu-fg4"></i>Лекторы
+                        </a>
+                        <a href="{% url 'lecture:topics_list' %}"
+                           class="text-ayu-fg3 hover:text-ayu-fg0 hover:bg-ayu-bg2 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                            <i class="fas fa-book mr-1.5 text-ayu-fg4"></i>Темы
+                        </a>
+                        <a href="{% url 'lecture:now_listening_list' %}"
+                           class="text-ayu-fg3 hover:text-ayu-fg0 hover:bg-ayu-bg2 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                            <i class="fas fa-headphones mr-1.5 text-ayu-fg4"></i>Слушают
+                        </a>
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'lecture:favorites_list' %}"
+                           class="text-ayu-fg3 hover:text-ayu-fg0 hover:bg-ayu-bg2 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                            <i class="fas fa-heart mr-1.5 text-ayu-red"></i>Избранное
+                        </a>
+                        <a href="{% url 'lecture:history_list' %}"
+                           class="text-ayu-fg3 hover:text-ayu-fg0 hover:bg-ayu-bg2 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                            <i class="fas fa-history mr-1.5 text-ayu-fg4"></i>История
+                        </a>
+                        {% endif %}
+                    </nav>
 
-                <div class="flex items-center space-x-4 desktop-user-menu">
+                    <!-- Theme Toggle Desktop -->
+                    <button id="theme-toggle" type="button"
+                            class="relative w-12 h-6 rounded-full bg-ayu-bg3 hover:bg-ayu-bg4 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-ayu-orange/50"
+                            aria-label="Toggle theme">
+                        <span id="theme-toggle-thumb"
+                              class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-ayu-bg1 shadow transform transition-transform duration-200 flex items-center justify-center">
+                            <i id="theme-icon-sun" class="fas fa-sun text-ayu-yellow text-[10px] hidden"></i>
+                            <i id="theme-icon-moon" class="fas fa-moon text-ayu-blue text-[10px]"></i>
+                        </span>
+                    </button>
+
+                    <!-- User Menu Desktop -->
                     {% if user.is_authenticated %}
-                        <div class="flex items-center space-x-3">
-                            <span class="text-sm text-ayu-fg3">{{ user.email }}</span>
+                        <div class="flex items-center space-x-3 pl-3 border-l border-ayu-bg3">
+                            <span class="text-sm text-ayu-fg4 max-w-32 truncate">{{ user.email }}</span>
                             <a href="{% url 'users:logout' %}"
-                               class="bg-ayu-red hover:bg-ayu-redBright text-ayu-fg0 px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                                <i class="fas fa-sign-out-alt mr-1"></i>
-                                Выйти
+                               class="flex items-center space-x-1.5 bg-ayu-bg2 hover:bg-ayu-bg3 text-ayu-fg2 hover:text-ayu-red px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
+                                <i class="fas fa-sign-out-alt text-xs"></i>
+                                <span>Выйти</span>
                             </a>
                         </div>
                     {% else %}
-                        <div class="flex items-center space-x-2">
+                        <div class="flex items-center space-x-2 pl-3 border-l border-ayu-bg3">
                             <a href="{% url 'users:login' %}"
-                               class="text-ayu-fg3 hover:text-ayu-fg0 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                               class="text-ayu-fg3 hover:text-ayu-fg0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
                                 Вход
                             </a>
                             <a href="{% url 'users:register' %}"
-                               class="bg-ayu-orange hover:bg-ayu-orangeBright text-ayu-fg0 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                               class="bg-ayu-orange hover:bg-ayu-orangeBright text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
                                 Регистрация
                             </a>
                         </div>
                     {% endif %}
                 </div>
 
-                <div class="md:hidden mobile-menu-button">
-                    <button type="button"
-                            id="mobile-menu-button"
-                            class="text-ayu-fg3 hover:text-ayu-fg0 focus:outline-none focus:text-ayu-fg0 p-2">
-                        <i class="fas fa-bars text-xl"></i>
+                <!-- Mobile Controls -->
+                <div class="mobile-controls items-center space-x-2" style="display: flex;">
+                    <!-- Theme Toggle Mobile (always visible) -->
+                    <button id="theme-toggle-mobile" type="button"
+                            class="relative w-10 h-5 rounded-full bg-ayu-bg3 transition-colors duration-200 focus:outline-none"
+                            aria-label="Toggle theme">
+                        <span id="theme-toggle-thumb-mobile"
+                              class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-ayu-bg1 shadow transform transition-transform duration-200 flex items-center justify-center">
+                            <i id="theme-icon-sun-mobile" class="fas fa-sun text-ayu-yellow text-[8px] hidden"></i>
+                            <i id="theme-icon-moon-mobile" class="fas fa-moon text-ayu-blue text-[8px]"></i>
+                        </span>
+                    </button>
+
+                    <!-- Burger Menu Button -->
+                    <button type="button" id="mobile-menu-button"
+                            class="text-ayu-fg3 hover:text-ayu-fg0 hover:bg-ayu-bg2 p-2 rounded-lg transition-all">
+                        <i class="fas fa-bars text-lg"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="md:hidden hidden" id="mobile-menu">
-                <div class="px-2 pt-2 pb-3 space-y-1 border-t border-ayu-bg3">
+            <!-- Mobile Menu -->
+            <div class="mobile-menu hidden" id="mobile-menu">
+                <div class="py-3 space-y-1 border-t border-ayu-bg3">
+                    <a href="{% url 'lecture:home' %}"
+                       class="flex items-center px-3 py-2.5 text-ayu-fg2 hover:text-ayu-fg0 hover:bg-ayu-bg2 rounded-lg text-base font-medium transition-all">
+                        <i class="fas fa-home w-6 text-ayu-fg4"></i>
+                        Главная
+                    </a>
                     <a href="{% url 'lecture:lecturers_list' %}"
-                       class="block px-3 py-2 text-ayu-fg3 hover:text-ayu-fg0 rounded-md text-base font-medium">
+                       class="flex items-center px-3 py-2.5 text-ayu-fg2 hover:text-ayu-fg0 hover:bg-ayu-bg2 rounded-lg text-base font-medium transition-all">
+                        <i class="fas fa-users w-6 text-ayu-fg4"></i>
                         Лекторы
                     </a>
+                    <a href="{% url 'lecture:topics_list' %}"
+                       class="flex items-center px-3 py-2.5 text-ayu-fg2 hover:text-ayu-fg0 hover:bg-ayu-bg2 rounded-lg text-base font-medium transition-all">
+                        <i class="fas fa-book w-6 text-ayu-fg4"></i>
+                        Темы
+                    </a>
+                    <a href="{% url 'lecture:now_listening_list' %}"
+                       class="flex items-center px-3 py-2.5 text-ayu-fg2 hover:text-ayu-fg0 hover:bg-ayu-bg2 rounded-lg text-base font-medium transition-all">
+                        <i class="fas fa-headphones w-6 text-ayu-fg4"></i>
+                        Сейчас слушают
+                    </a>
+
                     {% if user.is_authenticated %}
-                        <div class="border-t border-ayu-bg3 pt-3 mt-3">
-                            <div class="px-3 py-2 text-sm text-ayu-fg4">{{ user.email }}</div>
+                    <div class="border-t border-ayu-bg3 mt-2 pt-2">
+                        <a href="{% url 'lecture:favorites_list' %}"
+                           class="flex items-center px-3 py-2.5 text-ayu-fg2 hover:text-ayu-fg0 hover:bg-ayu-bg2 rounded-lg text-base font-medium transition-all">
+                            <i class="fas fa-heart w-6 text-ayu-red"></i>
+                            Избранное
+                        </a>
+                        <a href="{% url 'lecture:history_list' %}"
+                           class="flex items-center px-3 py-2.5 text-ayu-fg2 hover:text-ayu-fg0 hover:bg-ayu-bg2 rounded-lg text-base font-medium transition-all">
+                            <i class="fas fa-history w-6 text-ayu-fg4"></i>
+                            История
+                        </a>
+                    </div>
+                        <div class="border-t border-ayu-bg3 mt-2 pt-2">
+                            <div class="px-3 py-2 text-sm text-ayu-fg4 truncate">
+                                <i class="fas fa-user w-6 text-ayu-fg4"></i>
+                                {{ user.email }}
+                            </div>
                             <a href="{% url 'users:logout' %}"
-                               class="block px-3 py-2 text-ayu-redBright hover:text-ayu-red rounded-md text-base font-medium">
-                                <i class="fas fa-sign-out-alt mr-1"></i>
+                               class="flex items-center px-3 py-2.5 text-ayu-red hover:bg-ayu-bg2 rounded-lg text-base font-medium transition-all">
+                                <i class="fas fa-sign-out-alt w-6"></i>
                                 Выйти
                             </a>
                         </div>
                     {% else %}
-                        <div class="border-t border-ayu-bg3 pt-3 mt-3">
+                        <div class="border-t border-ayu-bg3 mt-2 pt-2 space-y-1">
                             <a href="{% url 'users:login' %}"
-                               class="block px-3 py-2 text-ayu-fg3 hover:text-ayu-fg0 rounded-md text-base font-medium">
+                               class="flex items-center px-3 py-2.5 text-ayu-fg2 hover:text-ayu-fg0 hover:bg-ayu-bg2 rounded-lg text-base font-medium transition-all">
+                                <i class="fas fa-sign-in-alt w-6 text-ayu-fg4"></i>
                                 Вход
                             </a>
                             <a href="{% url 'users:register' %}"
-                               class="block px-3 py-2 text-ayu-orangeBright hover:text-ayu-orange rounded-md text-base font-medium">
+                               class="flex items-center px-3 py-2.5 text-ayu-orange hover:bg-ayu-bg2 rounded-lg text-base font-medium transition-all">
+                                <i class="fas fa-user-plus w-6"></i>
                                 Регистрация
                             </a>
                         </div>
@@ -157,6 +244,59 @@
             const mobileMenu = document.getElementById('mobile-menu');
             mobileMenu.classList.toggle('hidden');
         });
+
+        // Theme Toggle
+        (function() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeToggleMobile = document.getElementById('theme-toggle-mobile');
+            const thumb = document.getElementById('theme-toggle-thumb');
+            const thumbMobile = document.getElementById('theme-toggle-thumb-mobile');
+            const sunIcon = document.getElementById('theme-icon-sun');
+            const moonIcon = document.getElementById('theme-icon-moon');
+            const sunIconMobile = document.getElementById('theme-icon-sun-mobile');
+            const moonIconMobile = document.getElementById('theme-icon-moon-mobile');
+
+            function updateToggleUI(isLight) {
+                // Desktop toggle (w-12, thumb w-5, offset = 12 - 5 - 0.5 padding = 1.5rem)
+                if (thumb) {
+                    thumb.style.transform = isLight ? 'translateX(1.5rem)' : 'translateX(0)';
+                }
+                if (sunIcon && moonIcon) {
+                    sunIcon.classList.toggle('hidden', !isLight);
+                    moonIcon.classList.toggle('hidden', isLight);
+                }
+
+                // Mobile toggle (w-10, thumb w-4, offset = 10 - 4 - 0.5 padding = 1.25rem)
+                if (thumbMobile) {
+                    thumbMobile.style.transform = isLight ? 'translateX(1.25rem)' : 'translateX(0)';
+                }
+                if (sunIconMobile && moonIconMobile) {
+                    sunIconMobile.classList.toggle('hidden', !isLight);
+                    moonIconMobile.classList.toggle('hidden', isLight);
+                }
+            }
+
+            function toggleTheme() {
+                const currentTheme = document.documentElement.className;
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+                document.documentElement.className = newTheme;
+                localStorage.setItem('theme', newTheme);
+                updateToggleUI(newTheme === 'light');
+            }
+
+            // Initialize toggle UI
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            updateToggleUI(currentTheme === 'light');
+
+            // Add event listeners
+            if (themeToggle) {
+                themeToggle.addEventListener('click', toggleTheme);
+            }
+            if (themeToggleMobile) {
+                themeToggleMobile.addEventListener('click', toggleTheme);
+            }
+        })();
     </script>
     {% block extra_js %}{% endblock %}
 </body>
