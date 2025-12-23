@@ -25,60 +25,60 @@
 }
 
 /* ╔════════════════════════════════════════════════════════════════════════════╗
-   ║  DUSTTERM THEME                                                            ║
-   ║  Старый монитор. Пыльная клавиатура. Код на века.                          ║
+   ║  VRINDAVAN THEME                                                           ║
+   ║  Шьям и Гауранга. Индиго Кришны. Шафран преданности.                       ║
    ╚════════════════════════════════════════════════════════════════════════════╝ */
 
-/* Dark theme (default) - Dustterm */
+/* Dark theme (default) - Shyam (тёмный как грозовая туча) */
 :root,
 html.dark {
-    /* Dustterm Dark Background - как экран старого монитора */
-    --bg-0: #1a1714;
-    --bg-1: #1e1a16;
-    --bg-2: #242018;
-    --bg-3: #2e2820;
-    --bg-4: #3a3228;
+    /* Shyam Background - глубокий индиго, цвет тела Кришны */
+    --bg-0: #0c1018;
+    --bg-1: #121822;
+    --bg-2: #1a222e;
+    --bg-3: #242e3c;
+    --bg-4: #303c4c;
 
-    /* Dustterm Dark Foreground - как на старом CRT с лёгким свечением */
-    --fg-0: #c8b898;
-    --fg-1: #b8a888;
-    --fg-2: #9a8a70;
-    --fg-3: #6a5a48;
-    --fg-4: #4a4035;
+    /* Foreground - тёплое золото питамбары */
+    --fg-0: #f5e6c8;
+    --fg-1: #e0d0b0;
+    --fg-2: #b8a888;
+    --fg-3: #887860;
+    --fg-4: #605848;
 
-    /* Ржавый красный (brand) */
-    --brand: #c45c3e;
-    --brand-2: #d87a5a;
+    /* Шафран санньяси (brand) */
+    --brand: #e07830;
+    --brand-2: #f09048;
 
-    /* Dustterm Colors */
-    --red: #c45c3e;
-    --red-bright: #d87a5a;
-    --green: #7a8a58;
-    --green-bright: #98a878;
-    --yellow: #c49a3e;
-    --yellow-bright: #d4b060;
-    --blue: #5a7a9a;
-    --blue-bright: #7898b8;
-    --purple: #6868a8;
-    --purple-bright: #8888c8;
-    --aqua: #5a9a7a;
-    --aqua-bright: #78b898;
+    /* Vrindavan Colors - краски священной земли */
+    --red: #d85050;           /* кункум/синдур */
+    --red-bright: #e87070;
+    --green: #68a060;         /* туласи */
+    --green-bright: #88c080;
+    --yellow: #d8a830;        /* куркума/гауранга */
+    --yellow-bright: #e8c050;
+    --blue: #5080b8;          /* павлинье перо */
+    --blue-bright: #70a0d8;
+    --purple: #8868a8;        /* вечернее небо Вриндавана */
+    --purple-bright: #a888c8;
+    --aqua: #509088;          /* воды Ямуны */
+    --aqua-bright: #70b0a8;
 
-    /* Дополнительные цвета Dustterm */
-    --dusty-rose: #a87878;
-    --dusty-rose-bright: #c89898;
-    --terra: #b86848;
-    --terra-bright: #d88868;
-    --olive: #7a8a58;
-    --olive-bright: #98a878;
-    --ink: #6868a8;
-    --ink-bright: #8888c8;
-    --patina: #5a9a7a;
-    --patina-bright: #78b898;
-    --mustard: #c49a3e;
-    --mustard-bright: #d4b060;
-    --denim: #5a7a9a;
-    --denim-bright: #7898b8;
+    /* Дополнительные цвета */
+    --dusty-rose: #c87080;    /* лотос */
+    --dusty-rose-bright: #e090a0;
+    --terra: #c86830;         /* терракота храмов */
+    --terra-bright: #e08850;
+    --olive: #808848;         /* листья туласи */
+    --olive-bright: #a0a868;
+    --ink: #7060a0;           /* чернила шастр */
+    --ink-bright: #9080c0;
+    --patina: #509088;
+    --patina-bright: #70b0a8;
+    --mustard: #c89820;       /* горчичное масло */
+    --mustard-bright: #e0b040;
+    --denim: #4870a0;
+    --denim-bright: #6890c0;
 
     /* Font sizes */
     --fs-xxl: 1.75rem;
@@ -89,89 +89,101 @@ html.dark {
     --fs-xs:  0.75rem;
 
     /* Semi-transparent colors */
-    --brand-alpha-10: rgba(196, 92, 62, 0.1);
-    --brand-alpha-20: rgba(196, 92, 62, 0.2);
-    --brand-alpha-30: rgba(196, 92, 62, 0.3);
+    --brand-alpha-10: rgba(224, 120, 48, 0.1);
+    --brand-alpha-20: rgba(224, 120, 48, 0.2);
+    --brand-alpha-30: rgba(224, 120, 48, 0.3);
 
-    --red-alpha-10: rgba(196, 92, 62, 0.1);
-    --green-alpha-20: rgba(122, 138, 88, 0.2);
-    --yellow-alpha-10: rgba(196, 154, 62, 0.1);
-    --aqua-alpha-10: rgba(90, 154, 122, 0.1);
-    --purple-alpha-10: rgba(104, 104, 168, 0.1);
-    --blue-alpha-10: rgba(90, 122, 154, 0.1);
-    --fg4-alpha-10: rgba(74, 64, 53, 0.1);
-    --fg4-alpha-40: rgba(74, 64, 53, 0.4);
-    --bg3-alpha-20: rgba(46, 40, 32, 0.2);
-    --white-alpha-10: rgba(200, 184, 152, 0.1);
-    --white-alpha-20: rgba(200, 184, 152, 0.2);
+    --red-alpha-10: rgba(216, 80, 80, 0.1);
+    --green-alpha-20: rgba(104, 160, 96, 0.2);
+    --yellow-alpha-10: rgba(216, 168, 48, 0.1);
+    --aqua-alpha-10: rgba(80, 144, 136, 0.1);
+    --purple-alpha-10: rgba(136, 104, 168, 0.1);
+    --blue-alpha-10: rgba(80, 128, 184, 0.1);
+    --fg4-alpha-10: rgba(96, 88, 72, 0.1);
+    --fg4-alpha-40: rgba(96, 88, 72, 0.4);
+    --bg3-alpha-20: rgba(36, 46, 60, 0.2);
+    --white-alpha-10: rgba(245, 230, 200, 0.1);
+    --white-alpha-20: rgba(245, 230, 200, 0.2);
+
+    /* Emboss effect - лёгкое тиснение */
+    --emboss-light: rgba(255, 255, 255, 0.04);
+    --emboss-dark: rgba(0, 0, 0, 0.15);
+    --emboss-inset: inset 0 1px 0 var(--emboss-light), inset 0 -1px 0 var(--emboss-dark);
+    --emboss-text: 0 1px 0 var(--emboss-dark);
 }
 
-/* Light theme - Dustterm Light */
+/* Light theme - Gauranga (золотой аватар) */
 html.light {
-    /* Dustterm Light Background - как выцветшая бумага */
-    --bg-0: #f5f0e8;
-    --bg-1: #ebe5db;
-    --bg-2: #e0d8cc;
-    --bg-3: #d4cbc0;
-    --bg-4: #c8bfb4;
+    /* Gauranga Background - тёплый песочный, стены храмов */
+    --bg-0: #faf5eb;
+    --bg-1: #f0e8da;
+    --bg-2: #e5dac8;
+    --bg-3: #d8cab5;
+    --bg-4: #c8b8a0;
 
-    /* Dustterm Light Foreground */
-    --fg-0: #1a1714;
-    --fg-1: #2e2820;
-    --fg-2: #4a4035;
-    --fg-3: #6a5a48;
-    --fg-4: #9a8a70;
+    /* Foreground - глубокий индиго Шьяма */
+    --fg-0: #1a2030;
+    --fg-1: #283040;
+    --fg-2: #485060;
+    --fg-3: #687080;
+    --fg-4: #98a0a8;
 
-    /* Ржавый красный (brand) - насыщеннее для светлой темы */
-    --brand: #a84830;
-    --brand-2: #c45c3e;
+    /* Терракота храмов (brand) */
+    --brand: #c05028;
+    --brand-2: #d86840;
 
-    /* Dustterm Light Colors - насыщеннее для светлого фона */
-    --red: #a84830;
-    --red-bright: #c45c3e;
-    --green: #5a7040;
-    --green-bright: #6a8050;
-    --yellow: #a88028;
-    --yellow-bright: #c49a3e;
-    --blue: #3a6080;
-    --blue-bright: #4a7090;
-    --purple: #5050a0;
-    --purple-bright: #6060b0;
-    --aqua: #408060;
-    --aqua-bright: #509070;
+    /* Gauranga Light Colors */
+    --red: #b83830;           /* кункум */
+    --red-bright: #d05048;
+    --green: #407838;         /* туласи */
+    --green-bright: #589850;
+    --yellow: #b08018;        /* куркума */
+    --yellow-bright: #c89830;
+    --blue: #305898;          /* Кришна */
+    --blue-bright: #4878b8;
+    --purple: #604888;        /* вечер */
+    --purple-bright: #7860a8;
+    --aqua: #307068;          /* Ямуна */
+    --aqua-bright: #489080;
 
-    /* Дополнительные цвета Dustterm Light */
-    --dusty-rose: #906060;
-    --dusty-rose-bright: #a87878;
-    --terra: #a05038;
-    --terra-bright: #b86848;
-    --olive: #5a7040;
-    --olive-bright: #6a8050;
-    --ink: #5050a0;
-    --ink-bright: #6060b0;
-    --patina: #408060;
-    --patina-bright: #509070;
-    --mustard: #a88028;
-    --mustard-bright: #c49a3e;
-    --denim: #3a6080;
-    --denim-bright: #4a7090;
+    /* Дополнительные цвета Gauranga */
+    --dusty-rose: #a85060;
+    --dusty-rose-bright: #c87080;
+    --terra: #a85020;
+    --terra-bright: #c87040;
+    --olive: #606830;
+    --olive-bright: #808848;
+    --ink: #504080;
+    --ink-bright: #6858a0;
+    --patina: #307068;
+    --patina-bright: #489080;
+    --mustard: #987010;
+    --mustard-bright: #b88828;
+    --denim: #285080;
+    --denim-bright: #4070a0;
 
     /* Semi-transparent colors for light theme */
-    --brand-alpha-10: rgba(168, 72, 48, 0.1);
-    --brand-alpha-20: rgba(168, 72, 48, 0.2);
-    --brand-alpha-30: rgba(168, 72, 48, 0.3);
+    --brand-alpha-10: rgba(192, 80, 40, 0.1);
+    --brand-alpha-20: rgba(192, 80, 40, 0.2);
+    --brand-alpha-30: rgba(192, 80, 40, 0.3);
 
-    --red-alpha-10: rgba(168, 72, 48, 0.1);
-    --green-alpha-20: rgba(90, 112, 64, 0.2);
-    --yellow-alpha-10: rgba(168, 128, 40, 0.1);
-    --aqua-alpha-10: rgba(64, 128, 96, 0.1);
-    --purple-alpha-10: rgba(80, 80, 160, 0.1);
-    --blue-alpha-10: rgba(58, 96, 128, 0.1);
-    --fg4-alpha-10: rgba(154, 138, 112, 0.1);
-    --fg4-alpha-40: rgba(154, 138, 112, 0.4);
-    --bg3-alpha-20: rgba(212, 203, 192, 0.2);
-    --white-alpha-10: rgba(26, 23, 20, 0.05);
-    --white-alpha-20: rgba(26, 23, 20, 0.1);
+    --red-alpha-10: rgba(184, 56, 48, 0.1);
+    --green-alpha-20: rgba(64, 120, 56, 0.2);
+    --yellow-alpha-10: rgba(176, 128, 24, 0.1);
+    --aqua-alpha-10: rgba(48, 112, 104, 0.1);
+    --purple-alpha-10: rgba(96, 72, 136, 0.1);
+    --blue-alpha-10: rgba(48, 88, 152, 0.1);
+    --fg4-alpha-10: rgba(152, 160, 168, 0.1);
+    --fg4-alpha-40: rgba(152, 160, 168, 0.4);
+    --bg3-alpha-20: rgba(216, 202, 181, 0.2);
+    --white-alpha-10: rgba(26, 32, 48, 0.05);
+    --white-alpha-20: rgba(26, 32, 48, 0.1);
+
+    /* Emboss effect - лёгкое тиснение (светлая тема) */
+    --emboss-light: rgba(255, 255, 255, 0.7);
+    --emboss-dark: rgba(0, 0, 0, 0.08);
+    --emboss-inset: inset 0 1px 0 var(--emboss-light), inset 0 -1px 0 var(--emboss-dark);
+    --emboss-text: 0 1px 0 var(--emboss-light);
 }
 
 body {

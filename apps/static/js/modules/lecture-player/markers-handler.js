@@ -434,8 +434,8 @@ export class MarkersHandler {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #ef4444;
-            color: white;
+            background: var(--red);
+            color: var(--fg-0);
             padding: 10px 15px;
             border-radius: 5px;
             z-index: 1000;
