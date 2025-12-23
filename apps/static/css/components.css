@@ -36,6 +36,7 @@
     height: 100%;
     object-fit: cover;
     border-radius: 0.1rem;
+    box-shadow: var(--emboss-inset), inset 0 0 0 1px var(--emboss-dark);
 }
 
 .header-avatar.dot {
@@ -109,21 +110,23 @@
     border: 1px solid var(--bg-3);
     text-decoration: none;
     color: inherit;
-    transition: all 0.2s;
+    transition: all 0.25s ease;
     cursor: pointer;
     position: relative;
+    box-shadow: var(--shadow-sm);
 }
 
 .card-item:hover {
     background: var(--bg-3);
     border-color: var(--bg-4);
+    box-shadow: var(--shadow-md);
 }
 
 .card-item.active,
 .card-item.playing {
     background: var(--bg-3);
     border-color: var(--brand-2);
-    box-shadow: 0 0 0 1px var(--brand-alpha-30);
+    box-shadow: var(--glow-brand-sm), var(--shadow-md);
 }
 
 .card-icon {
@@ -148,6 +151,7 @@
     height: 100%;
     object-fit: cover;
     border-radius: 0.1rem;
+    box-shadow: var(--emboss-inset), inset 0 0 0 1px var(--emboss-dark);
 }
 
 .card-item.active .card-icon,

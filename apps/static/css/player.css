@@ -22,6 +22,7 @@
     border-radius: 0.5rem;
     background: var(--bg-2);
     border: 1px solid var(--bg-3);
+    box-shadow: var(--shadow-md);
 }
 
 /* =============================================================================
@@ -57,6 +58,7 @@
     height: 100%;
     object-fit: cover;
     border-radius: 0.25rem;
+    box-shadow: var(--emboss-inset), inset 0 0 0 1px var(--emboss-dark);
 }
 
 .player-info {
@@ -240,24 +242,27 @@
     justify-content: center;
     cursor: pointer;
     font-size: 1.125rem;
-    transition: all 0.2s ease;
-    box-shadow: var(--emboss-inset);
+    transition: all 0.25s ease;
+    box-shadow: var(--shadow-sm), var(--emboss-inset);
 }
 
 .btn-control:hover {
     background: var(--bg-4);
+    box-shadow: var(--shadow-md), var(--emboss-inset);
 }
 
 .btn-play-pause {
-    background: var(--brand);
+    background: var(--gradient-brand);
     width: 4rem;
     height: 4rem;
     font-size: 1.5rem;
-    box-shadow: var(--emboss-inset);
+    box-shadow: var(--glow-brand-sm), var(--emboss-inset);
+    transition: all 0.25s ease;
 }
 
 .btn-play-pause:hover {
-    background: var(--brand-2);
+    background: var(--gradient-brand);
+    box-shadow: var(--glow-brand), var(--emboss-inset);
 }
 
 .btn-play-pause.loading {
