@@ -5,12 +5,31 @@ export class AudioLoader {
         this.onComplete = null;
         this.onError = null;
         this.loadedBlobs = new Map();
+        this.maxCacheSize = 3; // Maximum number of lectures to keep in memory
+    }
+
+    /**
+     * Enforce cache size limit (LRU - removes oldest entries)
+     */
+    enforceCacheLimit() {
+        while (this.loadedBlobs.size >= this.maxCacheSize) {
+            const oldestKey = this.loadedBlobs.keys().next().value;
+            const oldBlob = this.loadedBlobs.get(oldestKey);
+            // Revoke old object URL to free memory
+            if (oldBlob) {
+                URL.revokeObjectURL(URL.createObjectURL(oldBlob));
+            }
+            this.loadedBlobs.delete(oldestKey);
+        }
     }
 
     async loadAudio(lectureId, directUrl) {
-        // Check if already loaded
+        // Check if already loaded - move to end (most recent)
         if (this.loadedBlobs.has(lectureId)) {
             const blob = this.loadedBlobs.get(lectureId);
+            // Move to end for LRU
+            this.loadedBlobs.delete(lectureId);
+            this.loadedBlobs.set(lectureId, blob);
             return URL.createObjectURL(blob);
         }
 
@@ -35,7 +54,7 @@ export class AudioLoader {
                     const percent = (e.loaded / e.total) * 100;
                     const loadedMB = (e.loaded / 1024 / 1024).toFixed(2);
                     const totalMB = (e.total / 1024 / 1024).toFixed(2);
-                    
+
                     this.onProgress({
                         percent,
                         loaded: e.loaded,
@@ -49,9 +68,13 @@ export class AudioLoader {
             xhr.onload = () => {
                 if (xhr.status === 200) {
                     const blob = xhr.response;
+
+                    // Enforce cache limit before adding new entry
+                    this.enforceCacheLimit();
                     this.loadedBlobs.set(lectureId, blob);
+
                     const objectURL = URL.createObjectURL(blob);
-                    
+
                     if (this.onComplete) {
                         this.onComplete({
                             url: objectURL,
@@ -59,7 +82,7 @@ export class AudioLoader {
                             sizeMB: (blob.size / 1024 / 1024).toFixed(2)
                         });
                     }
-                    
+
                     resolve(objectURL);
                 } else {
                     const error = new Error(`HTTP ${xhr.status}: ${xhr.statusText}`);

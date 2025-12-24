@@ -298,6 +298,25 @@ REDIS_URL_CHANNELS = f"{REDIS_URL_BASE}/1"  # DB 1 - for Channels
 REDIS_URL_CELERY = f"{REDIS_URL_BASE}/2"  # DB 2 - for Celery
 
 # ==============================================================================
+# CACHE CONFIGURATION
+# ==============================================================================
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL_DEFAULT,
+        "KEY_PREFIX": "lecture",
+        "TIMEOUT": 300,  # 5 minutes default
+    }
+}
+
+# Cache timeouts (in seconds)
+CACHE_TIMEOUT_SHORT = 60  # 1 minute
+CACHE_TIMEOUT_MEDIUM = 300  # 5 minutes
+CACHE_TIMEOUT_LONG = 3600  # 1 hour
+CACHE_TIMEOUT_DAY = 86400  # 24 hours
+
+# ==============================================================================
 # CELERY CONFIGURATION
 # ==============================================================================
 

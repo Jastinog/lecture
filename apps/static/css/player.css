@@ -6,7 +6,7 @@
     max-width: 800px;
     margin: 0 auto;
     padding: 1.5rem;
-    background: var(--bg-1);
+    background: linear-gradient(180deg, var(--bg-1) 0%, color-mix(in srgb, var(--bg-1) 97%, var(--bg-0)) 100%);
     border-radius: 12px;
     min-height: calc(100vh - 2rem);
 }
@@ -20,7 +20,7 @@
     margin-bottom: 1rem;
     padding: 1.5rem;
     border-radius: 0.5rem;
-    background: var(--bg-2);
+    background: linear-gradient(180deg, var(--bg-2) 0%, color-mix(in srgb, var(--bg-2) 95%, var(--bg-1)) 100%);
     border: 1px solid var(--bg-3);
     box-shadow: var(--shadow-md);
 }
@@ -260,6 +260,10 @@
     transition: all 0.25s ease;
 }
 
+.btn-play-pause .fa-play {
+    margin-left: 3px; /* компенсация визуального смещения треугольника */
+}
+
 .btn-play-pause:hover {
     background: var(--gradient-brand);
     box-shadow: var(--glow-brand), var(--emboss-inset);
@@ -321,14 +325,14 @@
     top: 0;
     left: 0;
     height: 100%;
-    background: var(--fg4-alpha-40);
+    background: #050508;
     background-image: linear-gradient(
         45deg,
-        var(--white-alpha-20) 25%,
+        rgba(255,255,255,0.03) 25%,
         transparent 25%,
         transparent 50%,
-        var(--white-alpha-20) 50%,
-        var(--white-alpha-20) 75%,
+        rgba(255,255,255,0.03) 50%,
+        rgba(255,255,255,0.03) 75%,
         transparent 75%,
         transparent
     );
@@ -341,14 +345,14 @@
 
 .progress-filled {
     height: 100%;
-    background: var(--brand-2);
+    background: var(--brand);
     background-image: linear-gradient(
         45deg,
-        var(--white-alpha-20) 25%,
+        rgba(0,0,0,0.25) 25%,
         transparent 25%,
         transparent 50%,
-        var(--white-alpha-20) 50%,
-        var(--white-alpha-20) 75%,
+        rgba(0,0,0,0.25) 50%,
+        rgba(0,0,0,0.25) 75%,
         transparent 75%,
         transparent
     );
