@@ -246,6 +246,7 @@
     height: 100%;
     object-fit: cover;
     border-radius: 0.1rem;
+    box-shadow: var(--emboss-inset), inset 0 0 0 1px var(--emboss-dark), 0 3px 6px rgba(0,0,0,0.4);
 }
 
 .compact-card-content {

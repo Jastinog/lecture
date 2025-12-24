@@ -49,6 +49,10 @@ CORS_ORIGIN_WHITELIST = (
 
 CORS_ALLOW_CREDENTIALS = True
 
+# Authentication
+LOGIN_URL = '/auth/login/'
+LOGIN_REDIRECT_URL = '/'
+
 CORS_ALLOW_METHODS = (
     "DELETE",
     "GET",
