@@ -36,7 +36,7 @@ final class DownloadManager: NSObject, ObservableObject {
     /// topicID -> set of downloaded trackIDs.
     @Published private(set) var downloaded: [Int: Set<Int>] = [:]
     /// lectureID -> active download progress (0…1). Published on its own object so
-    /// the 1%-step updates (constant while auto-download runs) redraw only the
+    /// the 1%-step updates (constant while a topic downloads) redraw only the
     /// download indicators, not every screen that observes the manager.
     let live = DownloadProgress()
     var progress: [Int: Double] { live.values }
@@ -51,23 +51,10 @@ final class DownloadManager: NSObject, ObservableObject {
     @Published private(set) var topicSizes: [Int: Int64] = [:]
     var totalSize: Int64 { topicSizes.values.reduce(0, +) }
 
-    /// While listening, fetch the next chapters ahead (Settings).
-    @Published private(set) var autoDownload: Bool
-    /// …but only over Wi-Fi / unmetered networks (Settings).
-    @Published private(set) var autoDownloadWiFiOnly: Bool
-    private static let autoDownloadKey = "lecture.autoDownload"
-    private static let wifiOnlyKey = "lecture.autoDownloadWiFiOnly"
-    /// How many chapters ahead to fetch.
-    static let prefetchCount = 2
-
     private var activeTasks: [Int: URLSessionDownloadTask] = [:]   // lectureID -> task
     /// Resume data from an interrupted download, so a retry continues instead of
     /// restarting from zero. lectureID -> resume blob.
     private var resumeData: [Int: Data] = [:]
-    /// Books the user deleted this session. Prefetch leaves them alone (deleting the
-    /// playing topic shouldn't re-save it at the next chapter) until the user
-    /// explicitly downloads them again.
-    private var removedBooks: Set<Int> = []
     /// Set by the app delegate when iOS relaunches us to deliver finished
     /// background transfers; called once all events are processed.
     var backgroundCompletionHandler: (() -> Void)?
@@ -89,10 +76,11 @@ final class DownloadManager: NSObject, ObservableObject {
     static let userAgent = "Mozilla/5.0 (iPhone)"
 
     private override init() {
-        let d = UserDefaults.standard
-        autoDownload = d.object(forKey: Self.autoDownloadKey) as? Bool ?? true
-        autoDownloadWiFiOnly = d.object(forKey: Self.wifiOnlyKey) as? Bool ?? true
         super.init()
+        // Downloads happen only when asked for: drop what the old "Download
+        // Next Lectures" setting left behind.
+        UserDefaults.standard.removeObject(forKey: "lecture.autoDownload")
+        UserDefaults.standard.removeObject(forKey: "lecture.autoDownloadWiFiOnly")
         // Create the background session now, not lazily, so transfers that outlived
         // the last launch reconnect and report to us.
         _ = session
@@ -101,38 +89,6 @@ final class DownloadManager: NSObject, ObservableObject {
             await adoptRunningTasks()
             refreshSizes()
         }
-    }
-
-    func setAutoDownload(_ on: Bool) {
-        autoDownload = on
-        UserDefaults.standard.set(on, forKey: Self.autoDownloadKey)
-    }
-
-    func setAutoDownloadWiFiOnly(_ on: Bool) {
-        autoDownloadWiFiOnly = on
-        UserDefaults.standard.set(on, forKey: Self.wifiOnlyKey)
-        // Chapters queued while waiting for Wi-Fi may use mobile data now.
-        if !on {
-            for (lectureID, task) in activeTasks where !task.allowsCellular {
-                guard let (topicID, _) = Self.parse(task.taskDescription),
-                      let topic = savedTopics[topicID],
-                      let lecture = topic.lectures.first(where: { $0.id == lectureID }) else { continue }
-                enqueue(topic: topic, lecture: lecture)
-            }
-        }
-    }
-
-    /// Called when a chapter starts: queue the next few chapters so the topic keeps
-    /// playing without network. Wi-Fi-only requests simply wait for Wi-Fi.
-    func prefetch(topic: TopicDetail, after index: Int) {
-        guard autoDownload, !removedBooks.contains(topic.id) else { return }
-        let ids = Prefetch.next(after: index, count: Self.prefetchCount, total: topic.lectures.count) {
-            self.isDownloaded(topic.id, topic.lectures[$0].id)
-        }
-        guard !ids.isEmpty else { return }
-        // Runs on every chapter start — only write the topic's metadata once.
-        if savedTopics[topic.id] == nil { guard ensureSaved(topic) else { return } }
-        for i in ids { enqueue(topic: topic, lecture: topic.lectures[i], wifiOnly: autoDownloadWiFiOnly) }
     }
 
     /// Downloaded topics the listener has finished (and isn't playing right now).
@@ -198,6 +154,8 @@ final class DownloadManager: NSObject, ObservableObject {
         for case let task as URLSessionDownloadTask in await session.allTasks {
             guard let (topicID, lectureID) = Self.parse(task.taskDescription) else { task.cancel(); continue }
             if activeTasks[lectureID] === task { continue }   // queued this launch
+            // Only the old fetch-ahead waited for Wi-Fi; nobody asked for those.
+            guard task.allowsCellular else { task.cancel(); continue }
             guard savedTopics[topicID] != nil, !isDownloaded(topicID, lectureID),
                   activeTasks[lectureID] == nil else { task.cancel(); continue }
             activeTasks[lectureID] = task
@@ -236,7 +194,6 @@ final class DownloadManager: NSObject, ObservableObject {
 
     /// Download a whole topic (missing chapters).
     func downloadTopic(_ topic: TopicDetail) {
-        removedBooks.remove(topic.id)
         guard ensureSaved(topic) else { return }
         for lecture in topic.lectures where !isDownloaded(topic.id, lecture.id) {
             enqueue(topic: topic, lecture: lecture)
@@ -245,7 +202,6 @@ final class DownloadManager: NSObject, ObservableObject {
 
     /// Download a single chapter.
     func downloadLecture(topic: TopicDetail, lecture: Lecture) {
-        removedBooks.remove(topic.id)
         guard ensureSaved(topic) else { return }
         guard !isDownloaded(topic.id, lecture.id) else { return }
         enqueue(topic: topic, lecture: lecture)
@@ -263,7 +219,6 @@ final class DownloadManager: NSObject, ObservableObject {
     /// Remove the whole topic from downloads.
     func deleteTopic(_ topicID: Int) {
         if let topic = savedTopics[topicID] { cancelTopic(topic) }
-        removedBooks.insert(topicID)
         try? FileManager.default.removeItem(at: DownloadPaths.topicDir(topicID))
         downloaded[topicID] = nil
         savedTopics[topicID] = nil
@@ -272,33 +227,15 @@ final class DownloadManager: NSObject, ObservableObject {
 
     // MARK: - Internals
 
-    private func enqueue(topic: TopicDetail, lecture: Lecture, wifiOnly: Bool = false) {
-        if let pending = activeTasks[lecture.id] {
-            // A chapter waiting for Wi-Fi mustn't block one asked for on any
-            // network: replace it. Anything else is already on its way.
-            guard !wifiOnly, !pending.allowsCellular else { return }
-            pending.cancel()
-            activeTasks[lecture.id] = nil
-        }
+    private func enqueue(topic: TopicDetail, lecture: Lecture) {
+        guard activeTasks[lecture.id] == nil else { return }   // already on its way
         // Only download over https (the URL comes from inline page JS).
         guard lecture.url.scheme == "https" else { return }
         live.values[lecture.id] = 0
-        func freshTask() -> URLSessionDownloadTask {
-            var request = URLRequest(url: lecture.url)
-            // Wi-Fi only: the background session holds the request until an
-            // unmetered network shows up instead of using mobile data.
-            if wifiOnly {
-                request.allowsCellularAccess = false
-                request.allowsExpensiveNetworkAccess = false
-            }
-            return session.downloadTask(with: request)
-        }
         // Continue from where an interrupted download left off, if we have its
-        // resume blob (and it isn't a Wi-Fi-only request where mobile data is
-        // allowed now); otherwise start fresh.
-        var resumed = resumeData.removeValue(forKey: lecture.id).map { session.downloadTask(withResumeData: $0) }
-        if let r = resumed, !wifiOnly, !r.allowsCellular { r.cancel(); resumed = nil }
-        let task = resumed ?? freshTask()
+        // resume blob; otherwise start fresh.
+        let task = resumeData.removeValue(forKey: lecture.id).map { session.downloadTask(withResumeData: $0) }
+            ?? session.downloadTask(with: URLRequest(url: lecture.url))
         task.taskDescription = "\(topic.id):\(lecture.id)"
         activeTasks[lecture.id] = task
         task.resume()
@@ -489,6 +426,7 @@ extension DownloadManager: URLSessionDownloadDelegate {
 }
 
 private extension URLSessionTask {
-    /// False for a Wi-Fi-only request (one that waits for an unmetered network).
+    /// False for a Wi-Fi-only request (one that waits for an unmetered network),
+    /// which only the removed fetch-ahead made.
     var allowsCellular: Bool { originalRequest?.allowsCellularAccess ?? true }
 }

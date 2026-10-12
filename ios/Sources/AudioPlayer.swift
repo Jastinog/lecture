@@ -443,7 +443,6 @@ final class AudioPlayer: ObservableObject {
         updateNowPlaying()
         loadArtwork()
         persistProgress()
-        DownloadManager.shared.prefetch(topic: topic, after: index)
     }
 
     /// Overall progress (0…1) across all chapters.

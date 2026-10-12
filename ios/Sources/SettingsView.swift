@@ -10,7 +10,6 @@ struct SettingsView: View {
         GroupedList {
             appearanceSection
             playbackSection
-            downloadsSection
             dataSection
             aboutSection
         }
@@ -43,17 +42,6 @@ struct SettingsView: View {
                       pick: { player.setSkip(forward: $0) })
             Toggle("Rewind After Pause", isOn: Binding(
                 get: { player.smartRewind }, set: { player.setSmartRewind($0) }))
-        }
-    }
-
-    private var downloadsSection: some View {
-        GroupedSection("Downloads",
-                       footer: "While you listen, the next \(DownloadManager.prefetchCount) lectures download ahead, so the topic keeps playing offline.") {
-            Toggle("Download Next Lectures", isOn: Binding(
-                get: { dl.autoDownload }, set: { dl.setAutoDownload($0) }))
-            Toggle("Wi-Fi Only", isOn: Binding(
-                get: { dl.autoDownloadWiFiOnly }, set: { dl.setAutoDownloadWiFiOnly($0) }))
-                .disabled(!dl.autoDownload)
         }
     }
 

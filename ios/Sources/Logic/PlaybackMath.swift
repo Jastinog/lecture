@@ -156,16 +156,6 @@ struct SearchHistoryList: Equatable {
     mutating func remove(_ query: String) { items.removeAll { $0 == query } }
 }
 
-/// Which chapters to fetch ahead while listening.
-enum Prefetch {
-    /// The next `count` chapter indices after `index` that aren't downloaded yet.
-    static func next(after index: Int, count: Int, total: Int,
-                     isDownloaded: (Int) -> Bool) -> [Int] {
-        guard count > 0, index + 1 < total else { return [] }
-        return ((index + 1)..<min(index + 1 + count, total)).filter { !isDownloaded($0) }
-    }
-}
-
 /// "1.2 GB" / "350 MB" / "5.7 MB" for storage labels, decimal units as Files
 /// counts them, with an English point whatever the phone's region.
 func formatBytes(_ bytes: Int64) -> String {
