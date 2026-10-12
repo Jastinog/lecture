@@ -85,7 +85,12 @@ REFS = [
 ]
 PAGES = re.compile(r"\b(Гл|стр)\s?(\d+)")
 # Words that only say what the topic already does.
-FILLER = re.compile(r"^(?:M ?[Ww]alk|Беседа|Интервью|Interview)(?:\s*[—–-]\s*|$)")
+FILLER = re.compile(r"^M ?[Ww]alk(?:\s*[—–-]\s*|\s+|$)|^(?:Беседа|Интервью|Interview)(?:\s*[—–-]\s*|$)")
+# A scripture reference anywhere in a title: "Rotary club БГ 2.11 — ...".
+REF = re.compile(r"БГ, введение|(БГ|ШБ|ЧЧ)(?: (Ади|Мадхья|Антья))? (\d+(?:[.–]\d+)*)")
+LILA_ORDER = {"Ади": 1, "Мадхья": 2, "Антья": 3}
+# Talks on a whole chapter: "Чтение и обсуждение Бг 9 главы", "16 гл Бг", "SB 7.5".
+CHAPTER = re.compile(r"(?:Бг|БГ) (\d+)\s?(?:гл|главы)|(\d+) гл\.? (?:Бг|БГ)|\bSB (\d+)\.(\d+)\b")
 
 
 def topic_of(name):
@@ -126,10 +131,25 @@ def sort_key(code, name):
     by date."""
     title, _, _, date = describe(name)
     if code in ("ru-bhagavad-gita", "ru-srimad-bhagavatam", "ru-chaitanya-charitamrita"):
-        # The introduction comes before the first verse.
-        label = title.split(" — ")[0].replace(", введение", " 0")
-        return (natural_key(label), date, natural_key(name))
+        return (verse_key(title), date, natural_key(name))
     return (date, natural_key(name))
+
+
+def verse_key(title):
+    """Where a title's verse falls in its book: the introduction first, Adi
+    before Madhya before Antya, titles without a reference last."""
+    match = REF.search(title)
+    if not match:
+        # A chapter talk goes after that chapter's verses.
+        chapter = CHAPTER.search(title)
+        if chapter and chapter[3]:
+            return [0, int(chapter[3]), int(chapter[4]), 9999]
+        if chapter:
+            return [0, int(chapter[1] or chapter[2]), 9999]
+        return [9999]
+    if not match[1]:
+        return [0]
+    return [LILA_ORDER.get(match[2], 0)] + [int(n) for n in re.findall(r"\d+", match[3])]
 
 
 def api(path, **params):
@@ -214,9 +234,29 @@ class Command(BaseCommand):
                     self.stdout.write(f"  [{i}/{len(todo)}] {title}", ending="\n")
                     self.stdout.flush()
 
+            self.update_details(topic_obj, links)
             renumber(topic_obj, [self.hash_of(link) for link in links])
 
         self.stdout.write(self.style.SUCCESS(f"Added {added}, failed {failed}"))
+
+    def update_details(self, topic, links):
+        """Brings imported lectures' titles, places and dates up to date with
+        describe(), so naming fixes reach them without a new download."""
+        link_of = {self.hash_of(link): link for link in links}
+        changed = []
+        for lecture in topic.lectures.all():
+            link = link_of.get(lecture.file_hash)
+            if not link:
+                continue
+            title, year, place, date = describe(self.name_of(link))
+            new = {"title": title, "year": year, "event": place, "description": date}
+            if any(getattr(lecture, field) != value for field, value in new.items()):
+                for field, value in new.items():
+                    setattr(lecture, field, value)
+                changed.append(lecture)
+        Lecture.objects.bulk_update(changed, ["title", "year", "event", "description"])
+        if changed:
+            self.stdout.write(f"  Updated details of {len(changed)} lectures")
 
     @staticmethod
     def name_of(link):
