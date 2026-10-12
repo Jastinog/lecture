@@ -11,7 +11,7 @@ from django.db.models import Max
 
 from apps.lecture.models import Language, Lecture, Lecturer, Topic, TopicGroup
 
-from .create_lecturers import fetch_audio, save_lecture
+from .create_lecturers import create_lecture, fetch_audio, store_audio
 from .import_prabhupada import COVERS_DIR, LECTURER_CODE, natural_key, renumber
 
 # Srila Prabhupada's lectures and conversations with Russian voice-over
@@ -161,9 +161,9 @@ class Command(BaseCommand):
         parser.add_argument("--topic", action="append", help="Only these topics, e.g. ru-sri-ishopanishad")
         parser.add_argument("--limit", type=int, help="Import at most this many lectures per topic")
         parser.add_argument("--dry-run", action="store_true", help="List titles without downloading")
-        parser.add_argument("--workers", type=int, default=6, help="Parallel downloads (default 6)")
+        parser.add_argument("--workers", type=int, default=8, help="Parallel transfers (default 8)")
 
-    def handle(self, *args, topic=None, limit=None, dry_run=False, workers=6, **options):
+    def handle(self, *args, topic=None, limit=None, dry_run=False, workers=8, **options):
         codes = list(dict.fromkeys(topic or TOPICS))
         unknown = set(codes) - set(TOPICS)
         if unknown:
@@ -190,34 +190,29 @@ class Command(BaseCommand):
             topic_obj = self.get_topic(lecturer, code)
             known = set(topic_obj.lectures.values_list("file_hash", flat=True))
             todo = [link for link in links if self.hash_of(link) not in known][:limit]
-            # Downloads run in parallel a batch at a time, so only a batch sits
-            # on disk; saving stays sequential to keep the topic's order.
+            # Each worker downloads a file, uploads it to storage and deletes
+            # its copy, so only files in flight sit on disk; creating the
+            # lectures stays here, in the topic's order.
             with ThreadPoolExecutor(workers) as pool:
-                for start in range(0, len(todo), workers):
-                    batch = todo[start : start + workers]
-                    for i, (link, fetched) in enumerate(zip(batch, pool.map(self.fetch, batch)), start + 1):
-                        if isinstance(fetched, Exception):
-                            failed += 1
-                            self.stdout.write(self.style.WARNING(f"  Failed {link}: {fetched}"))
-                            continue
-                        title, year, place, date = describe(self.name_of(link))
-                        last_order = topic_obj.lectures.aggregate(last=Max("order"))["last"] or 0
-                        try:
-                            with fetched:
-                                save_lecture(
-                                    topic_obj,
-                                    {"title": title, "year": year, "event": place, "description": date},
-                                    russian,
-                                    last_order + 1,
-                                    self.hash_of(link),
-                                    fetched,
-                                )
-                        except Exception as e:
-                            failed += 1
-                            self.stdout.write(self.style.WARNING(f"  Failed saving {link}: {e}"))
-                            continue
-                        added += 1
-                        self.stdout.write(f"  [{i}/{len(todo)}] {title}")
+                transfers = pool.map(lambda link: self.transfer(topic_obj, link), todo)
+                for i, (link, stored) in enumerate(zip(todo, transfers), 1):
+                    if isinstance(stored, Exception):
+                        failed += 1
+                        self.stdout.write(self.style.WARNING(f"  Failed {link}: {stored}"))
+                        continue
+                    title, year, place, date = describe(self.name_of(link))
+                    last_order = topic_obj.lectures.aggregate(last=Max("order"))["last"] or 0
+                    create_lecture(
+                        topic_obj,
+                        {"title": title, "year": year, "event": place, "description": date},
+                        russian,
+                        last_order + 1,
+                        self.hash_of(link),
+                        stored,
+                    )
+                    added += 1
+                    self.stdout.write(f"  [{i}/{len(todo)}] {title}", ending="\n")
+                    self.stdout.flush()
 
             renumber(topic_obj, [self.hash_of(link) for link in links])
 
@@ -231,9 +226,10 @@ class Command(BaseCommand):
     def hash_of(link):
         return Lecture.generate_file_hash(f"{CLOUD}/public/{link}")
 
-    def fetch(self, link):
+    def transfer(self, topic, link):
         try:
-            return fetch_audio(f"{self.base}/{urllib.parse.quote(link)}")
+            with fetch_audio(f"{self.base}/{urllib.parse.quote(link)}") as audio_file:
+                return store_audio(topic, audio_file)
         except Exception as e:
             return e
 

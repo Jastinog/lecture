@@ -30,25 +30,40 @@ def fetch_audio(url):
     return tmp
 
 
-def save_lecture(topic, lecture_data, language, order, file_hash, audio_file):
-    """Creates a lecture of `topic` from a fetch_audio file."""
+def store_audio(topic, audio_file):
+    """Uploads a fetch_audio file to where a lecture of `topic` keeps its audio.
+    Returns the Lecture fields it fills, so this can run apart from the save."""
     audio = mutagen.File(audio_file.name)
     if audio is None:
         raise ValueError("not an audio file")
-    duration = int(audio.info.length) if audio.info else None
+    field = Lecture._meta.get_field("audio_file")
+    name = field.generate_filename(Lecture(topic=topic), "lecture.mp3")
+    return {
+        "audio_file": field.storage.save(name, File(audio_file), max_length=field.max_length),
+        "file_size": os.path.getsize(audio_file.name),
+        "duration": int(audio.info.length) if audio.info else None,
+    }
+
+
+def create_lecture(topic, lecture_data, language, order, file_hash, stored):
+    """Creates a lecture of `topic` around audio store_audio uploaded."""
     return Lecture.objects.create(
         topic=topic,
         title=lecture_data["title"],
         description=lecture_data.get("description", ""),
-        audio_file=File(audio_file, name="lecture.mp3"),
         language=language,
-        file_size=os.path.getsize(audio_file.name),
-        duration=duration,
         order=order,
         year=lecture_data.get("year"),
         event=lecture_data.get("event", ""),
         file_hash=file_hash,
+        **stored,
     )
+
+
+def save_lecture(topic, lecture_data, language, order, file_hash, audio_file):
+    """Creates a lecture of `topic` from a fetch_audio file."""
+    stored = store_audio(topic, audio_file)
+    return create_lecture(topic, lecture_data, language, order, file_hash, stored)
 
 
 def download_lecture(topic, lecture_data, language, order, file_hash):
