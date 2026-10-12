@@ -1,3 +1,4 @@
+import html
 import os
 import re
 import urllib.parse
@@ -6,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from django.core.files import File
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import Max
+from django.db.models import F, Max
 
 from apps.lecture.models import Language, Lecture, Lecturer, Topic, TopicGroup
 
@@ -47,7 +48,7 @@ LILAS = {"A": "Adi", "M": "Madhya", "Antya": "Antya", "AN": "Antya"}
 def list_dir(path):
     request = urllib.request.Request(ARCHIVE + path, headers={"User-Agent": "lecture-catalog"})
     with urllib.request.urlopen(request, timeout=60) as response:
-        return ROW.findall(response.read().decode("utf-8", "replace"))
+        return [html.unescape(href) for href in ROW.findall(response.read().decode("utf-8", "replace"))]
 
 
 def walk(path):
@@ -195,7 +196,24 @@ class Command(BaseCommand):
                         added += 1
                         self.stdout.write(f"  [{i}/{len(todo)}] {title}")
 
+            if todo:
+                self.renumber(topic, paths)
+
         self.stdout.write(self.style.SUCCESS(f"Added {added}, failed {failed}"))
+
+    @staticmethod
+    def renumber(topic, paths):
+        """Puts the topic's lectures in archive order, so ones a re-run added
+        late land in their place rather than at the end."""
+        position = {Lecture.generate_file_hash(ARCHIVE + p): i for i, p in enumerate(paths)}
+        lectures = sorted(topic.lectures.all(), key=lambda l: (position.get(l.file_hash, len(paths)), l.order))
+        if [l.order for l in lectures] == list(range(1, len(lectures) + 1)):
+            return
+        # Move everyone out of the way first: (topic, order) is unique.
+        topic.lectures.update(order=F("order") + 1_000_000)
+        for order, lecture in enumerate(lectures, 1):
+            lecture.order = order
+        Lecture.objects.bulk_update(lectures, ["order"])
 
     @staticmethod
     def fetch(path):

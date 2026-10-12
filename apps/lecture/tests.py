@@ -163,3 +163,29 @@ class DescribeRussianArchiveFileTests(TestCase):
             with self.subTest(name):
                 self.assertEqual(topic_of(name), topic)
                 self.assertEqual(describe(name), expected)
+
+
+@override_settings(STORAGES=LOCAL_STORAGE, MEDIA_URL="/media/")
+class RenumberTests(TestCase):
+    """A lecture a re-run adds late takes its archive place, not the last one."""
+
+    def test_late_lecture_moves_into_place(self):
+        from apps.lecture.management.commands.import_prabhupada import ARCHIVE, Command
+
+        en = Language.objects.create(code="en", name="English", native_name="English")
+        group = TopicGroup.objects.create(code="lectures", name="Лекции")
+        lecturer = Lecturer.objects.create(code="sp", name="Prabhupada", order=1)
+        topic = Topic.objects.create(lecturer=lecturer, code="gita", title="Gita", group=group, order=1)
+        paths = ["/a.mp3", "/b.mp3", "/c.mp3"]
+        # b came in last, after a failed first run.
+        for order, path in enumerate(["/a.mp3", "/c.mp3", "/b.mp3"], 1):
+            Lecture.objects.create(
+                topic=topic, title=path, language=en, order=order,
+                audio_file=ContentFile(b"mp3", name="part.mp3"),
+                file_hash=Lecture.generate_file_hash(ARCHIVE + path),
+            )
+
+        Command.renumber(topic, paths)
+
+        self.assertEqual(list(topic.lectures.values_list("title", flat=True)), paths)
+        self.assertEqual(list(topic.lectures.values_list("order", flat=True)), [1, 2, 3])
