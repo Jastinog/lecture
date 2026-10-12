@@ -167,6 +167,10 @@ struct ClassicTitle: View {
     let title: String
     init(_ title: String) { self.title = title }
 
+    /// Room kept clear on each side for the bar buttons ("Back", "Now
+    /// Playing"); the title stays centered between them.
+    static let sideClearance: CGFloat = 100
+
     var body: some View {
         Text(title)
             .font(.helvetica(20, weight: .bold))
@@ -174,7 +178,17 @@ struct ClassicTitle: View {
             .shadow(color: .black.opacity(0.5), radius: 0, x: 0, y: -1)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
+            .truncationMode(.tail)
+            // The principal item isn't held between the bar buttons, so a long
+            // title would run over them; past the room it shrinks, then cuts
+            // with "…", as UINavigationBar did.
+            .frame(maxWidth: max(Self.barWidth - 2 * Self.sideClearance, 0))
             .accessibilityAddTraits(.isHeader)
+    }
+
+    /// The navigation bar spans the window's screen.
+    @MainActor private static var barWidth: CGFloat {
+        (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.width ?? 390
     }
 }
 
