@@ -122,6 +122,7 @@ def describe(name):
 
     title = FILLER.sub("", re.sub(r"\s+", " ", rest).strip(" —-–")).strip(" —-–")
     title = title.replace(" – ", " — ")
+    title = re.sub(r"\s*_?\(?incomplete\)?", " (запись неполная)", title)
     title = re.sub(r"^(\w+) — \1, ", r"\1 — ", title)  # "Обращение — Обращение, ..."
     return title or ", ".join(filter(None, (place, date))), year, place, date
 
