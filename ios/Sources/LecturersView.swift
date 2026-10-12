@@ -155,13 +155,18 @@ extension Lecturer {
 // MARK: - Lecturer page
 
 /// A lecturer's page: a Contacts card on the pinstripe (photo, name, level,
-/// counts, pin), the biography, then their topics under one band per group.
+/// counts, pin), the biography, the languages to choose from when there are
+/// several, then their topics under one band per group.
 struct LecturerView: View {
     private let id: Int
     @State private var lecturer: Lecturer?
-    @State private var topics: [Topic] = []
+    /// Every language the lecturer has lectures in, with how many.
+    @State private var languages: [Language] = []
+    /// The topics as fetched per language ("" for all), so switching back is instant.
+    @State private var topicsByLanguage: [String: [Topic]] = [:]
     @State private var loading = true
     @State private var failed = false
+    @ObservedObject private var choices = LanguageChoiceStore.shared
     private let fallbackName: String
 
     init(lecturer: Lecturer) {
@@ -173,6 +178,26 @@ struct LecturerView: View {
     init(ref: LecturerRef) {
         id = ref.id
         fallbackName = ref.name
+    }
+
+    /// The language the page is narrowed to: the one last chosen here, unless
+    /// the lecturer turns out not to have it.
+    private var language: String? { choices.language(lecturerID: id, among: languages.map(\.code)) }
+
+    /// The topics in the chosen language. Until they come, the topics already
+    /// here that have it, so a switch shows at once.
+    private var topics: [Topic] {
+        if let fetched = topicsByLanguage[language ?? ""] { return fetched }
+        guard let language else { return [] }
+        return (topicsByLanguage[""] ?? []).filter { $0.languages.contains(language) }
+    }
+
+    /// The lecturer with the counts of the chosen language.
+    private var shownLecturer: Lecturer? {
+        guard var shown = lecturer, let language else { return lecturer }
+        shown.lecturesCount = languages.first { $0.code == language }?.lecturesCount ?? shown.lecturesCount
+        if topicsByLanguage[language] != nil { shown.topicsCount = topics.count }
+        return shown
     }
 
     /// The lecturer's topics by group, in the catalog's group order.
@@ -192,7 +217,7 @@ struct LecturerView: View {
     var body: some View {
         List {
             Section {
-                LecturerHeader(lecturer: lecturer, fallbackName: fallbackName)
+                LecturerHeader(lecturer: shownLecturer, fallbackName: fallbackName)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                     .listRowBackground(PinstripeBackground())
@@ -209,10 +234,16 @@ struct LecturerView: View {
                 }
             }
 
+            if languages.count > 1 {
+                LanguageSwitcher(languages: languages, lecturerID: id, selection: language)
+            }
+
             if loading && topics.isEmpty {
                 HStack { Spacer(); ClassicSpinner(); Spacer() }.plainRow()
             } else if failed && topics.isEmpty {
-                ErrorRetryRow(message: "Couldn’t load the topics") { Task { await load() } }.plainRow()
+                ErrorRetryRow(message: "Couldn’t load the topics") {
+                    Task { await loadTopics(language) }
+                }.plainRow()
             }
 
             ForEach(sections, id: \.group) { section in
@@ -230,19 +261,27 @@ struct LecturerView: View {
         .classicNavigationTitle(lecturer?.name ?? fallbackName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { NowPlayingToolbarItem() }
-        .task { if topics.isEmpty { await load() } }
+        .task { await loadLecturer() }
+        .task(id: language) { await loadTopics(language) }
     }
 
-    private func load() async {
+    private func loadLecturer() async {
+        guard let page = try? await API.library.lecturer(id: id) else { return }
+        lecturer = page.lecturer
+        languages = page.languages
+    }
+
+    /// Fetches the topics in `language` (all for nil), once per language.
+    private func loadTopics(_ language: String?) async {
+        let key = language ?? ""
+        guard topicsByLanguage[key] == nil else { return }
         loading = true
         failed = false
-        async let person = try? API.library.lecturer(id: id)
         do {
-            topics = try await API.library.topics(lecturerID: id)
+            topicsByLanguage[key] = try await API.library.topics(lecturerID: id, language: language)
         } catch {
-            failed = true
+            if !error.isCancellation { failed = true }
         }
-        if let fetched = await person { lecturer = fetched }
         loading = false
     }
 }

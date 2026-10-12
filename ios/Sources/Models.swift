@@ -52,7 +52,12 @@ struct TopicGroup: Identifiable, Hashable, Codable {
 struct Language: Identifiable, Hashable, Codable {
     let code: String
     let name: String
+    /// How many lectures are in it, where a page counts them.
+    var lecturesCount: Int? = nil
     var id: String { code }
+
+    /// The short tag lists mark a lecture or topic with: "EN", "RU", "UK".
+    static func tag(_ code: String) -> String { code.uppercased() }
 }
 
 /// A topic as every list shows it — catalog, lecturer page, search, shelf,
@@ -87,6 +92,16 @@ struct Lecture: Identifiable, Hashable, Codable {
     }
 }
 
+extension Array where Element == Lecture {
+    /// Where a saved spot is in these lectures: found by its lecture id, so a
+    /// list narrowed to one language still lands on it (nil when it's left
+    /// out); spots saved before ids were kept fall back to their `index`.
+    func index(of lectureID: Int?, saved index: Int) -> Int? {
+        guard let lectureID else { return indices.contains(index) ? index : nil }
+        return firstIndex { $0.id == lectureID }
+    }
+}
+
 /// The playable topic — its lectures plus what the player shows.
 struct TopicDetail: Identifiable, Hashable, Codable {
     let id: Int
@@ -97,6 +112,21 @@ struct TopicDetail: Identifiable, Hashable, Codable {
     let lectures: [Lecture]
 
     var totalDuration: Double { lectures.reduce(0) { $0 + $1.duration } }
+
+    /// The languages its lectures are in, in the order they first come up.
+    var languages: [String] {
+        var seen: [String] = []
+        for lecture in lectures where !seen.contains(lecture.language) { seen.append(lecture.language) }
+        return seen
+    }
+
+    /// The same topic with only its lectures in `language` (all of them for nil),
+    /// as the player gets it when the page is narrowed to one language.
+    func only(language: String?) -> TopicDetail {
+        guard let language else { return self }
+        return TopicDetail(id: id, title: title, lecturer: lecturer, lecturerID: lecturerID,
+                           coverURL: coverURL, lectures: lectures.filter { $0.language == language })
+    }
 }
 
 /// The full topic page: the playable `detail` plus display-only extras.
@@ -110,6 +140,13 @@ struct TopicPage {
     var years: ClosedRange<Int>? = nil
     var addedDate: Date? = nil
     var related: [Topic] = []
+}
+
+/// A lecturer's page: the lecturer and every language they have lectures in,
+/// with how many.
+struct LecturerPage {
+    var lecturer: Lecturer
+    var languages: [Language] = []
 }
 
 /// One page of a topic list.

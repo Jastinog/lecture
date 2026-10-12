@@ -406,7 +406,8 @@ struct NowPlayingView: View {
         guard let topic = player.topic else { return }
         BookmarkStore.shared.add(Bookmark(
             topicID: topic.id, index: player.currentIndex, time: player.clock.currentTime,
-            chapterTitle: player.currentLecture?.displayTitle(at: player.currentIndex) ?? ""))
+            chapterTitle: player.currentLecture?.displayTitle(at: player.currentIndex) ?? "",
+            lectureID: player.currentLecture?.id))
         bookmarkAdded = true
         Task {
             try? await Task.sleep(for: .seconds(1.5))

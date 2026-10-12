@@ -28,6 +28,7 @@ struct TopicView: View {
     @EnvironmentObject private var player: AudioPlayer
     @EnvironmentObject private var router: NavRouter
     @ObservedObject private var dl = DownloadManager.shared
+    @ObservedObject private var choices = LanguageChoiceStore.shared
     @State private var page: TopicPage?
     @State private var loading = true
     @State private var failed = false
@@ -54,12 +55,17 @@ struct TopicView: View {
     }
 
     private func content(_ page: TopicPage) -> some View {
-        let topic = page.detail
+        let language = chosenLanguage(page)
+        // What the page lists and plays: the lectures in the chosen language.
+        let topic = page.detail.only(language: language)
+        var shown = page
+        shown.detail = topic
         return List {
             Section {
-                TopicPageHead(page: page, cover: dl.coverURL(for: topic), progress: progressLine(topic)) {
+                TopicPageHead(page: shown, cover: dl.coverURL(for: topic), progress: progressLine(topic)) {
                     listenButton(topic, summary: page.summary)
-                    TopicDownloadButton(topic: topic, dl: dl)
+                    // Downloads keep the whole topic, whatever the page shows.
+                    TopicDownloadButton(topic: page.detail, dl: dl)
                     TopicShelfButton(topic: page.summary)
                 }
                 .listRowSeparator(.hidden)
@@ -73,7 +79,12 @@ struct TopicView: View {
             }
 
             switch tab {
-            case .lectures: lectures(topic, summary: page.summary)
+            case .lectures:
+                if page.detail.languages.count > 1 {
+                    LanguageSwitcher(languages: switcherLanguages(page), lecturerID: lecturerID(page),
+                                     selection: language)
+                }
+                lectures(topic, whole: page.detail, summary: page.summary, tagged: language == nil)
             case .details: details(page)
             }
         }
@@ -145,33 +156,56 @@ struct TopicView: View {
         return fields.compactMap { label, value in value.map { (label, $0) } }
     }
 
-    /// Music's track list: every lecture, the one playing marked.
-    private func lectures(_ topic: TopicDetail, summary: Topic) -> some View {
+    /// The language the page is narrowed to: the one last chosen for this
+    /// lecturer, if the topic has it and more than one language; else all.
+    private func chosenLanguage(_ page: TopicPage) -> String? {
+        let languages = page.detail.languages
+        guard languages.count > 1 else { return nil }
+        return choices.language(lecturerID: lecturerID(page), among: languages)
+    }
+
+    private func lecturerID(_ page: TopicPage) -> Int {
+        page.detail.lecturerID ?? page.summary.lecturer.id
+    }
+
+    /// The topic's languages for the switcher, named as the page names them;
+    /// a downloaded copy has no names, so those show their tags.
+    private func switcherLanguages(_ page: TopicPage) -> [Language] {
+        page.detail.languages.map { code in
+            page.languages.first { $0.code == code } ?? Language(code: code, name: Language.tag(code))
+        }
+    }
+
+    /// Music's track list: every lecture, the one playing marked. `topic` is
+    /// what's listed (maybe narrowed to one language), `whole` the topic as
+    /// downloads keep it. `tagged` marks each lecture with its language.
+    private func lectures(_ topic: TopicDetail, whole: TopicDetail, summary: Topic, tagged: Bool) -> some View {
         Section {
-            let loaded = player.topic?.id == topic.id
+            let loaded = player.holds(topic)
             let saved = ProgressStore.entry(topicID: topic.id)
             // Where the listener is: the player's live lecture, else the saved one.
-            let reached = loaded ? player.currentIndex : saved?.index
+            let reached = loaded ? player.currentIndex : saved?.index(in: topic.lectures)
             ForEach(Array(topic.lectures.enumerated()), id: \.element.id) { index, lecture in
                 LectureRow(
                     index: index, lecture: lecture,
-                    isCurrent: isCurrent(topic, index),
+                    isCurrent: isCurrent(topic, lecture),
                     listened: reached.map { index < $0 } ?? false,
                     played: index == reached
                         ? (loaded ? .live(player.clock)
                                   : .fixed(lecture.duration > 0 ? (saved?.time ?? 0) / lecture.duration : 0))
                         : nil,
+                    language: tagged ? lecture.language : nil,
                     downloaded: dl.isDownloaded(topic.id, lecture.id),
                     live: dl.live,
                     onPlay: {
-                        if isCurrent(topic, index) {
+                        if isCurrent(topic, lecture) && loaded {
                             player.togglePlayPause()
                         } else {
                             player.load(topic: topic, summary: summary, index: index)
                             router.openPlayer()
                         }
                     },
-                    onDownload: { dl.downloadLecture(topic: topic, lecture: lecture) }
+                    onDownload: { dl.downloadLecture(topic: whole, lecture: lecture) }
                 )
             }
             .plainRow()
@@ -180,23 +214,29 @@ struct TopicView: View {
         }
     }
 
-    private func isCurrent(_ topic: TopicDetail, _ index: Int) -> Bool {
-        player.topic?.id == topic.id && player.currentIndex == index
+    private func isCurrent(_ topic: TopicDetail, _ lecture: Lecture) -> Bool {
+        player.topic?.id == topic.id && player.currentLecture?.id == lecture.id
     }
 
     /// Where the listener is, as a grey line in the head: "Lecture 5 · 12:30",
-    /// "Lecture 5" while it's in the player, or "Finished".
+    /// "Lecture 5" while it's in the player, or "Finished". Numbered as the
+    /// page lists them.
     private func progressLine(_ topic: TopicDetail) -> String? {
-        if player.topic?.id == topic.id { return "Lecture \(player.currentIndex + 1)" }
+        if player.topic?.id == topic.id, let current = player.currentLecture,
+           let index = topic.lectures.firstIndex(where: { $0.id == current.id }) {
+            return "Lecture \(index + 1)"
+        }
         if ProgressStore.isFinished(topicID: topic.id) { return "Finished" }
-        guard let entry = ProgressStore.entry(topicID: topic.id), entry.index > 0 || entry.time > 1 else { return nil }
-        return "Lecture \(entry.index + 1) · \(formatTime(entry.time))"
+        guard let entry = ProgressStore.entry(topicID: topic.id), entry.index > 0 || entry.time > 1,
+              let index = entry.index(in: topic.lectures) else { return nil }
+        return "Lecture \(index + 1) · \(formatTime(entry.time))"
     }
 
     /// The main call to action, worded for where the listener is: "Listen",
-    /// "Resume", "Pause" or "Start Over".
+    /// "Resume", "Pause" or "Start Over". Over lectures other than the ones
+    /// playing, it loads these in their place, keeping the spot.
     private func listenButton(_ topic: TopicDetail, summary: Topic) -> some View {
-        let loaded = player.topic?.id == topic.id
+        let loaded = player.holds(topic)
         let entry = ProgressStore.entry(topicID: topic.id)
         let finished = !loaded && ProgressStore.isFinished(topicID: topic.id)
         let started = entry.map { $0.index > 0 || $0.time > 1 } ?? false
@@ -474,6 +514,8 @@ private struct LectureRow: View {
     let listened: Bool
     /// Progress within this lecture, when it's where the listener is.
     let played: LecturePlayed?
+    /// The lecture's language code, on a page listing more than one.
+    let language: String?
     let downloaded: Bool
     /// Observed only by the download indicator, so progress ticks redraw it alone.
     let live: DownloadProgress
@@ -517,6 +559,9 @@ private struct LectureRow: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
+                    if let language {
+                        LanguageTag(code: language)
+                    }
                     Text(formatTime(lecture.duration))
                         .font(.rowDetail)
                         .rowForeground(Palette.secondaryText)

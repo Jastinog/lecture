@@ -19,18 +19,25 @@ enum ProgressStore {
 
     // `fraction`/`savedAt` are optional-with-default so older blobs still decode.
     struct Entry: Codable {
+        /// The chapter's place in the lectures as they were played, which a
+        /// language filter may have narrowed; `lectureID` is what identifies it.
         var index: Int
         var time: Double
         var fraction: Double = 0
         /// When this position was saved (epoch seconds) — drives the smart rewind
         /// when a topic is resumed after a long break.
         var savedAt: Double? = nil
+        /// The chapter itself. Nil in positions saved before it was kept.
+        var lectureID: Int? = nil
+
+        /// Where the saved chapter is in `lectures`; nil when it isn't among them.
+        func index(in lectures: [Lecture]) -> Int? { lectures.index(of: lectureID, saved: index) }
     }
 
-    static func save(topicID: Int, index: Int, time: Double, fraction: Double) {
+    static func save(topicID: Int, index: Int, lectureID: Int?, time: Double, fraction: Double) {
         var all = load()
         all[String(topicID)] = Entry(index: index, time: time, fraction: fraction,
-                                    savedAt: Date().timeIntervalSince1970)
+                                    savedAt: Date().timeIntervalSince1970, lectureID: lectureID)
         cache = all
         Store.save(all, version: version, to: file)
     }
@@ -322,6 +329,12 @@ final class AudioPlayer: ObservableObject {
         configureRemoteCommands()
     }
 
+    /// Holds exactly these lectures of the topic — not the topic narrowed to
+    /// another language, or the whole of it.
+    func holds(_ topic: TopicDetail) -> Bool {
+        self.topic?.id == topic.id && self.topic?.lectures.map(\.id) == topic.lectures.map(\.id)
+    }
+
     var currentLecture: Lecture? {
         guard let topic, topic.lectures.indices.contains(currentIndex) else { return nil }
         return topic.lectures[currentIndex]
@@ -333,9 +346,12 @@ final class AudioPlayer: ObservableObject {
     /// its saved position if it is the saved chapter); otherwise resumes wherever
     /// the topic was left. One call, one item load — no throwaway resume load
     /// immediately replaced by a chapter switch.
+    /// A topic narrowed to one language comes with only those lectures; loading
+    /// it over the whole topic (or the reverse) swaps the queue and keeps the
+    /// spot, since positions are kept by lecture.
     func load(topic: TopicDetail, summary: Topic? = nil, index: Int? = nil) {
-        // Same topic is already loaded — switch chapter or just resume.
-        if self.topic?.id == topic.id, player != nil {
+        // Same topic, same lectures, already loaded — switch chapter or just resume.
+        if holds(topic), player != nil {
             if let summary { loadedSummary = summary }
             if let index, index != currentIndex {
                 play(index: index)
@@ -355,7 +371,7 @@ final class AudioPlayer: ObservableObject {
         // start the requested chapter.
         let resume = ProgressStore.entry(topicID: topic.id)
         let start = PlaybackMath.startPosition(
-            requested: index, savedIndex: resume?.index, savedTime: resume?.time,
+            requested: index, savedIndex: resume?.index(in: topic.lectures), savedTime: resume?.time,
             savedAt: resume?.savedAt, now: Date().timeIntervalSince1970,
             smartRewind: smartRewind, chapterCount: topic.lectures.count)
         play(index: start.index, at: start.time)
@@ -444,7 +460,8 @@ final class AudioPlayer: ObservableObject {
         guard let topic else { return }
         lastSave = Date()
         let fraction = overallFraction
-        ProgressStore.save(topicID: topic.id, index: currentIndex, time: currentTime, fraction: fraction)
+        ProgressStore.save(topicID: topic.id, index: currentIndex, lectureID: currentLecture?.id,
+                           time: currentTime, fraction: fraction)
         // Push into "Continue listening" (reads the fraction back from ProgressStore).
         RecentsStore.shared.record(topic: topic, summary: loadedSummary,
                                    at: Date().timeIntervalSince1970)
@@ -500,8 +517,8 @@ final class AudioPlayer: ObservableObject {
     /// dismissed. Persists the position first so the topic can be resumed later.
     func stop() {
         if let topic {
-            ProgressStore.save(topicID: topic.id, index: currentIndex, time: currentTime,
-                               fraction: overallFraction)
+            ProgressStore.save(topicID: topic.id, index: currentIndex, lectureID: currentLecture?.id,
+                               time: currentTime, fraction: overallFraction)
         }
         player?.pause()
         if let timeObserver { player?.removeTimeObserver(timeObserver); self.timeObserver = nil }

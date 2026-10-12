@@ -9,9 +9,15 @@ struct Bookmark: Codable, Identifiable, Hashable {
     let chapterTitle: String
     var note: String = ""
     var createdAt: Double = Date().timeIntervalSince1970
+    /// The chapter itself; `index` is its place in the lectures as they were
+    /// played then. Nil in bookmarks made before it was kept.
+    var lectureID: Int? = nil
 
     /// "Lecture 3 · 12:30".
     var positionLabel: String { "Lecture \(index + 1) · \(formatTime(time))" }
+
+    /// Where the chapter is in `lectures`; nil when a language filter left it out.
+    func index(in lectures: [Lecture]) -> Int? { lectures.index(of: lectureID, saved: index) }
 }
 
 /// Persisted bookmarks for all topics.
@@ -61,14 +67,18 @@ struct BookmarksView: View {
     let onEdit: (UUID) -> Void
 
     var body: some View {
-        let marks = player.topic.map { store.bookmarks(for: $0.id) } ?? []
+        // Only those in the lectures playing: a language filter may leave some out.
+        let lectures = player.topic?.lectures ?? []
+        let marks = (player.topic.map { store.bookmarks(for: $0.id) } ?? [])
+            .compactMap { mark in mark.index(in: lectures).map { (mark: mark, index: $0) } }
+            .sorted { ($0.index, $0.mark.time) < ($1.index, $1.mark.time) }
         GroupedList {
             if !marks.isEmpty {
                 GroupedSection {
-                    ForEach(marks) { mark in
+                    ForEach(marks, id: \.mark.id) { mark, index in
                         HStack(spacing: 8) {
                             RowButton(action: {
-                                player.jump(index: mark.index, time: mark.time)
+                                player.jump(index: index, time: mark.time)
                                 onDone()
                             }) {
                                 BookmarkLabel(mark: mark)

@@ -458,12 +458,17 @@ struct TopicRow: View {
                             .rowForeground(Palette.secondaryText)
                             .lineLimit(1)
                     }
-                    if let facts = factsLine {
-                        Text(facts)
-                            .font(.rowCaption)
-                            .rowForeground(Palette.secondaryText)
-                            .lineLimit(1)
-                            .padding(.top, 3)
+                    if factsLine != nil || !topic.languages.isEmpty {
+                        HStack(spacing: 4) {
+                            if let facts = factsLine {
+                                Text(facts)
+                                    .font(.rowCaption)
+                                    .rowForeground(Palette.secondaryText)
+                                    .lineLimit(1)
+                            }
+                            ForEach(topic.languages, id: \.self) { LanguageTag(code: $0) }
+                        }
+                        .padding(.top, 3)
                     }
                 }
                 .padding(.top, 1)
@@ -480,6 +485,45 @@ struct TopicRow: View {
                      topic.lecturesCount > 0 ? formatCount(topic.lecturesCount, "lecture", "lectures") : nil,
                      topic.duration > 0 ? formatDuration(topic.duration) : nil].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+/// A language as lists mark a lecture or topic with it: "EN" small and grey in
+/// a thin frame, like the store's tags.
+struct LanguageTag: View {
+    let code: String
+
+    var body: some View {
+        Text(Language.tag(code))
+            .font(.helvetica(9, weight: .bold))
+            .padding(.horizontal, 3)
+            .padding(.vertical, 1)
+            .overlay { RoundedRectangle(cornerRadius: 2).strokeBorder(lineWidth: 1) }
+            .rowForeground(Palette.secondaryText)
+            .fixedSize()
+            .accessibilityLabel(Locale.current.localizedString(forLanguageCode: code) ?? code)
+    }
+}
+
+/// "All | English | Русский" for a lecturer's page or a mixed topic, as a list
+/// section. The choice is remembered for the lecturer, so their page and
+/// their topics follow it.
+struct LanguageSwitcher: View {
+    let languages: [Language]
+    let lecturerID: Int
+    let selection: String?
+
+    var body: some View {
+        Section {
+            ClassicSegmentedControl(
+                options: [(nil, "All")] + languages.map { (Optional($0.code), $0.name) },
+                selection: Binding(get: { selection },
+                                   set: { LanguageChoiceStore.shared.set($0, lecturerID: lecturerID) }),
+                skin: .blue)
+                .padding(.bottom, 10)
+                .listRowSeparator(.hidden)
+                .plainRow()
+        }
     }
 }
 

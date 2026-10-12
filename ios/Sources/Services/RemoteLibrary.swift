@@ -23,12 +23,14 @@ struct RemoteLibrary: LibraryProviding {
         try await get([LecturerDTO].self, "lecturers/").map(\.model)
     }
 
-    func lecturer(id: Int) async throws -> Lecturer {
-        try await get(LecturerDTO.self, "lecturers/\(id)/").model
+    func lecturer(id: Int) async throws -> LecturerPage {
+        let dto = try await get(LecturerDTO.self, "lecturers/\(id)/")
+        return LecturerPage(lecturer: dto.model, languages: (dto.languages ?? []).map(\.model))
     }
 
-    func topics(lecturerID: Int) async throws -> [Topic] {
-        try await get([TopicDTO].self, "lecturers/\(lecturerID)/topics/").map(\.model)
+    func topics(lecturerID: Int, language: String?) async throws -> [Topic] {
+        let query = language.map { [URLQueryItem(name: "lang", value: $0)] } ?? []
+        return try await get([TopicDTO].self, "lecturers/\(lecturerID)/topics/", query: query).map(\.model)
     }
 
     func topicPage(id: Int) async throws -> TopicPage {
@@ -100,6 +102,8 @@ private struct LecturerDTO: Decodable {
     let bio: String?
     let topicsCount: Int
     let lecturesCount: Int
+    /// Only on the lecturer's own page.
+    let languages: [LanguageDTO]?
 
     var model: Lecturer {
         Lecturer(id: id, name: name, photoURL: photoUrl,
@@ -153,6 +157,8 @@ private struct LectureDTO: Decodable {
 private struct LanguageDTO: Decodable {
     let code: String
     let name: String
+    let lecturesCount: Int?
+    var model: Language { Language(code: code, name: name, lecturesCount: lecturesCount) }
 }
 
 private struct YearsDTO: Decodable {
@@ -187,7 +193,7 @@ private struct TopicPageDTO: Decodable {
             summary: summary,
             lecturer: lecturer,
             description: about,
-            languages: languages.map { Language(code: $0.code, name: $0.name) },
+            languages: languages.map(\.model),
             years: years.map { min($0.first, $0.last)...max($0.first, $0.last) },
             addedDate: createdAt.flatMap(Self.parseDate),
             related: related.map(\.model)

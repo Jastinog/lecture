@@ -7,8 +7,9 @@ protocol LibraryProviding {
     /// Newest first.
     func topics(group: TopicGroup?, page: Int) async throws -> CatalogPage
     func lecturers() async throws -> [Lecturer]
-    func lecturer(id: Int) async throws -> Lecturer
-    func topics(lecturerID: Int) async throws -> [Topic]
+    func lecturer(id: Int) async throws -> LecturerPage
+    /// With `language`, only topics with lectures in it, counted over those.
+    func topics(lecturerID: Int, language: String?) async throws -> [Topic]
     func topicPage(id: Int) async throws -> TopicPage
     func search(_ query: String) async throws -> SearchResult
 }
@@ -69,6 +70,34 @@ final class GroupStore: ObservableObject {
         guard let fresh = try? await API.library.groups(), fresh != items else { return }
         items = fresh
         Store.save(items, version: version, to: file)
+    }
+}
+
+/// The language the listener narrowed each lecturer to, remembered so their
+/// page and their topics open in it next time. No entry means every language.
+@MainActor
+final class LanguageChoiceStore: ObservableObject {
+    static let shared = LanguageChoiceStore()
+    private let file = "language-choices.json"
+    private let version = 1
+
+    /// Language code by lecturer id (as a string, for the JSON).
+    @Published private(set) var choices: [String: String] = [:]
+
+    private init() { choices = Store.load([String: String].self, from: file) ?? [:] }
+
+    func language(lecturerID: Int) -> String? { choices[String(lecturerID)] }
+
+    /// The remembered language, if `available` has it (or isn't known yet);
+    /// else every language.
+    func language(lecturerID: Int, among available: [String]) -> String? {
+        language(lecturerID: lecturerID).flatMap { available.isEmpty || available.contains($0) ? $0 : nil }
+    }
+
+    func set(_ language: String?, lecturerID: Int) {
+        guard choices[String(lecturerID)] != language else { return }
+        choices[String(lecturerID)] = language
+        Store.save(choices, version: version, to: file)
     }
 }
 
