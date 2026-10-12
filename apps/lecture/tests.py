@@ -100,3 +100,34 @@ class SetLanguageActionTests(TestCase):
     def test_counts_only_lectures_that_changed(self):
         response = self.run_action("lecture", "set_language_ru", self.lectures)
         self.assertContains(response, "0 lecture(s) set to Русский")
+
+
+class DescribeArchiveFileTests(TestCase):
+    """import_prabhupada names lectures after the archive's filenames."""
+
+    def test_names(self):
+        from apps.lecture.management.commands.import_prabhupada import describe
+
+        cases = [
+            ("Bhagavad_Gita", "SP_BG_06-11-19_New_York_1966-09-07_Yoga_System--Chant_the_Holy--etc.mp3",
+             ("BG 6.11–19 — Yoga System, Chant the Holy…", 1966, "New York", "1966-09-07")),
+            ("Srimad_Bhagavatam", "SP_SB_6-01-09_Los_Angeles_1975-06-22.MP3",
+             ("SB 6.1.9 — Los Angeles, 1975-06-22", 1975, "Los Angeles", "1975-06-22")),
+            ("Chaitanya_Charitamrita", "SP_CC_M_20-119_New_York_1966-11-24_Are_We_Krishna's_Competitors.mp3",
+             ("CC Madhya 20.119 — Are We Krishna's Competitors", 1966, "New York", "1966-11-24")),
+            ("Isopanishad", "SP_Isopanisad_00_Los_Angeles_1970-05-02_Matter_Has_No_Power.mp3",
+             ("Invocation — Matter Has No Power", 1970, "Los Angeles", "1970-05-02")),
+            ("Nectar_Of_Devotion", "SP_NOD_Pg-12_Bombay_1972-12-27_-_Real_Liberation_Is_Bhakti_Yoga.mp3",
+             ("NOD p. 12 — Real Liberation Is Bhakti Yoga", 1972, "Bombay", "1972-12-27")),
+            ("Morning_Walk", "SP_Morning_Walk_-_Rome_1974-05-27.mp3",
+             ("Rome, 1974-05-27", 1974, "Rome", "1974-05-27")),
+            ("Departure_Address", "SP_Departure_Address_1974-07-25_New_York.mp3",
+             ("New York, 1974-07-25", 1974, "New York", "1974-07-25")),
+            ("Krishna_Book", "SP_Krsna_Book_Dict_08_-_Vision_of_the_Universal_Form.mp3",
+             ("8 — Vision of the Universal Form", None, "", "")),
+            ("Bhagavad_Gita_Recitation", "SP_BG_Recitation_Chapter-04_-_Sanskrit.mp3",
+             ("Chapter 4", None, "", "")),
+        ]
+        for folder, filename, expected in cases:
+            with self.subTest(filename):
+                self.assertEqual(describe(folder, filename), expected)

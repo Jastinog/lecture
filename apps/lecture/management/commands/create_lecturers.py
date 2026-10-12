@@ -11,6 +11,49 @@ from django.db.models import Max
 from apps.lecture.models import Lecture, Lecturer, Topic, TopicGroup, Language
 
 
+def fetch_audio(url):
+    """Downloads url into a temporary file, open and rewound; closing deletes it."""
+    request = urllib.request.Request(url, headers={"User-Agent": "lecture-catalog"})
+    tmp = tempfile.NamedTemporaryFile(suffix=".mp3")
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            content_type = response.headers.get_content_type()
+            if not content_type.startswith("audio/"):
+                raise ValueError(f"not audio: {content_type}")
+            shutil.copyfileobj(response, tmp)
+    except BaseException:
+        tmp.close()
+        raise
+    tmp.flush()
+    tmp.seek(0)
+    return tmp
+
+
+def save_lecture(topic, lecture_data, language, order, file_hash, audio_file):
+    """Creates a lecture of `topic` from a fetch_audio file."""
+    audio = mutagen.File(audio_file.name)
+    duration = int(audio.info.length) if audio and audio.info else None
+    return Lecture.objects.create(
+        topic=topic,
+        title=lecture_data["title"],
+        description=lecture_data.get("description", ""),
+        audio_file=File(audio_file, name="lecture.mp3"),
+        language=language,
+        file_size=os.path.getsize(audio_file.name),
+        duration=duration,
+        order=order,
+        year=lecture_data.get("year"),
+        event=lecture_data.get("event", ""),
+        file_hash=file_hash,
+    )
+
+
+def download_lecture(topic, lecture_data, language, order, file_hash):
+    """Downloads lecture_data["url"] into a new lecture of `topic`."""
+    with fetch_audio(lecture_data["url"]) as audio_file:
+        save_lecture(topic, lecture_data, language, order, file_hash, audio_file)
+
+
 class LecturerSyncService:
     """Service for syncing lecturers from JSON file"""
 
@@ -249,7 +292,7 @@ class LecturerSyncService:
             # One sequence per topic across languages.
             last_order = topic.lectures.aggregate(last=Max("order"))["last"]
             try:
-                self.download_lecture(
+                download_lecture(
                     topic, lecture_data, language, (last_order or 0) + 1, file_hash
                 )
             except Exception as e:
@@ -258,35 +301,6 @@ class LecturerSyncService:
 
             self.lectures_created_count += 1
             self.add_message(f"Added lecture: {topic.title} - {lecture_data['title']}")
-
-    def download_lecture(self, topic, lecture_data, language, order, file_hash):
-        request = urllib.request.Request(
-            lecture_data["url"], headers={"User-Agent": "lecture-catalog"}
-        )
-        with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
-            with urllib.request.urlopen(request, timeout=120) as response:
-                content_type = response.headers.get_content_type()
-                if not content_type.startswith("audio/"):
-                    raise ValueError(f"not audio: {content_type}")
-                shutil.copyfileobj(response, tmp)
-            tmp.flush()
-
-            audio = mutagen.File(tmp.name)
-            duration = int(audio.info.length) if audio and audio.info else None
-
-            tmp.seek(0)
-            Lecture.objects.create(
-                topic=topic,
-                title=lecture_data["title"],
-                audio_file=File(tmp, name="lecture.mp3"),
-                language=language,
-                file_size=os.path.getsize(tmp.name),
-                duration=duration,
-                order=order,
-                year=lecture_data.get("year"),
-                event=lecture_data.get("event", ""),
-                file_hash=file_hash,
-            )
 
     def sync_lecturers_data(self, lecturers_data):
         """Sync lecturers data (create/update with topics)"""
