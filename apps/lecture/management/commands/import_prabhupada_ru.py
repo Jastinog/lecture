@@ -12,7 +12,7 @@ from django.db.models import Max
 from apps.lecture.models import Language, Lecture, Lecturer, Topic, TopicGroup
 
 from .create_lecturers import fetch_audio, save_lecture
-from .import_prabhupada import COVERS_DIR, LECTURER_CODE, natural_key
+from .import_prabhupada import COVERS_DIR, LECTURER_CODE, natural_key, renumber
 
 # Srila Prabhupada's lectures and conversations with Russian voice-over
 # (translation and reading by Prema Vardhana das, kadr108.ru), shared as a
@@ -122,11 +122,12 @@ def describe(name):
 
 
 def sort_key(code, name):
-    """Scriptures go in verse order, everything else by date (filenames lead with it)."""
-    title = describe(name)[0]
+    """Scriptures go in verse order, lectures on one verse and everything else
+    by date."""
+    title, _, _, date = describe(name)
     if code in ("ru-bhagavad-gita", "ru-srimad-bhagavatam", "ru-chaitanya-charitamrita"):
-        return (0, natural_key(title), name)
-    return (1, natural_key(name))
+        return (natural_key(title.split(" — ")[0]), date, natural_key(name))
+    return (date, natural_key(name))
 
 
 def api(path, **params):
@@ -215,6 +216,8 @@ class Command(BaseCommand):
                             continue
                         added += 1
                         self.stdout.write(f"  [{i}/{len(todo)}] {title}")
+
+            renumber(topic_obj, [self.hash_of(link) for link in links])
 
         self.stdout.write(self.style.SUCCESS(f"Added {added}, failed {failed}"))
 

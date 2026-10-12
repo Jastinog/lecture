@@ -133,6 +133,20 @@ def describe(folder, filename):
     return title, int(date[1]), place, date[0]
 
 
+def renumber(topic, hashes):
+    """Puts the topic's lectures in the order of their file hashes, so ones a
+    re-run added late land in their place rather than at the end."""
+    position = {file_hash: i for i, file_hash in enumerate(hashes)}
+    lectures = sorted(topic.lectures.all(), key=lambda l: (position.get(l.file_hash, len(hashes)), l.order))
+    if [l.order for l in lectures] == list(range(1, len(lectures) + 1)):
+        return
+    # Move everyone out of the way first: (topic, order) is unique.
+    topic.lectures.update(order=F("order") + 1_000_000)
+    for order, lecture in enumerate(lectures, 1):
+        lecture.order = order
+    Lecture.objects.bulk_update(lectures, ["order"])
+
+
 class Command(BaseCommand):
     help = (
         "Import Srila Prabhupada's original English recordings from the ISKCON "
@@ -196,24 +210,9 @@ class Command(BaseCommand):
                         added += 1
                         self.stdout.write(f"  [{i}/{len(todo)}] {title}")
 
-            if todo:
-                self.renumber(topic, paths)
+            renumber(topic, [Lecture.generate_file_hash(ARCHIVE + p) for p in paths])
 
         self.stdout.write(self.style.SUCCESS(f"Added {added}, failed {failed}"))
-
-    @staticmethod
-    def renumber(topic, paths):
-        """Puts the topic's lectures in archive order, so ones a re-run added
-        late land in their place rather than at the end."""
-        position = {Lecture.generate_file_hash(ARCHIVE + p): i for i, p in enumerate(paths)}
-        lectures = sorted(topic.lectures.all(), key=lambda l: (position.get(l.file_hash, len(paths)), l.order))
-        if [l.order for l in lectures] == list(range(1, len(lectures) + 1)):
-            return
-        # Move everyone out of the way first: (topic, order) is unique.
-        topic.lectures.update(order=F("order") + 1_000_000)
-        for order, lecture in enumerate(lectures, 1):
-            lecture.order = order
-        Lecture.objects.bulk_update(lectures, ["order"])
 
     @staticmethod
     def fetch(path):
@@ -224,9 +223,14 @@ class Command(BaseCommand):
 
     @staticmethod
     def sort_key(folder, path):
-        """Scriptures go in verse order, everything else by date."""
+        """Scriptures go in verse order, lectures on one verse and everything
+        else by date."""
         date = DATE.search(path)
-        return (date[0] if date and folder not in REFS else "", natural_key(path))
+        date = date[0] if date else ""
+        if folder in REFS:
+            title = describe(folder, urllib.parse.unquote(os.path.basename(path)))[0]
+            return (natural_key(title.split(" — ")[0]), date, natural_key(path))
+        return (date, natural_key(path))
 
     def get_topic(self, lecturer, folder):
         code, title, description, group, cover = TOPICS[folder]
