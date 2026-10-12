@@ -41,7 +41,8 @@ TOPICS = {
 FIRST_ORDER = 101
 
 ROW = re.compile(r'<a href="([^"?/][^"]*)">')
-DATE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
+# A day is sometimes missing: ..._1969-02_...
+DATE = re.compile(r"(\d{4})-(\d{2})(?:-(\d{2}))?")
 LILAS = {"A": "Adi", "M": "Madhya", "Antya": "Antya", "AN": "Antya"}
 
 
@@ -73,24 +74,32 @@ def words(text):
 def verse(ref, depth):
     """Verse reference from archive numbers: the first `depth` numbers are the
     path, a further one ends a range. verse('06-11-19', 2) -> '6.11–19'."""
-    nums = [str(int(n)) for n in ref.split("-")]
+    nums = [str(int(n)) for n in re.split(r"[-=]", ref)]
     return ".".join(nums[:depth]) + (f"–{nums[-1]}" if len(nums) > depth else "")
+
+
+def bg_label(m):
+    if int(m[1].split("-")[0]) == 0:
+        return "BG Introduction"
+    # A lecture running into the next chapter: BG_08-28_09-01.
+    return f"BG {verse(m[1], 2)}" + (f"–{verse(m[2], 2)}" if m[2] else "")
+
+
+def cc_label(m):
+    lila = LILAS[m[1]]
+    return f"CC {lila}, Introduction" if m[2] == "Intro" else f"CC {lila} {verse(m[2], 2)}"
 
 
 # Archive folder -> (filename prefix, reference after it, its label).
 REFS = {
-    "Bhagavad_Gita": (r"BG_", r"(\d+(?:-\d+)+)_", lambda m: f"BG {verse(m[1], 2)}"),
-    "Srimad_Bhagavatam": (r"SB_", r"(\d+(?:-\d+)+)_", lambda m: f"SB {verse(m[1], 3)}"),
-    "Chaitanya_Charitamrita": (
-        r"CC_",
-        r"(A|M|AN|Antya)_(\d+(?:-\d+)+)_",
-        lambda m: f"CC {LILAS[m[1]]} {verse(m[2], 2)}",
-    ),
+    "Bhagavad_Gita": (r"BG_", r"(\d+(?:-\d+)+)(?:_(\d+-\d+))?_", bg_label),
+    "Srimad_Bhagavatam": (r"SB_", r"(\d+(?:[-=]\d+)+)_", lambda m: f"SB {verse(m[1], 3)}"),
+    "Chaitanya_Charitamrita": (r"CC_", r"(A|M|AN|Antya)_(\d+(?:-\d+)*|Intro)_", cc_label),
     "Isopanishad": (r"Isopanisad_", r"(\d+)_", lambda m: "Invocation" if int(m[1]) == 0 else f"Mantra {int(m[1])}"),
     "Nectar_Of_Devotion": (r"NOD_", r"(?:Pg-(\d+)_|(\d+)_)?", lambda m: f"NOD p. {int(m[1])}" if m[1] else f"NOD {int(m[2])}" if m[2] else "NOD"),
 }
 PREFIXES = {
-    "Arrival_Address": r"(?:Arrival|Address)_(?:-_)?",
+    "Arrival_Address": r"(?:Arrival_|Address_)+(?:Lecture_|Talk_)?(?:-_)?",
     "Departure_Address": r"Departure_(?:Address|Lecture)_",
     "Festivals": r"Festivals_",
     "Interview": r"Interview_(?:-_)?",
@@ -98,6 +107,25 @@ PREFIXES = {
     "Room_Conversation": r"Room_Conversa?tion_(?:-_)?",
     "Various": r"(?:Questions_and_Answers|[A-Za-z]+)_(?:-_)?",
 }
+# What kind of talk it was, when the name puts that before the place.
+KINDS = {
+    "Public_Lecture": "Public Lecture",
+    "Press_Conference": "Press Conference",
+    "and_Initiation": "Lecture and Initiation",
+    "with_Sannyasis": "With Sannyasis",
+    "Purport_to_Parama_Karuna": "Purport to Parama Karuna",
+}
+KIND = re.compile(r"^(" + "|".join(KINDS) + r")_")
+# Several recordings of one day: Room_Conversation_02_Atlanta_...
+PART = re.compile(r"^(\d{2})_")
+PLACE_TYPOS = {"Los Los Angeles": "Los Angeles", "Sanand Francisco": "San Francisco", "Los Angles": "Los Angeles"}
+
+
+def tidy(subject):
+    subject = re.sub(r"\.\.\.(?=\w)", "… ", subject).replace("...", "…")
+    subject = re.sub(r"…+", "…", subject)
+    # Day After Gaura Purnima-01 -> Day After Gaura Purnima, Part 1
+    return re.sub(r"(?<=[a-z])-0?(\d)$", r", Part \1", subject)
 
 
 def describe(folder, filename):
@@ -113,8 +141,9 @@ def describe(folder, filename):
         name = re.sub(r"^(\d+)_-?_?", lambda m: f"{int(m[1])} — ", name)
         return words(name.replace("_-_", " — ")), None, "", ""
 
-    before, after = name[: date.start()], name[date.end():]
-    label = ""
+    # A day range (1966-02-19_-20) belongs to the date, not the subject.
+    before, after = name[: date.start()], re.sub(r"^[-_]+(?:\d{1,2}_)?", "", name[date.end():])
+    label = kind = part = ""
     if folder in REFS:
         prefix, ref, make = REFS[folder]
         before = re.sub("^" + prefix, "", before)
@@ -123,13 +152,23 @@ def describe(folder, filename):
             label, before = make(match), before[match.end():]
     elif folder in PREFIXES:
         before = re.sub("^" + PREFIXES[folder], "", before)
+    if match := KIND.match(before):
+        kind, before = KINDS[match[1]], before[match.end():]
+    if match := PART.match(before):
+        part, before = str(int(match[1])), before[match.end():]
 
-    place, subject = words(before), words(after.lstrip("_-").replace("_-_", " "))
+    place, subject = words(before), tidy(words(after.replace("_-_", " ")))
     if not place and subject:
         # Some names put the place after the date: ..._1974-07-25_New_York.
         place, subject = subject, ""
-    # Untitled recordings are told apart by place and date.
-    title = " — ".join(p for p in (label, subject or ", ".join(filter(None, (place, date[0])))) if p)
+    place = PLACE_TYPOS.get(place, place)
+    subject = " ".join(filter(None, (kind, subject)))
+    if not subject:
+        # Untitled recordings are told apart by place, date and part.
+        subject = ", ".join(filter(None, (place, date[0]))) + (f" ({part})" if part else "")
+    if label and subject.lower() in label.lower():
+        subject = ""  # CC Adi, Introduction — Introduction
+    title = " — ".join(filter(None, (label, subject)))
     return title, int(date[1]), place, date[0]
 
 
@@ -210,9 +249,29 @@ class Command(BaseCommand):
                         added += 1
                         self.stdout.write(f"  [{i}/{len(todo)}] {title}")
 
+            self.update_details(topic, name, paths)
             renumber(topic, [Lecture.generate_file_hash(ARCHIVE + p) for p in paths])
 
         self.stdout.write(self.style.SUCCESS(f"Added {added}, failed {failed}"))
+
+    def update_details(self, topic, folder, paths):
+        """Brings imported lectures' titles, places and dates up to date with
+        describe(), so naming fixes reach them without a new download."""
+        path_of = {Lecture.generate_file_hash(ARCHIVE + p): p for p in paths}
+        changed = []
+        for lecture in topic.lectures.all():
+            path = path_of.get(lecture.file_hash)
+            if not path:
+                continue
+            title, year, place, date = describe(folder, urllib.parse.unquote(os.path.basename(path)))
+            new = {"title": title, "year": year, "event": place, "description": date}
+            if any(getattr(lecture, field) != value for field, value in new.items()):
+                for field, value in new.items():
+                    setattr(lecture, field, value)
+                changed.append(lecture)
+        Lecture.objects.bulk_update(changed, ["title", "year", "event", "description"])
+        if changed:
+            self.stdout.write(f"  Updated details of {len(changed)} lectures")
 
     @staticmethod
     def fetch(path):
