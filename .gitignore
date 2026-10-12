@@ -77,3 +77,6 @@ dist/
 # Project specific
 local_settings.py
 staticfiles/
+
+# Logs
+logs/
