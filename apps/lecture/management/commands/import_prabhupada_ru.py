@@ -126,7 +126,9 @@ def sort_key(code, name):
     by date."""
     title, _, _, date = describe(name)
     if code in ("ru-bhagavad-gita", "ru-srimad-bhagavatam", "ru-chaitanya-charitamrita"):
-        return (natural_key(title.split(" — ")[0]), date, natural_key(name))
+        # The introduction comes before the first verse.
+        label = title.split(" — ")[0].replace(", введение", " 0")
+        return (natural_key(label), date, natural_key(name))
     return (date, natural_key(name))
 
 
