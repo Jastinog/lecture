@@ -131,3 +131,35 @@ class DescribeArchiveFileTests(TestCase):
         for folder, filename, expected in cases:
             with self.subTest(filename):
                 self.assertEqual(describe(folder, filename), expected)
+
+
+class DescribeRussianArchiveFileTests(TestCase):
+    """import_prabhupada_ru sorts and names recordings after the cloud's filenames."""
+
+    def test_names(self):
+        from apps.lecture.management.commands.import_prabhupada_ru import describe, topic_of
+
+        cases = [
+            ("74-11-21 Bom SB 3.25.21 — Кто такой садху", "ru-srimad-bhagavatam",
+             ("ШБ 3.25.21 — Кто такой садху", 1974, "Бомбей", "1974-11-21")),
+            ("66-07-18 Бг 4.3-6 (NY)", "ru-bhagavad-gita",
+             ("БГ 4.3–6", 1966, "Нью-Йорк", "1966-07-18")),
+            ("66-11-17 CC 2.20.121-124 (NY)", "ru-chaitanya-charitamrita",
+             ("ЧЧ Мадхья 20.121–124", 1966, "Нью-Йорк", "1966-11-17")),
+            ("70-04-29 LA Iso1-3 — Как кошки и собаки", "ru-sri-ishopanishad",
+             ("Мантры 1–3 — Как кошки и собаки", 1970, "Лос-Анджелес", "1970-04-29")),
+            ("75-04-05 Mayapur Mwalk — Цивилизация кошек и собак", "ru-morning-walks",
+             ("Цивилизация кошек и собак", 1975, "Майяпур", "1975-04-05")),
+            ("68-03-23 SF Mwalk", "ru-morning-walks",
+             ("Сан-Франциско, 1968-03-23", 1968, "Сан-Франциско", "1968-03-23")),
+            ("67-04-05 SF Беседа с Хаягривой 1 (Caitanya Play)", "ru-conversations",
+             ("Беседа с Хаягривой 1 (Caitanya Play)", 1967, "Сан-Франциско", "1967-04-05")),
+            ("75-10-29 #4 Nairobi Беседа — Мы дети Господа", "ru-conversations",
+             ("Мы дети Господа", 1975, "Найроби", "1975-10-29")),
+            ("67-xx-xx About Kurukshetra", "ru-lectures",
+             ("About Kurukshetra", 1967, "", "1967")),
+        ]
+        for name, topic, expected in cases:
+            with self.subTest(name):
+                self.assertEqual(topic_of(name), topic)
+                self.assertEqual(describe(name), expected)

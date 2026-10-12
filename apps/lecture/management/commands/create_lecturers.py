@@ -17,8 +17,9 @@ def fetch_audio(url):
     tmp = tempfile.NamedTemporaryFile(suffix=".mp3")
     try:
         with urllib.request.urlopen(request, timeout=120) as response:
+            # Cloud storages send audio as a generic binary.
             content_type = response.headers.get_content_type()
-            if not content_type.startswith("audio/"):
+            if not (content_type.startswith("audio/") or content_type == "application/octet-stream"):
                 raise ValueError(f"not audio: {content_type}")
             shutil.copyfileobj(response, tmp)
     except BaseException:
@@ -32,7 +33,9 @@ def fetch_audio(url):
 def save_lecture(topic, lecture_data, language, order, file_hash, audio_file):
     """Creates a lecture of `topic` from a fetch_audio file."""
     audio = mutagen.File(audio_file.name)
-    duration = int(audio.info.length) if audio and audio.info else None
+    if audio is None:
+        raise ValueError("not an audio file")
+    duration = int(audio.info.length) if audio.info else None
     return Lecture.objects.create(
         topic=topic,
         title=lecture_data["title"],
