@@ -24,8 +24,9 @@ struct RemoteLibrary: LibraryProviding {
                            pages: list.pages, count: list.count)
     }
 
-    func lecturers() async throws -> [Lecturer] {
-        try await get([LecturerDTO].self, "lecturers/").map(\.model)
+    func lecturers(language: String?) async throws -> [Lecturer] {
+        let query = language.map { [URLQueryItem(name: "lang", value: $0)] } ?? []
+        return try await get([LecturerDTO].self, "lecturers/", query: query).map(\.model)
     }
 
     func lecturer(id: Int) async throws -> LecturerPage {

@@ -8,7 +8,8 @@ protocol LibraryProviding {
     func languages() async throws -> [Language]
     /// Newest first. With `language`, only topics with lectures in it.
     func topics(group: TopicGroup?, page: Int, language: String?) async throws -> CatalogPage
-    func lecturers() async throws -> [Lecturer]
+    /// With `language`, only lecturers with lectures in it, counted over those.
+    func lecturers(language: String?) async throws -> [Lecturer]
     func lecturer(id: Int) async throws -> LecturerPage
     /// With `language`, only topics with lectures in it, counted over those.
     func topics(lecturerID: Int, language: String?) async throws -> [Topic]

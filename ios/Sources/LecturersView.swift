@@ -34,12 +34,16 @@ struct LecturersRoute: Hashable {}
 @MainActor
 final class LecturersViewModel: PagedLoader {
     @Published private(set) var items: [Lecturer] = []
+    /// The catalog language the list was loaded in.
+    private(set) var language: String?
 
     func reload() { Task { await refresh() } }
 
     /// Awaitable reload for pull-to-refresh.
     func refresh() async {
-        await load(reset: true, { try await API.library.lecturers() }) { result in
+        let language = CatalogLanguageStore.shared.language
+        self.language = language
+        await load(reset: true, { try await API.library.lecturers(language: language) }) { result in
             switch result {
             case .success(let lecturers): items = lecturers
             case .failure: error = "Couldn’t load the lecturers"
@@ -48,13 +52,24 @@ final class LecturersViewModel: PagedLoader {
     }
 }
 
-/// Every lecturer, one section per level of the line, pinned ones on top.
+/// Every lecturer, one section per level of the line, pinned ones on top;
+/// narrowed to the catalog language when one is chosen (pins stay).
 struct LecturersView: View {
     @StateObject private var vm = LecturersViewModel()
     @ObservedObject private var pins = PinStore.shared
+    @ObservedObject private var languages = CatalogLanguageStore.shared
 
     var body: some View {
         List {
+            if languages.items.count > 1 {
+                Section {
+                    CatalogLanguagePicker()
+                        .padding(.vertical, 10)
+                        .listRowSeparator(.hidden)
+                        .plainRow()
+                }
+            }
+
             if !pins.items.isEmpty {
                 Section {
                     ForEach(pins.items) { pin in
@@ -102,7 +117,10 @@ struct LecturersView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { NowPlayingToolbarItem() }
         .classicRefreshable { await vm.refresh() }
-        .task { if vm.items.isEmpty { vm.reload() } }
+        // Loads at first, and again whenever the catalog language changes.
+        .task(id: languages.language) {
+            if vm.items.isEmpty || vm.language != languages.language { await vm.refresh() }
+        }
     }
 }
 
