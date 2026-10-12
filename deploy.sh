@@ -60,7 +60,7 @@ main() {
     step "Restarting $SERVICE"
     systemctl restart "$SERVICE"
     for _ in $(seq 1 15); do
-        if curl -fsS -o /dev/null -H "Host: $HOST" "$HEALTH_URL"; then
+        if curl -fs -o /dev/null -H "Host: $HOST" "$HEALTH_URL"; then
             trap - ERR
             step "Deployed $after"
             return
