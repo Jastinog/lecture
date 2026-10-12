@@ -178,7 +178,14 @@ struct LecturerView: View {
     /// The lecturer's topics by group, in the catalog's group order.
     private var sections: [(group: String, topics: [Topic])] {
         let byGroup = Dictionary(grouping: topics) { $0.group?.name ?? "Other" }
-        let order = API.library.groups.map(\.name) + ["Other"]
+        let known = GroupStore.shared.items.map(\.name)
+        // Groups not (yet) known locally keep the order the topics came in.
+        var unknown: [String] = []
+        for topic in topics {
+            let name = topic.group?.name ?? "Other"
+            if !known.contains(name), !unknown.contains(name) { unknown.append(name) }
+        }
+        let order = known + unknown.filter { $0 != "Other" } + ["Other"]
         return order.compactMap { name in byGroup[name].map { (name, $0) } }
     }
 

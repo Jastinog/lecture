@@ -6,7 +6,7 @@ import Foundation
 struct MockLibrary: LibraryProviding {
     private static let pageSize = 10
 
-    var groups: [TopicGroup] { MockData.groups }
+    func groups() async throws -> [TopicGroup] { MockData.groups }
 
     func topics(group: TopicGroup?, sort: SortMode, page: Int) async throws -> CatalogPage {
         try await latency()

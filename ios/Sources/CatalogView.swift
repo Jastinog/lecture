@@ -148,10 +148,12 @@ struct CatalogView: View {
 struct BrowseRoute: Hashable {}
 
 struct BrowseView: View {
+    @ObservedObject private var groups = GroupStore.shared
+
     var body: some View {
         List {
             Section {
-                ForEach(API.library.groups) { group in
+                ForEach(groups.items) { group in
                     RowLink(value: group) { Text(group.name) }
                 }
                 .plainRow()
@@ -167,5 +169,6 @@ struct BrowseView: View {
         .navigationTitle("Groups")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { NowPlayingToolbarItem() }
+        .task { await groups.refresh() }
     }
 }

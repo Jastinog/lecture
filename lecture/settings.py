@@ -27,7 +27,7 @@ env.read_env(str(BASE_DIR) + "/.env")
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.str("DEBUG")
+DEBUG = env.bool("DEBUG", default=False)
 ENVIRONMENT = env.str("ENVIRONMENT")
 
 BACKEND_URL = env.str("BACKEND_URL", "http://127.0.0.1:8000")

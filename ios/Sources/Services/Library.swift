@@ -1,10 +1,10 @@
 import Foundation
 
 /// The catalog the app reads: lecturers, their topics and the lectures in them.
-/// Views talk to `API.library`; today that's `MockLibrary`, later the Django
-/// backend behind the same protocol.
+/// Views talk to `API.library`: the Django backend (`RemoteLibrary`), or
+/// `MockLibrary` for working without one.
 protocol LibraryProviding {
-    var groups: [TopicGroup] { get }
+    func groups() async throws -> [TopicGroup]
     func topics(group: TopicGroup?, sort: SortMode, page: Int) async throws -> CatalogPage
     func lecturers() async throws -> [Lecturer]
     func lecturer(id: Int) async throws -> Lecturer
@@ -41,7 +41,35 @@ extension Error {
 
 /// Single entry point to the data layer.
 enum API {
-    static let library: LibraryProviding = MockLibrary()
+    static let library: LibraryProviding = RemoteLibrary(baseURL: baseURL)
+
+    /// The backend's root: `APIBaseURL` in Info.plist, set per configuration by
+    /// the `API_BASE_URL` build setting (project.yml).
+    static let baseURL: URL = {
+        guard let string = Bundle.main.object(forInfoDictionaryKey: "APIBaseURL") as? String,
+              let url = URL(string: string), url.host != nil
+        else { return URL(string: "http://127.0.0.1:8765")! }
+        return url
+    }()
+}
+
+/// The topic groups, kept on the phone so Browse and the lecturer page have
+/// them at once (and offline); refreshed from the backend on launch.
+@MainActor
+final class GroupStore: ObservableObject {
+    static let shared = GroupStore()
+    private let file = "groups.json"
+    private let version = 1
+
+    @Published private(set) var items: [TopicGroup] = []
+
+    private init() { items = Store.load([TopicGroup].self, from: file) ?? [] }
+
+    func refresh() async {
+        guard let fresh = try? await API.library.groups(), fresh != items else { return }
+        items = fresh
+        Store.save(items, version: version, to: file)
+    }
 }
 
 /// In-memory cache of topic pages (main-thread use only), so a reopened topic —
@@ -60,9 +88,11 @@ final class TopicCache {
         do {
             let page = try await API.library.topicPage(id: id)
             pages[id] = page
+            NetworkStatus.shared.showingSaved = false
             return page
         } catch {
-            if let saved = DownloadManager.shared.savedTopics[id] {
+            if let saved = DownloadManager.shared.savedTopics[id], !error.isCancellation {
+                NetworkStatus.shared.showingSaved = true
                 return TopicPage(detail: saved, summary: Topic(saved), lecturer: nil, description: nil)
             }
             throw error
@@ -80,10 +110,11 @@ extension Topic {
 }
 
 /// Whether screens show saved data because the network is down. Drives the
-/// offline banner; the mock library is never offline.
+/// offline banner: set when a topic falls back to its downloaded copy, cleared
+/// by the next page that loads.
 @MainActor
 final class NetworkStatus: ObservableObject {
     static let shared = NetworkStatus()
-    @Published private(set) var showingSaved = false
+    @Published var showingSaved = false
     private init() {}
 }

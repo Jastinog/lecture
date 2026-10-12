@@ -27,10 +27,21 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # The Django backend the app reads its catalog from (`API.baseURL`).
+        API_BASE_URL: "https://lecture.intentio.pro"
+      configs:
+        # The dev server on this Mac. A device can't reach its 127.0.0.1: use
+        # the Mac's LAN IP or a tunnel.
+        Debug:
+          API_BASE_URL: "http://127.0.0.1:8765"
     info:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: Lectures
+        APIBaseURL: $(API_BASE_URL)
+        # Plain http to a dev server on this Mac or the local network.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         CFBundleShortVersionString: "1.0"
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations:

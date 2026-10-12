@@ -3,7 +3,7 @@ run:
 	uv run python manage.py makemigrations
 	uv run python manage.py migrate
 	uv run python manage.py collectstatic --no-input --clear >> /dev/null
-	uv run python manage.py runserver
+	uv run python manage.py runserver 127.0.0.1:8765
 # Initialize initial data
 init:
 	uv run python manage.py inituser

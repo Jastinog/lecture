@@ -33,6 +33,7 @@
 		C05AB8DAB60EB1B3BC797A9A /* Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2588FAFE38DDC6B721F515E6 /* Library.swift */; };
 		CF88E62CFE4F9318625E4376 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CB72ADE053EA3FFC5933E556 /* PrivacyInfo.xcprivacy */; };
 		D2B4CA8F8F2EBD4C483149AF /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96390247652C03F599484CF8 /* SearchView.swift */; };
+		E3050B28E337144FC9C25F75 /* RemoteLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE0430F7C72F57050E6F304 /* RemoteLibrary.swift */; };
 		E5B2EE1057C22E1B4A4C6128 /* Chrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = E218CCAC223ADB0DFD715D34 /* Chrome.swift */; };
 		EB8ED84770563FE398CCF630 /* Pins.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17802F1D4CA09A39F0E3871 /* Pins.swift */; };
 		EE09BAA18E38E467D0B8FD08 /* PlaybackMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E41D9C59E681E2F0E82443B /* PlaybackMath.swift */; };
@@ -65,6 +66,7 @@
 		A3D8B75069B8BFF3F6BBD314 /* Grouped.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Grouped.swift; sourceTree = "<group>"; };
 		AF1D06817AB69D89A1962D45 /* Bookmarks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bookmarks.swift; sourceTree = "<group>"; };
 		B1C3533AF886C47660B43CA2 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		BAE0430F7C72F57050E6F304 /* RemoteLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteLibrary.swift; sourceTree = "<group>"; };
 		CB72ADE053EA3FFC5933E556 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D081BFAD756848BAE0FAC20E /* SwipeRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeRows.swift; sourceTree = "<group>"; };
 		D08C68F858A8373B7AA101B1 /* Shelf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shelf.swift; sourceTree = "<group>"; };
@@ -121,6 +123,7 @@
 			children = (
 				2588FAFE38DDC6B721F515E6 /* Library.swift */,
 				951690E855B8143C11E2952E /* MockLibrary.swift */,
+				BAE0430F7C72F57050E6F304 /* RemoteLibrary.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -245,6 +248,7 @@
 				EE09BAA18E38E467D0B8FD08 /* PlaybackMath.swift in Sources */,
 				18A30C3267B15F292B873807 /* PlayerViews.swift in Sources */,
 				2D8D0CA6B8A852537BCCEF53 /* Refresh.swift in Sources */,
+				E3050B28E337144FC9C25F75 /* RemoteLibrary.swift in Sources */,
 				D2B4CA8F8F2EBD4C483149AF /* SearchView.swift in Sources */,
 				0A1EB829A26173AAF44FCD61 /* SettingsView.swift in Sources */,
 				27F645A85CD3242F5A9E5B93 /* Shelf.swift in Sources */,
@@ -262,6 +266,7 @@
 		9B0CE463317AC965A32B3009 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				API_BASE_URL = "http://127.0.0.1:8765";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
@@ -341,6 +346,7 @@
 		BB92A9EF526F1AF1FCC1B28F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				API_BASE_URL = "https://lecture.intentio.pro";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
