@@ -287,8 +287,10 @@ class Command(BaseCommand):
         date = DATE.search(path)
         date = date[0] if date else ""
         if folder in REFS:
-            title = describe(folder, urllib.parse.unquote(os.path.basename(path)))[0]
-            return (natural_key(title.split(" — ")[0]), date, natural_key(path))
+            label = describe(folder, urllib.parse.unquote(os.path.basename(path)))[0].split(" — ")[0]
+            # Introductions come before the first verse.
+            label = label.replace("Introduction", "0").replace(", 0", " 0")
+            return (natural_key(label), date, natural_key(path))
         return (date, natural_key(path))
 
     def get_topic(self, lecturer, folder):
