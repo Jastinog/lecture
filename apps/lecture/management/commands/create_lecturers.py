@@ -1,8 +1,14 @@
 import os
 import json
+import shutil
+import tempfile
+import urllib.request
+
+import mutagen
 from django.core.management.base import BaseCommand
 from django.core.files import File
-from apps.lecture.models import Lecturer, Topic, TopicGroup, Language
+from django.db.models import Max
+from apps.lecture.models import Lecture, Lecturer, Topic, TopicGroup, Language
 
 
 class LecturerSyncService:
@@ -15,6 +21,7 @@ class LecturerSyncService:
         self.updated_count = 0
         self.topics_created_count = 0
         self.topics_updated_count = 0
+        self.lectures_created_count = 0
         self.messages = []
 
     def add_message(self, message, level="info"):
@@ -57,6 +64,9 @@ class LecturerSyncService:
             )
             return False
 
+        if lecturer.photo and lecturer.photo.storage.exists(lecturer.photo.name):
+            return False
+
         photo_path = self.get_photo_path(lecturer.code)
 
         if not os.path.exists(photo_path):
@@ -79,6 +89,9 @@ class LecturerSyncService:
             self.add_message(
                 f"Cannot update cover for unsaved topic: {topic.title}", "warning"
             )
+            return False
+
+        if topic.cover and topic.cover.storage.exists(topic.cover.name):
             return False
 
         cover_path = self.get_topic_cover_path(topic.lecturer.code, topic.code)
@@ -238,7 +251,68 @@ class LecturerSyncService:
                 topic = Topic.objects.get(lecturer=lecturer, code=topic_data["code"])
                 self.update_topic(topic, topic_data)
             except Topic.DoesNotExist:
-                self.create_topic(lecturer, topic_data)
+                topic = self.create_topic(lecturer, topic_data)
+
+            if topic and topic_data.get("lectures"):
+                self.sync_lectures(topic, topic_data["lectures"])
+
+    def sync_lectures(self, topic, lectures_data):
+        """Download a topic's lectures from their source URLs. A lecture is
+        known by its URL's hash, so re-runs skip what's already imported."""
+        for lecture_data in lectures_data:
+            url = lecture_data["url"]
+            file_hash = Lecture.generate_file_hash(url)
+            if topic.lectures.filter(file_hash=file_hash).exists():
+                continue
+
+            try:
+                language = Language.objects.get(code=lecture_data["language"])
+            except Language.DoesNotExist:
+                self.add_message(f"Language not found: {lecture_data['language']}", "warning")
+                continue
+
+            last_order = topic.lectures.filter(language=language).aggregate(
+                last=Max("order")
+            )["last"]
+            try:
+                self.download_lecture(
+                    topic, lecture_data, language, (last_order or 0) + 1, file_hash
+                )
+            except Exception as e:
+                self.add_message(f"Error downloading {url}: {e}", "warning")
+                continue
+
+            self.lectures_created_count += 1
+            self.add_message(f"Added lecture: {topic.title} - {lecture_data['title']}")
+
+    def download_lecture(self, topic, lecture_data, language, order, file_hash):
+        request = urllib.request.Request(
+            lecture_data["url"], headers={"User-Agent": "lecture-catalog"}
+        )
+        with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                content_type = response.headers.get_content_type()
+                if not content_type.startswith("audio/"):
+                    raise ValueError(f"not audio: {content_type}")
+                shutil.copyfileobj(response, tmp)
+            tmp.flush()
+
+            audio = mutagen.File(tmp.name)
+            duration = int(audio.info.length) if audio and audio.info else None
+
+            tmp.seek(0)
+            Lecture.objects.create(
+                topic=topic,
+                title=lecture_data["title"],
+                audio_file=File(tmp, name="lecture.mp3"),
+                language=language,
+                file_size=os.path.getsize(tmp.name),
+                duration=duration,
+                order=order,
+                year=lecture_data.get("year"),
+                event=lecture_data.get("event", ""),
+                file_hash=file_hash,
+            )
 
     def sync_lecturers_data(self, lecturers_data):
         """Sync lecturers data (create/update with topics)"""
@@ -270,6 +344,7 @@ class LecturerSyncService:
             self.add_message(
                 f"Topics - Created: {self.topics_created_count}, Updated: {self.topics_updated_count}"
             )
+            self.add_message(f"Lectures - Added: {self.lectures_created_count}")
 
             return True
 
@@ -289,7 +364,7 @@ class LecturerSyncService:
 
 
 class Command(BaseCommand):
-    help = "Sync ISKCON lecturers and topics from lecturers.json file"
+    help = "Sync ISKCON lecturers, topics and lectures from lecturers.json file"
 
     def handle(self, *args, **options):
         # Setup paths

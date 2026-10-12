@@ -11,7 +11,9 @@
         "title": "Беседы",
         "description": "Беседы Шрилы Прабхупады",
         "group": "conversations",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 3
       },
       {
@@ -19,7 +21,9 @@
         "title": "Брахма Самхита",
         "description": "Лекции по Брахма Самхите",
         "group": "lectures",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 4
       },
       {
@@ -27,15 +31,36 @@
         "title": "Бхагавад Гита",
         "description": "Лекции по Бхагавад Гите",
         "group": "lectures",
-        "languages": ["ru"],
-        "order": 5
+        "languages": [
+          "ru",
+          "en"
+        ],
+        "order": 5,
+        "lectures": [
+          {
+            "title": "БГ 1.1 — Материальный мир означает…",
+            "url": "https://audio.iskcondesiretree.com/01_-_Srila_Prabhupada/01_-_Lectures/01_-_English/01_-_Topic_wise/Bhagavad_Gita/Chapter-01/SP_BG_01-01_London_1973-07-07_The_Material_World_Means--etc.mp3",
+            "year": 1973,
+            "event": "Лондон",
+            "language": "en"
+          },
+          {
+            "title": "БГ 1.2–3 — Смерть — это Бог",
+            "url": "https://audio.iskcondesiretree.com/01_-_Srila_Prabhupada/01_-_Lectures/01_-_English/01_-_Topic_wise/Bhagavad_Gita/Chapter-01/SP_BG_01-02-03_London_1973-07-09_Death_Is_God.mp3",
+            "year": 1973,
+            "event": "Лондон",
+            "language": "en"
+          }
+        ]
       },
       {
         "code": "ru-interviews",
         "title": "Интервью",
         "description": "Интервью Шрилы Прабхупады",
         "group": "interviews",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 6
       },
       {
@@ -43,7 +68,9 @@
         "title": "Лекции",
         "description": "Лекции Шрилы Прабхупады",
         "group": "lectures",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 7
       },
       {
@@ -51,7 +78,9 @@
         "title": "Нектар Преданности",
         "description": "Лекции по Нектару Преданности",
         "group": "lectures",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 8
       },
       {
@@ -59,7 +88,9 @@
         "title": "Праздники",
         "description": "Лекции на праздники",
         "group": "lectures",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 9
       },
       {
@@ -67,7 +98,9 @@
         "title": "Разное",
         "description": "Разные лекции",
         "group": "lectures",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 10
       },
       {
@@ -75,7 +108,9 @@
         "title": "Утренние Прогулки",
         "description": "Утренние прогулки с Шрилой Прабхупадой",
         "group": "walks",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 11
       },
       {
@@ -83,7 +118,9 @@
         "title": "Чайтанья Чаритамрита",
         "description": "Лекции по Чайтанье Чаритамрите",
         "group": "lectures",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 12
       },
       {
@@ -91,7 +128,9 @@
         "title": "Шри Ишопанишад",
         "description": "Лекции по Шри Ишопанишаду",
         "group": "lectures",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 13
       },
       {
@@ -99,74 +138,386 @@
         "title": "Шримад Бхагаватам",
         "description": "Лекции по Шримад Бхагаватам на русском",
         "group": "lectures",
-        "languages": ["ru"],
+        "languages": [
+          "ru"
+        ],
         "order": 14
       }
     ]
   },
-    {
-      "name": "HH Radhanath Swami",
-      "code": "hh-radhanath-swami",
-      "description": "Author of \"The Journey Home\", inspiring spiritual teacher and storyteller.",
-      "order": 2,
-      "level": 2,
-      "topics": [
-        {
-          "code": "ru-gosvami-vrindavana",
-          "title": "Госвами Вриндавана",
-          "description": "Лекции о шести Госвами Вриндавана",
-          "group": "lectures",
-          "languages": ["ru"],
-          "order": 1
-        },
-        {
-          "code": "ru-mercy-srila-prabhupada",
-          "title": "Милость Шрилы Прабхупады",
-          "description": "Лекции о милости Шрилы Прабхупады",
-          "group": "lectures",
-          "languages": ["ru"],
-          "order": 2
-        },
-        {
-          "code": "ru-brihad-bhagavatamrita-1999",
-          "title": "Брихад Бхагаватамрита (1999)",
-          "description": "Лекции по Брихад Бхагаватамрите 1999 года",
-          "group": "lectures",
-          "languages": ["ru"],
-          "order": 3
-        },
-        {
-          "code": "ru-essential-qualities-vaishnavas-pune-2002",
-          "title": "Важнейшие качества Вайшнавов (Pune 2002)",
-          "description": "Лекции о важнейших качествах вайшнавов, Пуна 2002",
-          "group": "lectures",
-          "languages": ["ru"],
-          "order": 4
-        },
-        {
-          "code": "ru-journey-home-radhanath-swami",
-          "title": "Путешествие домой - Радханатха Свами",
-          "description": "Лекции по книге Путешествие домой",
-          "group": "books",
-          "languages": ["ru"],
-          "order": 5
-        },
-        {
-          "code": "ru-radhanath-swami-festivals",
-          "title": "Радханатх Свами Фестивали",
-          "description": "Фестивальные лекции Радханатха Свами",
-          "group": "lectures",
-          "languages": ["ru"],
-          "order": 6
-        },
-        {
-          "code": "ru-chaitanya-charitamrita",
-          "title": "Чайтанья Чаритамрита",
-          "description": "Лекции по Чайтанье Чаритамрите",
-          "group": "lectures",
-          "languages": ["ru"],
-          "order": 7
-        }
-      ]
-    }
+  {
+    "name": "HH Radhanath Swami",
+    "code": "hh-radhanath-swami",
+    "description": "Author of \"The Journey Home\", inspiring spiritual teacher and storyteller.",
+    "order": 2,
+    "level": 2,
+    "topics": [
+      {
+        "code": "ru-gosvami-vrindavana",
+        "title": "Госвами Вриндавана",
+        "description": "Лекции о шести Госвами Вриндавана",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 1
+      },
+      {
+        "code": "ru-mercy-srila-prabhupada",
+        "title": "Милость Шрилы Прабхупады",
+        "description": "Лекции о милости Шрилы Прабхупады",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 2
+      },
+      {
+        "code": "ru-brihad-bhagavatamrita-1999",
+        "title": "Брихад Бхагаватамрита (1999)",
+        "description": "Лекции по Брихад Бхагаватамрите 1999 года",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 3,
+        "lectures": [
+          {
+            "title": "День 1 — Введение",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_R_to_Y/His_Holiness_Radhanath_Swami/Lectures/Russian_Translation/Brihad_Bhagvatmrita/1999_Day-01_Part-01_-_Brihad_Bhagvatmrita_Introduction_-_Radhanath_Swami.mp3",
+            "year": 1999,
+            "event": "",
+            "language": "ru"
+          },
+          {
+            "title": "День 2 — Брахмалока",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_R_to_Y/His_Holiness_Radhanath_Swami/Lectures/Russian_Translation/Brihad_Bhagvatmrita/1999_Day-02_Part-01_-_Brihad_Bhagvatmrita_Brahmaloka_-_Radhanath_Swami.mp3",
+            "year": 1999,
+            "event": "",
+            "language": "ru"
+          }
+        ]
+      },
+      {
+        "code": "ru-essential-qualities-vaishnavas-pune-2002",
+        "title": "Важнейшие качества Вайшнавов (Pune 2002)",
+        "description": "Лекции о важнейших качествах вайшнавов, Пуна 2002",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 4
+      },
+      {
+        "code": "ru-journey-home-radhanath-swami",
+        "title": "Путешествие домой - Радханатха Свами",
+        "description": "Лекции по книге Путешествие домой",
+        "group": "books",
+        "languages": [
+          "ru"
+        ],
+        "order": 5
+      },
+      {
+        "code": "ru-radhanath-swami-festivals",
+        "title": "Радханатх Свами Фестивали",
+        "description": "Фестивальные лекции Радханатха Свами",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 6
+      },
+      {
+        "code": "ru-chaitanya-charitamrita",
+        "title": "Чайтанья Чаритамрита",
+        "description": "Лекции по Чайтанье Чаритамрите",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 7
+      }
+    ]
+  },
+  {
+    "name": "HH Bhakti Vijnana Goswami",
+    "code": "hh-bhakti-vijnana-goswami",
+    "level": 3,
+    "description": "Disciple of Gopal Krishna Goswami and one of the leading ISKCON preachers in Russia, lecturing in Russian.",
+    "topics": [
+      {
+        "code": "ru-karma",
+        "title": "Карма",
+        "description": "Лекции о законе кармы",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 1,
+        "lectures": [
+          {
+            "title": "Механизмы кармы",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_A_to_C/His_Holiness_Bhakti_Vijnana_Goswami/Russian_Lectures/Seminars_for_General_Public/BVG_rus_10-08-21-Mehanizmy_karmy-Omsk.mp3",
+            "year": 2010,
+            "event": "Омск",
+            "language": "ru"
+          },
+          {
+            "title": "Карма",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_A_to_C/His_Holiness_Bhakti_Vijnana_Goswami/Russian_Lectures/Seminars_for_General_Public/BVG_rus_Karma-Izrail_17-03-2010.mp3",
+            "year": 2010,
+            "event": "Израиль",
+            "language": "ru"
+          }
+        ]
+      }
+    ],
+    "order": 3
+  },
+  {
+    "name": "HH Niranjana Swami",
+    "code": "hh-niranjana-swami",
+    "level": 2,
+    "description": "Disciple of Srila Prabhupada who has served ISKCON in Russia and Ukraine for decades.",
+    "topics": [
+      {
+        "code": "ru-bhagavad-gita",
+        "title": "Бхагавад Гита",
+        "description": "Лекции по Бхагавад Гите с русским переводом",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 1,
+        "lectures": [
+          {
+            "title": "БГ 5.29",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_D_to_P/His_Holiness_Niranjana_Swami/Lectures/2019/NRS_BG_05-29_Russian_Translation_-_2019_05-18_Kaliningrad%20.mp3",
+            "year": 2019,
+            "event": "Калининград",
+            "language": "ru"
+          },
+          {
+            "title": "БГ 6.32",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_D_to_P/His_Holiness_Niranjana_Swami/Lectures/2019/NRS_BG_06-32_Russian_Translation_-_2019-04-26_Moscow.mp3",
+            "year": 2019,
+            "event": "Москва",
+            "language": "ru"
+          }
+        ]
+      }
+    ],
+    "order": 4
+  },
+  {
+    "name": "HH Indradyumna Swami",
+    "code": "hh-indradyumna-swami",
+    "level": 2,
+    "description": "Disciple of Srila Prabhupada, known for the festival tours of Poland and his travelling preaching around the world.",
+    "topics": [
+      {
+        "code": "ru-srimad-bhagavatam",
+        "title": "Шримад Бхагаватам",
+        "description": "Лекции по Шримад Бхагаватам с русским переводом",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 1,
+        "lectures": [
+          {
+            "title": "ШБ 1.3.18 — Живой камень",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_D_to_P/His_Holiness_Indradyumna_Swami/Lecture_with_Russian_Translation/Srimad_Bhagavatam/Canto-01/IDS_SB_01-03-18_Russian_Translation_-_The_Living_Stone_-_2017-05-30_Ukraine.mp3",
+            "year": 2017,
+            "event": "Украина",
+            "language": "ru"
+          },
+          {
+            "title": "ШБ 3.15.24 — Греби свою лодку",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_D_to_P/His_Holiness_Indradyumna_Swami/Lecture_with_Russian_Translation/Srimad_Bhagavatam/Canto-03/IDS_SB_03-15-24_Russian_Translation_-_Row_Your_Boat_-_2014-06-16_Ekaterinburg.mp3",
+            "year": 2014,
+            "event": "Екатеринбург",
+            "language": "ru"
+          }
+        ]
+      }
+    ],
+    "order": 5
+  },
+  {
+    "name": "HH Sivarama Swami",
+    "code": "hh-sivarama-swami",
+    "level": 2,
+    "description": "Disciple of Srila Prabhupada, author and leader of ISKCON in Hungary, founder of the Krishna Valley eco-village.",
+    "topics": [
+      {
+        "code": "ru-holy-places-of-vrindavan",
+        "title": "Святые места Вриндавана",
+        "description": "Семинар о святых местах Вриндавана с русским переводом",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 1,
+        "lectures": [
+          {
+            "title": "Часть 1",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_R_to_Y/His_Holiness_Sivarama_Swami/Lecture_with_Russian_Translation/Seminars/Holy_places_of_Vrindavan/Sivarama_Sw_Seminars_-_Holy_places_of_Vrindavan-01_-_2012-09-17_Ukraine.mp3",
+            "year": 2012,
+            "event": "Украина",
+            "language": "ru"
+          },
+          {
+            "title": "Часть 2",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_R_to_Y/His_Holiness_Sivarama_Swami/Lecture_with_Russian_Translation/Seminars/Holy_places_of_Vrindavan/Sivarama_Sw_Seminars_-_Holy_places_of_Vrindavan-02_-_2012-09-18_Ukraine.mp3",
+            "year": 2012,
+            "event": "Украина",
+            "language": "ru"
+          }
+        ]
+      }
+    ],
+    "order": 6
+  },
+  {
+    "name": "HH Kadamba Kanana Swami",
+    "code": "hh-kadamba-kanana-swami",
+    "level": 2,
+    "description": "Disciple of Srila Prabhupada, beloved for his kirtans and preaching across Europe, South Africa and Russia.",
+    "topics": [
+      {
+        "code": "ru-srimad-bhagavatam",
+        "title": "Шримад Бхагаватам",
+        "description": "Лекции по Шримад Бхагаватам с русским переводом",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 1,
+        "lectures": [
+          {
+            "title": "ШБ 6.1.10",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_D_to_P/His_Holiness_Kadamba_Kanana_Swami/Lectures_with_Russian_Translation/Srimad_Bhagavatam/Canto-06/KKS_SB_06-01-10_Russian_Translation_-_2014-10_ISKCON_Mayapur.mp3",
+            "year": 2014,
+            "event": "Маяпур",
+            "language": "ru"
+          },
+          {
+            "title": "ШБ 6.1.25",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_D_to_P/His_Holiness_Kadamba_Kanana_Swami/Lectures_with_Russian_Translation/Srimad_Bhagavatam/Canto-06/KKS_SB_06-01-25_Russian_Translation_-_2014-10_ISKCON_Mayapur.mp3",
+            "year": 2014,
+            "event": "Маяпур",
+            "language": "ru"
+          }
+        ]
+      }
+    ],
+    "order": 7
+  },
+  {
+    "name": "HH Bhakti Caitanya Swami",
+    "code": "hh-bhakti-caitanya-swami",
+    "level": 2,
+    "description": "Disciple of Srila Prabhupada, serving ISKCON in South Africa and regularly preaching in Russia and the Baltic states.",
+    "topics": [
+      {
+        "code": "ru-bhagavad-gita",
+        "title": "Бхагавад Гита",
+        "description": "Лекции по Бхагавад Гите с русским переводом",
+        "group": "lectures",
+        "languages": [
+          "ru"
+        ],
+        "order": 1,
+        "lectures": [
+          {
+            "title": "БГ 1.16–18",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_A_to_C/His_Holiness_Bhakti_Caitanya_Swami/Lectures_with_Russian_Translation/Bhagavad_Gita/Chapter-01/BCaitanyaS_BG_01-16-18_Russian_Tanslation_-_2011-05-18_Murmansk.mp3",
+            "year": 2011,
+            "event": "Мурманск",
+            "language": "ru"
+          },
+          {
+            "title": "БГ 1.19",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_A_to_C/His_Holiness_Bhakti_Caitanya_Swami/Lectures_with_Russian_Translation/Bhagavad_Gita/Chapter-01/BCaitanyaS_BG_01-19_Russian_Tanslation_-_2011-05-20_Murmansk.mp3",
+            "year": 2011,
+            "event": "Мурманск",
+            "language": "ru"
+          }
+        ]
+      }
+    ],
+    "order": 8
+  },
+  {
+    "name": "HH Jayapataka Swami",
+    "code": "hh-jayapataka-swami",
+    "level": 2,
+    "description": "Disciple of Srila Prabhupada, who has guided the development of Sridham Mayapur since the 1970s.",
+    "topics": [
+      {
+        "code": "en-bhagavad-gita",
+        "title": "Бхагавад Гита",
+        "description": "Лекции по Бхагавад Гите на английском",
+        "group": "lectures",
+        "languages": [
+          "en"
+        ],
+        "order": 1,
+        "lectures": [
+          {
+            "title": "БГ 2.14 — Сознание Кришны: следующий уровень",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_D_to_P/His_Holiness_Jayapataka_Swami/English_Lectures/Bhagavad_Gita/Chapter-02/JPS_BG_02-14_-_Krishna_Consciousness_-_the_next_higher_level_-_2001-11-05_Atlanta_USA.mp3",
+            "year": 2001,
+            "event": "Атланта",
+            "language": "en"
+          },
+          {
+            "title": "БГ 2.39 — Бхакти-йога",
+            "url": "https://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_D_to_P/His_Holiness_Jayapataka_Swami/English_Lectures/Bhagavad_Gita/Chapter-02/JPS_BG_02-39_-_Bhakti_yoga_-_2008-05-02_Tokyo.mp3",
+            "year": 2008,
+            "event": "Токио",
+            "language": "en"
+          }
+        ]
+      }
+    ],
+    "order": 9
+  },
+  {
+    "name": "HG Chaitanya Charan Das",
+    "code": "hg-chaitanya-charan-das",
+    "level": 3,
+    "description": "Disciple of Radhanath Swami, engineer by training, author and editor of The Spiritual Scientist.",
+    "topics": [
+      {
+        "code": "en-bhagavad-gita",
+        "title": "Бхагавад Гита",
+        "description": "Лекции по Бхагавад Гите на английском",
+        "group": "lectures",
+        "languages": [
+          "en"
+        ],
+        "order": 1,
+        "lectures": [
+          {
+            "title": "БГ 1.1 — Трансцендентное проявляется в географическом",
+            "url": "https://audio.iskcondesiretree.com/03_-_ISKCON_Prabhujis/ISKCON_Prabhujis_-_A_to_J/His_Grace_Chaitanya_Charan_Prabhu/English_Lectures/Bhagavad_Gita/Chapter-01/Chaitanya_Charan_Pr_BG_01-01_-_The_transcendental_manifests_in_the_geographical_-_2014.mp3",
+            "year": 2014,
+            "event": "",
+            "language": "en"
+          },
+          {
+            "title": "БГ 1.8 — Привязанность делает отсутствующее присутствующим",
+            "url": "https://audio.iskcondesiretree.com/03_-_ISKCON_Prabhujis/ISKCON_Prabhujis_-_A_to_J/His_Grace_Chaitanya_Charan_Prabhu/English_Lectures/Bhagavad_Gita/Chapter-01/Chaitanya_Charan_Pr_BG_01-08_-_Attachment_makes_the_absent_present_-_2014-09.mp3",
+            "year": 2014,
+            "event": "",
+            "language": "en"
+          }
+        ]
+      }
+    ],
+    "order": 10
+  }
 ]
