@@ -126,9 +126,38 @@ USE_TZ = True
 STATIC_ROOT = str(BASE_DIR / "staticfiles")
 STATIC_URL = "/static/"
 
-# Audio, covers and photos live on disk; nginx serves them in production.
+# Audio, covers and photos: on DigitalOcean Spaces when SPACES_BUCKET is set,
+# public and served from its domain (the CDN's, given SPACES_DOMAIN); otherwise
+# on disk, served by nginx.
 MEDIA_ROOT = str(APPS_DIR / "media")
 MEDIA_URL = "/media/"
+
+SPACES_BUCKET = env.str("SPACES_BUCKET", default="")
+if SPACES_BUCKET:
+    SPACES_REGION = env.str("SPACES_REGION", default="fra1")
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "bucket_name": SPACES_BUCKET,
+                "region_name": SPACES_REGION,
+                "endpoint_url": f"https://{SPACES_REGION}.digitaloceanspaces.com",
+                "access_key": env.str("SPACES_KEY"),
+                "secret_key": env.str("SPACES_SECRET"),
+                "custom_domain": env.str(
+                    "SPACES_DOMAIN",
+                    default=f"{SPACES_BUCKET}.{SPACES_REGION}.digitaloceanspaces.com",
+                ),
+                "default_acl": "public-read",
+                "querystring_auth": False,
+                "file_overwrite": False,
+                "object_parameters": {"CacheControl": "public, max-age=2592000"},
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

@@ -16,6 +16,7 @@ dependencies = [
     "mutagen>=1.47.0,<2.0.0",
     "djangorestframework>=3.16.1,<4.0.0",
     "gevent>=25.8.2",
+    "django-storages[s3]>=1.14.6",
 ]
 
 [dependency-groups]
