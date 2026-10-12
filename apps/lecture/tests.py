@@ -207,3 +207,45 @@ class RenumberTests(TestCase):
 
         self.assertEqual(list(topic.lectures.values_list("title", flat=True)), paths)
         self.assertEqual(list(topic.lectures.values_list("order", flat=True)), [1, 2, 3])
+
+
+class DescribeRadhanathFileTests(TestCase):
+    """import_radhanath names lectures after the archive's filenames."""
+
+    def test_names(self):
+        from apps.lecture.management.commands.import_radhanath import describe
+
+        cases = [
+            ("1993-036_Glories_Of_lord_Ramachandra_SB-09_10_04_-_Radhanath_Swami_1993-04-01_IDesireTree.mp3", False,
+             ("SB 9.10.4 — Glories Of lord Ramachandra", 1993, "", "1993-04-01")),
+            ("1990-079_Comitting_To_This_Great_Mission_SB-08_07_24_Mumbai_-_05-09-90_IDesireTree.mp3", False,
+             ("SB 8.7.24 — Comitting To This Great Mission", 1990, "Mumbai", "1990-09-05")),
+            ("1992-034_Prayers_By_Advaita_Acharya_CC_AL-02_Mumbai_-_Radhanath_Swami_1992-02-20_IDesireTree.mp3", False,
+             ("CC Adi 2 — Prayers By Advaita Acharya", 1992, "Mumbai", "1992-02-20")),
+            ("2015-10-18_SB_04-30-08_-_Importance_of_Co-operation_among_Devotees_-_Radhanath_Swami_GEV_Wada.mp3", False,
+             ("SB 4.30.8 — Importance of Co-operation among Devotees", 2015, "GEV Wada", "2015-10-18")),
+            ("2010-01-09_DADAR_Ratha_Yatra_Lecture_-_Radhanath_Swami_ISKCON_Chowpatty.mp3", False,
+             ("DADAR Ratha Yatra", 2010, "ISKCON Chowpatty", "2010-01-09")),
+            ("Mayapur_Yatra_2003_15_-_Childhood_Pastimes_of_Nimai-3_Day-04_Radhanath_Swami.mp3", True,
+             ("Childhood Pastimes of Nimai-3 Day 4", 2003, "", "")),
+            ("1997_Day-15_Part-01_Vishnupriya_Devi_-_Radhanath_Swami_Mayapur.mp3", True,
+             ("Day 15, Part 1 — Vishnupriya Devi", 1997, "Mayapur", "")),
+            ("1996-016_Prabhupada_Premanjali_MT_-_Lecture_Belgaum_-_Radhanath_Swami_1996-01-10_IDesireTree.mp3", False,
+             ("Prabhupada Premanjali (with Marathi translation)", 1996, "Belgaum", "1996-01-10")),
+            ("1996-105_SB_-_Radhanath_Swami_1996-07-25_IDesireTree.mp3", False,
+             ("Lecture, 1996-07-25", 1996, "", "1996-07-25")),
+            ("1999_01_Vrindavan_Radhanath_Swami_1999-11-06.mp3", False,
+             ("Vrindavan, 1999-11-06 (1)", 1999, "Vrindavan", "1999-11-06")),
+        ]
+        for filename, in_series, expected in cases:
+            with self.subTest(filename):
+                self.assertEqual(describe(filename, in_series), expected)
+
+    def test_other_speakers_skipped(self):
+        from apps.lecture.management.commands.import_radhanath import ROOT, YATRAS, is_his
+
+        yatra = ROOT + YATRAS + "2009_Mayapur_Yatra/"
+        self.assertTrue(is_his(yatra + "2009-10-23_-_Yadi_Gaur_Na_Hoite_-_Radhanath_Swami_ISKCON_Mayapur.mp3"))
+        self.assertTrue(is_his(yatra + "Mayapur_Yatra_1997_16_Pastimes_at_Ramkeli.mp3"))
+        self.assertFalse(is_his(yatra + "2009-10-22_-_Ohe_Vaishnava_Thakur_-_Murari_Hari_Prabhu_ISKCON_Mayapur.mp3"))
+        self.assertFalse(is_his(yatra + "2009-10-17_Invite_EU_-_Jayapataka_Sw.mp3"))
