@@ -49,10 +49,6 @@ CORS_ORIGIN_WHITELIST = (
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Authentication
-LOGIN_URL = '/auth/login/'
-LOGIN_REDIRECT_URL = '/'
-
 CORS_ALLOW_METHODS = (
     "DELETE",
     "GET",
@@ -88,7 +84,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "rest_framework",
-    "crispy_forms",
     "corsheaders",
     "channels",
     "storages",
@@ -106,7 +101,6 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "apps.system.middleware.ActivityTrackingMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -229,7 +223,6 @@ AWS_QUERYSTRING_EXPIRE = 3600
 # Static files (CSS, JavaScript, Images) - always local
 STATIC_ROOT = str(BASE_DIR / "staticfiles")
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [str(APPS_DIR / "static")]
 
 # Media files configuration - S3 for production, local for development
 USE_S3_MEDIA = env.bool("USE_S3_MEDIA", default=False)
@@ -281,8 +274,6 @@ STATICFILES_FINDERS = [
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-LOGIN_REDIRECT_URL = "/"
 
 # ==============================================================================
 # REDIS CONFIGURATION
@@ -362,5 +353,3 @@ DATA_UPLOAD_MAX_NUMBER_FILES = 2000
 FILE_UPLOAD_MAX_MEMORY_SIZE = 500 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 500 * 1024 * 1024
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
-
-STATIC_VERSION = env.str("STATIC_VERSION", "1.0.0")
