@@ -129,9 +129,26 @@
         "description": "Лекции по Шри Ишопанишаду",
         "group": "lectures",
         "languages": [
-          "ru"
+          "ru",
+          "en"
         ],
-        "order": 13
+        "order": 13,
+        "lectures": [
+          {
+            "title": "Мантра 1 — Наша глупость",
+            "url": "https://audio.iskcondesiretree.com/01_-_Srila_Prabhupada/01_-_Lectures/01_-_English/01_-_Topic_wise/Isopanishad/SP_Isopanisad_01_Los_Angeles_1970-04-29_Our_Foolishness.mp3",
+            "year": 1970,
+            "event": "Лос-Анджелес",
+            "language": "en"
+          },
+          {
+            "title": "Мантра 15 — Обезвреженные чувства",
+            "url": "https://audio.iskcondesiretree.com/01_-_Srila_Prabhupada/01_-_Lectures/01_-_English/01_-_Topic_wise/Isopanishad/SP_Isopanisad_15_Los_Angeles_1970-05-18_The_Senses_Defanged.mp3",
+            "year": 1970,
+            "event": "Лос-Анджелес",
+            "language": "en"
+          }
+        ]
       },
       {
         "code": "ru-srimad-bhagavatam",
