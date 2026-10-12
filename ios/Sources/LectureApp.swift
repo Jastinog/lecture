@@ -83,7 +83,11 @@ struct RootView: View {
             .environmentObject(player)
             .overlay { ActionSheetHost() }
             .overlay { AlertHost() }
-            .task { await GroupStore.shared.refresh() }
+            .task {
+                async let groups: Void = GroupStore.shared.refresh()
+                async let languages: Void = CatalogLanguageStore.shared.refresh()
+                _ = await (groups, languages)
+            }
             // A lecture that won't play says so wherever the listener is.
             .onChange(of: player.playbackError) { _, error in
                 guard let error else { return }

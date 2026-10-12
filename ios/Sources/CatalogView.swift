@@ -47,6 +47,8 @@ final class CatalogViewModel: TopicPager {
     static let home = CatalogViewModel()
 
     let group: TopicGroup?
+    /// The catalog language the list was loaded in; "Show More" keeps it.
+    private(set) var language: String?
 
     private let api: LibraryProviding
 
@@ -57,12 +59,14 @@ final class CatalogViewModel: TopicPager {
     }
 
     override func fetchPage(_ page: Int) async throws -> CatalogPage {
-        try await api.topics(group: group, page: page)
+        if page == 1 { language = CatalogLanguageStore.shared.language }
+        return try await api.topics(group: group, page: page, language: language)
     }
 }
 
 struct CatalogView: View {
     @StateObject private var vm: CatalogViewModel
+    @ObservedObject private var languages = CatalogLanguageStore.shared
 
     /// Scoped to a group (pushed from Browse) vs. the home feed.
     private let scoped: Bool
@@ -76,11 +80,19 @@ struct CatalogView: View {
         List {
             if !scoped {
                 // The search bar heads the table and scrolls away with it.
+                // The languages ride under the field, as a UISearchBar scope bar.
                 SearchBarLink(prompt: "Topic, lecture or lecturer", accessory: { EmptyView() },
-                              scope: { EmptyView() })
+                              scope: { CatalogLanguagePicker() })
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                 ContinueListeningCard()
+            } else if languages.items.count > 1 {
+                Section {
+                    CatalogLanguagePicker()
+                        .padding(.vertical, 10)
+                        .listRowSeparator(.hidden)
+                        .plainRow()
+                }
             }
             Section {
                 // On the rows, not the section: the header band stays full width.
@@ -126,7 +138,10 @@ struct CatalogView: View {
             }
         }
         .classicRefreshable { await vm.refresh() }
-        .task { if vm.items.isEmpty { vm.reload() } }
+        // Loads at first, and again whenever the catalog language changes.
+        .task(id: languages.language) {
+            if vm.items.isEmpty || vm.language != languages.language { await vm.refresh() }
+        }
     }
 }
 

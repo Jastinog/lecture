@@ -4,14 +4,17 @@ import Foundation
 /// Views talk to `API.library`, the Django backend (`RemoteLibrary`).
 protocol LibraryProviding {
     func groups() async throws -> [TopicGroup]
-    /// Newest first.
-    func topics(group: TopicGroup?, page: Int) async throws -> CatalogPage
+    /// The languages the catalog has lectures in, with how many.
+    func languages() async throws -> [Language]
+    /// Newest first. With `language`, only topics with lectures in it.
+    func topics(group: TopicGroup?, page: Int, language: String?) async throws -> CatalogPage
     func lecturers() async throws -> [Lecturer]
     func lecturer(id: Int) async throws -> LecturerPage
     /// With `language`, only topics with lectures in it, counted over those.
     func topics(lecturerID: Int, language: String?) async throws -> [Topic]
     func topicPage(id: Int) async throws -> TopicPage
-    func search(_ query: String) async throws -> SearchResult
+    /// With `language`, only what has lectures in it.
+    func search(_ query: String, language: String?) async throws -> SearchResult
 }
 
 /// What a search finds: lecturers by name, topics by title or lecturer, and
@@ -68,6 +71,41 @@ final class GroupStore: ObservableObject {
 
     func refresh() async {
         guard let fresh = try? await API.library.groups(), fresh != items else { return }
+        items = fresh
+        Store.save(items, version: version, to: file)
+    }
+}
+
+/// The languages the catalog has lectures in, kept on the phone like the
+/// groups, and the one Home, the groups and search are narrowed to (nil for
+/// all). Refreshed from the backend on launch.
+@MainActor
+final class CatalogLanguageStore: ObservableObject {
+    static let shared = CatalogLanguageStore()
+    private let file = "languages.json"
+    private let version = 1
+    private let choiceKey = "lecture.catalogLanguage"
+
+    @Published private(set) var items: [Language] = []
+    @Published private var chosen: String?
+
+    private init() {
+        items = Store.load([Language].self, from: file) ?? []
+        chosen = UserDefaults.standard.string(forKey: choiceKey)
+    }
+
+    /// The chosen language, unless the catalog turns out not to have it.
+    var language: String? {
+        chosen.flatMap { code in items.isEmpty || items.contains { $0.code == code } ? code : nil }
+    }
+
+    func choose(_ language: String?) {
+        chosen = language
+        UserDefaults.standard.set(language, forKey: choiceKey)
+    }
+
+    func refresh() async {
+        guard let fresh = try? await API.library.languages(), fresh != items else { return }
         items = fresh
         Store.save(items, version: version, to: file)
     }

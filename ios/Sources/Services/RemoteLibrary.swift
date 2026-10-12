@@ -11,9 +11,14 @@ struct RemoteLibrary: LibraryProviding {
         try await get([GroupDTO].self, "groups/").map(\.model)
     }
 
-    func topics(group: TopicGroup?, page: Int) async throws -> CatalogPage {
+    func languages() async throws -> [Language] {
+        try await get([LanguageDTO].self, "languages/").map(\.model)
+    }
+
+    func topics(group: TopicGroup?, page: Int, language: String?) async throws -> CatalogPage {
         var query = [URLQueryItem(name: "page", value: String(page))]
         if let group { query.append(URLQueryItem(name: "group", value: group.code)) }
+        if let language { query.append(URLQueryItem(name: "lang", value: language)) }
         let list = try await get(TopicListDTO.self, "topics/", query: query)
         return CatalogPage(items: list.results.map(\.model), page: list.page,
                            pages: list.pages, count: list.count)
@@ -37,8 +42,10 @@ struct RemoteLibrary: LibraryProviding {
         try await get(TopicPageDTO.self, "topics/\(id)/").model
     }
 
-    func search(_ query: String) async throws -> SearchResult {
-        let found = try await get(SearchDTO.self, "search/", query: [URLQueryItem(name: "q", value: query)])
+    func search(_ query: String, language: String?) async throws -> SearchResult {
+        var items = [URLQueryItem(name: "q", value: query)]
+        if let language { items.append(URLQueryItem(name: "lang", value: language)) }
+        let found = try await get(SearchDTO.self, "search/", query: items)
         return SearchResult(
             lecturers: found.lecturers.map(\.model),
             topics: found.topics.map(\.model),

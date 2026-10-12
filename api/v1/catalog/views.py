@@ -110,6 +110,14 @@ class GroupListView(generics.ListAPIView):
     queryset = TopicGroup.objects.filter(is_active=True)
 
 
+class LanguageListView(APIView):
+    """The languages the catalog has lectures in, with how many, for the
+    app's language switcher."""
+
+    def get(self, request):
+        return Response(language_counts(Lecture.objects.all()))
+
+
 class TopicListView(generics.ListAPIView):
     """Newest first; `?group=<code>` narrows to a group."""
 

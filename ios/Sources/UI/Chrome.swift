@@ -688,7 +688,7 @@ struct TabGear: Shape {
 
 /// The blue-grey search bar: a white pill field in a gradient strip. While the
 /// field is active, "Cancel" slides in beside it (clears and puts it away).
-struct ClassicSearchBar: View {
+struct ClassicSearchBar<Scope: View>: View {
     @Binding var text: String
     let prompt: String
     var onSubmit: () -> Void = {}
@@ -697,6 +697,18 @@ struct ClassicSearchBar: View {
     /// When set, the bar stands in for the navigation bar: "Cancel" is always
     /// there, and leaves the screen.
     var onCancel: (() -> Void)? = nil
+    /// UISearchBar's scope bar, under the field.
+    var scope: Scope
+
+    init(text: Binding<String>, prompt: String, onSubmit: @escaping () -> Void = {},
+         autofocus: Bool = false, onCancel: (() -> Void)? = nil, @ViewBuilder scope: () -> Scope) {
+        _text = text
+        self.prompt = prompt
+        self.onSubmit = onSubmit
+        self.autofocus = autofocus
+        self.onCancel = onCancel
+        self.scope = scope()
+    }
 
     var body: some View {
         SearchStrip {
@@ -728,6 +740,8 @@ struct ClassicSearchBar: View {
                 .buttonStyle(.classicBar)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
+        } scope: {
+            scope
         }
         .animation(.easeInOut(duration: 0.25), value: focused)
         // Standing in for the navigation bar, it keeps the bar's tint under the
@@ -741,6 +755,14 @@ struct ClassicSearchBar: View {
     }
 
     private var magnifier: some View { Image.classic("SearchIcon") }
+}
+
+extension ClassicSearchBar where Scope == EmptyView {
+    init(text: Binding<String>, prompt: String, onSubmit: @escaping () -> Void = {},
+         autofocus: Bool = false, onCancel: (() -> Void)? = nil) {
+        self.init(text: text, prompt: prompt, onSubmit: onSubmit, autofocus: autofocus,
+                  onCancel: onCancel) { EmptyView() }
+    }
 }
 
 /// A search bar that isn't a field: tapping it opens the search screen. An

@@ -29,7 +29,8 @@ final class SearchViewModel: ObservableObject {
         }
         isLoading = true; error = nil
         do {
-            let found = try await API.library.search(SearchQuery.trimmed(q))
+            let found = try await API.library.search(SearchQuery.trimmed(q),
+                                                     language: CatalogLanguageStore.shared.language)
             guard !Task.isCancelled else { return }
             result = found
         } catch {
@@ -63,6 +64,7 @@ final class SearchHistoryStore: ObservableObject {
 struct SearchView: View {
     @StateObject private var vm = SearchViewModel()
     @ObservedObject private var history = SearchHistoryStore.shared
+    @ObservedObject private var languages = CatalogLanguageStore.shared
     @EnvironmentObject private var player: AudioPlayer
     @EnvironmentObject private var router: NavRouter
     @Environment(\.dismiss) private var dismiss
@@ -120,10 +122,13 @@ struct SearchView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             ClassicSearchBar(text: $vm.query, prompt: "Topics, lectures, lecturers",
                              onSubmit: { history.record(vm.query) }, autofocus: vm.query.isEmpty,
-                             onCancel: { dismiss() })
+                             onCancel: { dismiss() }) {
+                CatalogLanguagePicker()
+            }
         }
         .scrollDismissesKeyboard(.immediately)
         .onChange(of: vm.query) { _, _ in vm.search() }
+        .onChange(of: languages.language) { _, _ in vm.search() }
         // Leaving for a result counts as a successful search.
         .onDisappear { if !vm.result.isEmpty { history.record(vm.query) } }
     }
@@ -137,7 +142,9 @@ struct SearchView: View {
             defer { starting = nil }
             do {
                 let page = try await TopicCache.shared.resolve(hit.topic.id)
-                player.load(topic: page.detail, summary: page.summary, index: hit.index)
+                // Found by id: the hit's index counts only its language's lectures.
+                let index = page.detail.lectures.firstIndex { $0.id == hit.lecture.id } ?? hit.index
+                player.load(topic: page.detail, summary: page.summary, index: index)
                 router.openPlayer()
             } catch {
                 Alerts.shared.show("Couldn’t Play", message: "Check your connection and try again.",

@@ -505,7 +505,20 @@ struct LanguageTag: View {
     }
 }
 
-/// "All | English | Русский" for a lecturer's page or a mixed topic, as a list
+/// "All | English | Русский": the segmented control every language choice
+/// uses, nil standing for all of them.
+struct LanguagePicker: View {
+    let languages: [Language]
+    @Binding var selection: String?
+
+    var body: some View {
+        ClassicSegmentedControl(
+            options: [(nil, "All")] + languages.map { (Optional($0.code), $0.name) },
+            selection: $selection, skin: .blue)
+    }
+}
+
+/// The language picker for a lecturer's page or a mixed topic, as a list
 /// section. The choice is remembered for the lecturer, so their page and
 /// their topics follow it.
 struct LanguageSwitcher: View {
@@ -515,14 +528,25 @@ struct LanguageSwitcher: View {
 
     var body: some View {
         Section {
-            ClassicSegmentedControl(
-                options: [(nil, "All")] + languages.map { (Optional($0.code), $0.name) },
-                selection: Binding(get: { selection },
-                                   set: { LanguageChoiceStore.shared.set($0, lecturerID: lecturerID) }),
-                skin: .blue)
+            LanguagePicker(languages: languages, selection: Binding(
+                get: { selection },
+                set: { LanguageChoiceStore.shared.set($0, lecturerID: lecturerID) }))
                 .padding(.bottom, 10)
                 .listRowSeparator(.hidden)
                 .plainRow()
+        }
+    }
+}
+
+/// The catalog's language picker, as Home, a group's list and search show it:
+/// nothing while the catalog has a single language.
+struct CatalogLanguagePicker: View {
+    @ObservedObject private var store = CatalogLanguageStore.shared
+
+    var body: some View {
+        if store.items.count > 1 {
+            LanguagePicker(languages: store.items,
+                           selection: Binding(get: { store.language }, set: { store.choose($0) }))
         }
     }
 }

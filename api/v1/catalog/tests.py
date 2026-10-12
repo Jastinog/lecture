@@ -159,6 +159,15 @@ class LanguageTests(TestCase):
         lecture.delete()
         self.assertEqual(self.codes(self.mixed), ["en"])
 
+    def test_catalog_languages(self):
+        self.assertEqual(
+            self.client.get("/api/v1/languages/").json(),
+            [
+                {"code": "en", "name": "English", "lectures_count": 3},
+                {"code": "ru", "name": "Русский", "lectures_count": 2},
+            ],
+        )
+
     def test_moving_a_lecture_resyncs_both_topics(self):
         self.ch2.topic = self.english
         self.ch2.order = 2
