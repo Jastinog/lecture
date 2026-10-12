@@ -8,6 +8,7 @@ to 512×512. Lecturers without a freely licensed photo have a generated monogram
 - HH Bhakti Vijnana Goswami: Бхакти Вигьяна Госвами.jpg — Ananda Govinda Dasa, CC BY-SA 3.0, https://commons.wikimedia.org/wiki/File:%D0%91%D1%85%D0%B0%D0%BA%D1%82%D0%B8_%D0%92%D0%B8%D0%B3%D1%8C%D1%8F%D0%BD%D0%B0_%D0%93%D0%BE%D1%81%D0%B2%D0%B0%D0%BC%D0%B8.jpg
 - HH Jayapataka Swami: JPS35.JPEG — Ilya Mauter, Public domain, https://commons.wikimedia.org/wiki/File:JPS35.JPEG
 - HH Kadamba Kanana Swami: Kadamba Kanana Swami in Krishna Balaram Mandir in Vrindavan.JPG — Ilya Mauter, CC BY-SA 3.0, https://commons.wikimedia.org/wiki/File:Kadamba_Kanana_Swami_in_Krishna_Balaram_Mandir_in_Vrindavan.JPG
+- HH Niranjana Swami: provided by the project owner
 - HH Sivarama Swami: Sivarama Swami.jpg — Jayaharidas, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:Sivarama_Swami.jpg
 
 ## Topic covers
