@@ -37,7 +37,6 @@
 		E5B2EE1057C22E1B4A4C6128 /* Chrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = E218CCAC223ADB0DFD715D34 /* Chrome.swift */; };
 		EB8ED84770563FE398CCF630 /* Pins.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17802F1D4CA09A39F0E3871 /* Pins.swift */; };
 		EE09BAA18E38E467D0B8FD08 /* PlaybackMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E41D9C59E681E2F0E82443B /* PlaybackMath.swift */; };
-		FBB81887323CF8445EFC2CB7 /* MockLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 951690E855B8143C11E2952E /* MockLibrary.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,7 +58,6 @@
 		742CF1C4F4AD3343F0EAFC21 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
 		80FBDAEACD0174A5681F5C0D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8C4EF23EF32A21A54730E0DD /* ClassicAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassicAlert.swift; sourceTree = "<group>"; };
-		951690E855B8143C11E2952E /* MockLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockLibrary.swift; sourceTree = "<group>"; };
 		96390247652C03F599484CF8 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		99D1357CBC12138B13DA5B1E /* Refresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Refresh.swift; sourceTree = "<group>"; };
 		A17802F1D4CA09A39F0E3871 /* Pins.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pins.swift; sourceTree = "<group>"; };
@@ -122,7 +120,6 @@
 			isa = PBXGroup;
 			children = (
 				2588FAFE38DDC6B721F515E6 /* Library.swift */,
-				951690E855B8143C11E2952E /* MockLibrary.swift */,
 				BAE0430F7C72F57050E6F304 /* RemoteLibrary.swift */,
 			);
 			path = Services;
@@ -241,7 +238,6 @@
 				3240DEDD460B77E74EDB8E19 /* LectureApp.swift in Sources */,
 				B8ED2BD10925245EC8ADC634 /* LecturersView.swift in Sources */,
 				C05AB8DAB60EB1B3BC797A9A /* Library.swift in Sources */,
-				FBB81887323CF8445EFC2CB7 /* MockLibrary.swift in Sources */,
 				348748672D5EEF4283A9247F /* Models.swift in Sources */,
 				93E281682ECF18D21F766639 /* Persistence.swift in Sources */,
 				EB8ED84770563FE398CCF630 /* Pins.swift in Sources */,

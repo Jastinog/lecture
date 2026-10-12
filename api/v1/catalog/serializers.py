@@ -50,8 +50,8 @@ class LecturerSerializer(serializers.ModelSerializer):
 
 
 class TopicSerializer(serializers.ModelSerializer):
-    """A topic as lists show it. Expects `lectures_count`, `total_duration`
-    and `plays` annotations (see views)."""
+    """A topic as lists show it. Expects `lectures_count` and `total_duration`
+    annotations (see views)."""
 
     cover_url = serializers.SerializerMethodField()
     lecturer = LecturerRefSerializer()
@@ -59,7 +59,6 @@ class TopicSerializer(serializers.ModelSerializer):
     languages = serializers.SerializerMethodField()
     lectures_count = serializers.IntegerField(default=0)
     duration = serializers.IntegerField(source="total_duration", default=0)
-    plays = serializers.IntegerField(default=0)
     about = serializers.CharField(source="description")
 
     class Meta:
@@ -73,7 +72,6 @@ class TopicSerializer(serializers.ModelSerializer):
             "languages",
             "lectures_count",
             "duration",
-            "plays",
             "about",
         ]
 

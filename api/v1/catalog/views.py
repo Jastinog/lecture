@@ -2,16 +2,15 @@
 their lectures, and search. Listening data stays on the device, so nothing
 here needs a user."""
 
-from django.db.models import Count, IntegerField, Max, Min, OuterRef, Q, Subquery, Sum
+from django.db.models import Count, Max, Min, Q, Sum
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from rest_framework import generics
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.lecture.models import Language, Lecture, LectureHistory, Lecturer, Topic, TopicGroup
+from apps.lecture.models import Language, Lecture, Lecturer, Topic, TopicGroup
 
 from .serializers import (
     GroupSerializer,
@@ -27,21 +26,13 @@ LECTURE_ORDER = ["language__name", "order", "id"]
 
 
 def topics_queryset():
-    """Topics with what the list cards show: lecture count, total length and plays."""
-    plays = (
-        LectureHistory.objects.filter(lecture__topic=OuterRef("pk"))
-        .order_by()
-        .values("lecture__topic")
-        .annotate(c=Count("id"))
-        .values("c")
-    )
+    """Topics with what the list cards show: lecture count and total length."""
     return (
         Topic.objects.select_related("lecturer", "group")
         .prefetch_related("languages")
         .annotate(
             lectures_count=Count("lectures"),
             total_duration=Coalesce(Sum("lectures__duration"), 0),
-            plays=Coalesce(Subquery(plays, output_field=IntegerField()), 0),
         )
     )
 
@@ -51,11 +42,6 @@ def lecturers_queryset():
         topics_count=Count("topics", distinct=True),
         lectures_count=Count("topics__lectures", distinct=True),
     )
-
-
-class PublicMixin:
-    permission_classes = [AllowAny]
-    authentication_classes = []
 
 
 class TopicPagination(PageNumberPagination):
@@ -72,14 +58,14 @@ class TopicPagination(PageNumberPagination):
         )
 
 
-class GroupListView(PublicMixin, generics.ListAPIView):
+class GroupListView(generics.ListAPIView):
     serializer_class = GroupSerializer
     pagination_class = None
     queryset = TopicGroup.objects.filter(is_active=True)
 
 
-class TopicListView(PublicMixin, generics.ListAPIView):
-    """`?group=<code>` narrows to a group, `?sort=new|popular` orders."""
+class TopicListView(generics.ListAPIView):
+    """Newest first; `?group=<code>` narrows to a group."""
 
     serializer_class = TopicSerializer
     pagination_class = TopicPagination
@@ -89,12 +75,10 @@ class TopicListView(PublicMixin, generics.ListAPIView):
         group = self.request.query_params.get("group")
         if group:
             qs = qs.filter(group__code=group)
-        if self.request.query_params.get("sort") == "popular":
-            return qs.order_by("-plays", "-id")
         return qs.order_by("-created_at", "-id")
 
 
-class TopicDetailView(PublicMixin, APIView):
+class TopicDetailView(APIView):
     """The topic page: the card, its lectures, lecturer and related topics."""
 
     def get(self, request, pk):
@@ -133,7 +117,7 @@ class TopicDetailView(PublicMixin, APIView):
         return Response(data)
 
 
-class LecturerListView(PublicMixin, generics.ListAPIView):
+class LecturerListView(generics.ListAPIView):
     serializer_class = LecturerSerializer
     pagination_class = None
 
@@ -141,14 +125,14 @@ class LecturerListView(PublicMixin, generics.ListAPIView):
         return lecturers_queryset().order_by("level", "order", "name")
 
 
-class LecturerDetailView(PublicMixin, generics.RetrieveAPIView):
+class LecturerDetailView(generics.RetrieveAPIView):
     serializer_class = LecturerSerializer
 
     def get_queryset(self):
         return lecturers_queryset()
 
 
-class LecturerTopicsView(PublicMixin, generics.ListAPIView):
+class LecturerTopicsView(generics.ListAPIView):
     serializer_class = TopicSerializer
     pagination_class = None
 
@@ -161,7 +145,7 @@ class LecturerTopicsView(PublicMixin, generics.ListAPIView):
         )
 
 
-class SearchView(PublicMixin, APIView):
+class SearchView(APIView):
     """`?q=` across lecturer names, topic titles (and their lecturer) and
     lecture titles. Each lecture hit carries its position in its topic."""
 

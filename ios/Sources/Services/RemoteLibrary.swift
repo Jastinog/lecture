@@ -11,9 +11,8 @@ struct RemoteLibrary: LibraryProviding {
         try await get([GroupDTO].self, "groups/").map(\.model)
     }
 
-    func topics(group: TopicGroup?, sort: SortMode, page: Int) async throws -> CatalogPage {
-        var query = [URLQueryItem(name: "sort", value: sort.rawValue),
-                     URLQueryItem(name: "page", value: String(page))]
+    func topics(group: TopicGroup?, page: Int) async throws -> CatalogPage {
+        var query = [URLQueryItem(name: "page", value: String(page))]
         if let group { query.append(URLQueryItem(name: "group", value: group.code)) }
         let list = try await get(TopicListDTO.self, "topics/", query: query)
         return CatalogPage(items: list.results.map(\.model), page: list.page,
@@ -118,13 +117,12 @@ private struct TopicDTO: Decodable {
     let languages: [String]
     let lecturesCount: Int
     let duration: Double
-    let plays: Int
     let about: String?
 
     var model: Topic {
         Topic(id: id, title: title, coverURL: coverUrl, lecturer: lecturer.model,
               group: group?.model, languages: languages, lecturesCount: lecturesCount,
-              duration: duration, plays: plays, about: about)
+              duration: duration, about: about)
     }
 }
 
@@ -172,7 +170,6 @@ private struct TopicPageDTO: Decodable {
     let languages: [LanguageDTO]
     let lecturesCount: Int
     let duration: Double
-    let plays: Int
     let about: String?
     let years: YearsDTO?
     let createdAt: String?
@@ -183,7 +180,7 @@ private struct TopicPageDTO: Decodable {
         let lecturer = lecturer.model
         let summary = Topic(id: id, title: title, coverURL: coverUrl, lecturer: lecturer.ref,
                             group: group?.model, languages: languages.map(\.code),
-                            lecturesCount: lecturesCount, duration: duration, plays: plays, about: about)
+                            lecturesCount: lecturesCount, duration: duration, about: about)
         return TopicPage(
             detail: TopicDetail(id: id, title: title, lecturer: lecturer.name, lecturerID: lecturer.id,
                                 coverURL: coverUrl, lectures: lectures.compactMap(\.model)),

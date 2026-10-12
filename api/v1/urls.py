@@ -1,6 +1,5 @@
-from django.urls import path, include
+from django.urls import include, path
 
 urlpatterns = [
     path("", include("api.v1.catalog.urls")),
-    path("lectures/", include("api.v1.lectures.urls")),
 ]

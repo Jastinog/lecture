@@ -1,11 +1,11 @@
 import Foundation
 
 /// The catalog the app reads: lecturers, their topics and the lectures in them.
-/// Views talk to `API.library`: the Django backend (`RemoteLibrary`), or
-/// `MockLibrary` for working without one.
+/// Views talk to `API.library`, the Django backend (`RemoteLibrary`).
 protocol LibraryProviding {
     func groups() async throws -> [TopicGroup]
-    func topics(group: TopicGroup?, sort: SortMode, page: Int) async throws -> CatalogPage
+    /// Newest first.
+    func topics(group: TopicGroup?, page: Int) async throws -> CatalogPage
     func lecturers() async throws -> [Lecturer]
     func lecturer(id: Int) async throws -> Lecturer
     func topics(lecturerID: Int) async throws -> [Topic]

@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import mutagen
@@ -5,9 +6,7 @@ import mutagen
 from django.db import transaction
 from django.core.files.storage import default_storage
 from apps.lecture.models import Lecture, Language
-from apps.system.services import Logger
-
-logger = Logger(app_name="lecture_import")
+logger = logging.getLogger(__name__)
 
 
 class LectureImport:
@@ -39,8 +38,8 @@ class LectureImport:
     def import_files(self, uploaded_files):
         """Import lectures from uploaded files"""
         logger.info(
-            f"Starting import for topic: {self.topic.title}",
-            f"Files count: {len(uploaded_files)}",
+            f"Starting import for topic: {self.topic.title}, "
+            f"files: {len(uploaded_files)}"
         )
 
         if not uploaded_files:
@@ -51,7 +50,7 @@ class LectureImport:
         files_list = list(uploaded_files)
         files_list.sort(key=lambda f: self._natural_sort_key(f.name))
 
-        logger.info("Files sorted:", [f.name for f in files_list])
+        logger.info(f"Files sorted: {[f.name for f in files_list]}")
 
         imported_count = 0
         failed_count = 0
@@ -62,9 +61,8 @@ class LectureImport:
 
         for idx, file in enumerate(files_list, 1):
             logger.info(
-                f"[{idx}/{len(files_list)}] Processing file: {file.name}",
-                f"Size: {file.size} bytes",
-                f"Current order: {next_order}",
+                f"[{idx}/{len(files_list)}] Processing file: {file.name}, "
+                f"size: {file.size} bytes, order: {next_order}"
             )
 
             if self._is_audio_file(file.name):
@@ -78,7 +76,7 @@ class LectureImport:
 
                 if self._create_lecture(file, next_order):
                     imported_count += 1
-                    logger.success(
+                    logger.info(
                         f"[{imported_count}] Successfully imported: {file.name} (order: {next_order})"
                     )
                     next_order += 1
@@ -89,12 +87,9 @@ class LectureImport:
                 skipped_count += 1
                 logger.warning(f"Skipped non-audio file: {file.name}")
 
-        logger.success(
-            "Import completed",
-            f"Total imported: {imported_count}",
-            f"Failed: {failed_count}",
-            f"Skipped: {skipped_count}",
-            f"Total processed: {len(files_list)}",
+        logger.info(
+            f"Import completed: imported {imported_count}, failed {failed_count}, "
+            f"skipped {skipped_count}, processed {len(files_list)}"
         )
         return imported_count
 
@@ -198,26 +193,14 @@ class LectureImport:
                     )
                     return False
 
-                logger.success(
-                    "Lecture created successfully:",
-                    f"ID: {lecture.id}",
-                    f"Title: {lecture.title}",
-                    f"Order: {lecture.order}",
-                    f"Language: {lecture.language.code}",
-                    f"File: {lecture.audio_file.name}",
-                    f"Hash: {file_hash}",
-                    f"Storage: {type(default_storage)}",
+                logger.info(
+                    f"Lecture created: id {lecture.id}, order {lecture.order}, "
+                    f"file {lecture.audio_file.name}"
                 )
                 return True
 
-        except Exception as e:
-            import traceback
-
-            logger.error(
-                f"Exception creating lecture from {uploaded_file.name}:",
-                f"Error: {str(e)}",
-                f"Traceback: {traceback.format_exc()}",
-            )
+        except Exception:
+            logger.exception(f"Exception creating lecture from {uploaded_file.name}")
             return False
 
     def _extract_title(self, filename):

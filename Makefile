@@ -7,7 +7,7 @@ run:
 # Initialize initial data
 init:
 	uv run python manage.py inituser
-	uv run python manage.py initcore
+	uv run python manage.py init_lecture
 # Run migrations only
 migrate:
 	uv run python manage.py makemigrations

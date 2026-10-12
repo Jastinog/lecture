@@ -68,7 +68,6 @@ struct Topic: Identifiable, Hashable, Codable {
     var lecturesCount = 0
     /// All the lectures together, in seconds.
     var duration: Double = 0
-    var plays: Int? = nil
     var about: String? = nil
 }
 
@@ -119,23 +118,4 @@ struct CatalogPage {
     let page: Int
     let pages: Int
     let count: Int
-}
-
-// MARK: - Filters
-
-/// A small set of filter choices that a `FilterMenu` can present.
-protocol FilterOption: CaseIterable, Identifiable, Hashable {
-    var title: String { get }
-}
-
-/// Topic list order.
-enum SortMode: String, CaseIterable, Identifiable, FilterOption {
-    case new, popular
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .new: return "New"
-        case .popular: return "Popular"
-        }
-    }
 }

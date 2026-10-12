@@ -142,7 +142,6 @@ struct TopicView: View {
         fields.append(("language", page.languages.isEmpty ? nil : page.languages.map(\.name).joined(separator: ", ")))
         fields.append(("years", page.years.map { $0.lowerBound == $0.upperBound ? "\($0.lowerBound)" : "\($0.lowerBound)–\($0.upperBound)" }))
         fields.append(("added", page.addedDate.map { $0.formatted(.dateTime.day().month(.abbreviated).year()) }))
-        fields.append(("plays", page.summary.plays.map(formatNumber)))
         return fields.compactMap { label, value in value.map { (label, $0) } }
     }
 

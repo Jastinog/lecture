@@ -474,12 +474,11 @@ struct TopicRow: View {
         .accessibilityAction(named: "Shelf") { ShelfActions.show(for: topic) }
     }
 
-    /// Group, size, length and plays on one grey line, as the store listed them.
+    /// Group, size and length on one grey line, as the store listed them.
     private var factsLine: String? {
         let parts = [omits.contains(.group) ? nil : topic.group?.name,
                      topic.lecturesCount > 0 ? formatCount(topic.lecturesCount, "lecture", "lectures") : nil,
-                     topic.duration > 0 ? formatDuration(topic.duration) : nil,
-                     topic.plays.map { "\(formatNumber($0)) plays" }].compactMap { $0 }
+                     topic.duration > 0 ? formatDuration(topic.duration) : nil].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -503,28 +502,7 @@ extension View {
     }
 }
 
-/// A bordered icon filter button for the navigation bar. Tapping it opens a separate
-/// screen listing every option (one section per setting, e.g. sort and period),
-/// with a checkmark on the current one — the iOS 6 settings pattern, in place
-/// of a pop-up menu.
-struct FilterMenu: View {
-    let sections: [OptionPickerRoute.Section]
-
-    init(sections: [OptionPickerRoute.Section]) { self.sections = sections }
-
-    /// A topic list's filter: the sort.
-    init(sort: Binding<SortMode>) {
-        sections = [.init("Sort By", sort)]
-    }
-
-    /// Titled in words, as iOS 6 bar buttons were (it had no filter glyph).
-    var body: some View {
-        NavigationLink("Filter", value: OptionPickerRoute(title: "Filter", sections: sections))
-            .buttonStyle(.classicBar)
-    }
-}
-
-/// Route to the choice screen behind `FilterMenu` and `PickerRow`. Value-based
+/// Route to the choice screen behind `PickerRow`. Value-based
 /// like every other push, so it lives in the tab's navigation path and never
 /// knocks the stack out of sync. Identity is the title + current choices.
 struct OptionPickerRoute: Hashable {
@@ -540,14 +518,6 @@ struct OptionPickerRoute: Hashable {
             self.options = options
             self.selected = selected
             self.pick = pick
-        }
-
-        /// A section over the given cases (every case by default) of a filter option.
-        init<Option: FilterOption>(_ title: String?, _ selection: Binding<Option>,
-                                   cases: [Option] = Array(Option.allCases)) {
-            self.init(title: title, options: cases.map(\.title),
-                      selected: cases.firstIndex(of: selection.wrappedValue) ?? 0,
-                      pick: { selection.wrappedValue = cases[$0] })
         }
     }
 
@@ -627,7 +597,7 @@ struct CheckmarkRow: View {
     }
 }
 
-/// The choice screen behind `FilterMenu`. With one setting, picking applies and
+/// The choice screen behind `PickerRow`. With one setting, picking applies and
 /// goes back; with several, each section keeps its own checkmark.
 struct OptionPickerView: View {
     let route: OptionPickerRoute

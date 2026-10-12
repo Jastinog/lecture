@@ -47,7 +47,6 @@ final class CatalogViewModel: TopicPager {
     static let home = CatalogViewModel()
 
     let group: TopicGroup?
-    @Published var sort: SortMode = .new { didSet { if oldValue != sort { reload() } } }
 
     private let api: LibraryProviding
 
@@ -58,7 +57,7 @@ final class CatalogViewModel: TopicPager {
     }
 
     override func fetchPage(_ page: Int) async throws -> CatalogPage {
-        try await api.topics(group: group, sort: sort, page: page)
+        try await api.topics(group: group, page: page)
     }
 }
 
@@ -102,7 +101,7 @@ struct CatalogView: View {
                 }
                 .plainRow()
             } header: {
-                if !scoped { PlainSectionHeader(title: vm.sort == .new ? "New Topics" : vm.sort.title) }
+                if !scoped { PlainSectionHeader(title: "New Topics") }
             }
         }
         .listStyle(.plain)
@@ -112,20 +111,9 @@ struct CatalogView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                if scoped {
-                    ClassicTitle(vm.group?.name ?? "Topics")
-                } else {
-                    // The charts in the bar, as the App Store's Featured screen
-                    // carried New / What's Hot.
-                    ClassicSegmentedControl(options: SortMode.allCases.map { ($0, $0.title) },
-                                            selection: $vm.sort, skin: .blue)
-                        .frame(width: 160)
-                }
+                ClassicTitle(scoped ? (vm.group?.name ?? "Topics") : "Home")
             }
             if scoped {
-                ClassicToolbarItem(.trailing) {
-                    FilterMenu(sort: $vm.sort)
-                }
                 NowPlayingToolbarItem()
             } else {
                 // iOS 6 bars held one button a side: "Browse" opens the groups,
