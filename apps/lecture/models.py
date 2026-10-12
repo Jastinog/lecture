@@ -2,7 +2,8 @@ import uuid
 import os
 import hashlib
 from django.db import models
-from django.core.exceptions import ValidationError
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.conf import settings
 
 
@@ -140,13 +141,20 @@ class Topic(models.Model):
         help_text="Group this topic belongs to",
     )
     languages = models.ManyToManyField(
-        Language, related_name="topics", help_text="Languages available in this topic"
+        Language,
+        related_name="topics",
+        blank=True,
+        help_text="Languages of this topic's lectures, kept in sync from them",
     )
     order = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.lecturer.name} - {self.title}"
+
+    def sync_languages(self):
+        """Set the topic's languages to those its lectures are in."""
+        self.languages.set(Language.objects.filter(lectures__topic=self).distinct())
 
     def get_languages_display(self):
         """Return comma-separated list of language names"""
@@ -191,21 +199,25 @@ class Lecture(models.Model):
     def __str__(self):
         return f"{self.topic.title} - {self.title} ({self.language.code})"
 
-    def clean(self):
-        """Validate that lecture language is available in topic"""
-        if self.language and self.topic:
-            if not self.topic.languages.filter(pk=self.language.pk).exists():
-                raise ValidationError(
-                    f"Language '{self.language}' is not available in topic '{self.topic.title}'"
-                )
-
     class Meta:
-        ordering = ["topic", "language", "order"]
-        unique_together = ["topic", "order", "language"]
+        # One order across the topic, whatever each lecture's language, so a
+        # mixed topic plays in its own sequence.
+        ordering = ["topic", "order"]
+        unique_together = ["topic", "order"]
         indexes = [
             models.Index(fields=["topic", "language", "file_hash"]),
             models.Index(fields=["language"]),
         ]
+
+    def save(self, *args, **kwargs):
+        # Re-sync the topics' languages: this one, and the one it left if moved.
+        previous = (
+            Lecture.objects.filter(pk=self.pk).values_list("topic_id", flat=True).first()
+            if self.pk
+            else None
+        )
+        super().save(*args, **kwargs)
+        sync_topics_languages({self.topic_id, previous})
 
     @property
     def file_size_mb(self):
@@ -217,3 +229,31 @@ class Lecture(models.Model):
     def generate_file_hash(filename):
         """Generate SHA256 hash from filename"""
         return hashlib.sha256(filename.encode("utf-8")).hexdigest()
+
+
+def set_lectures_language(lectures, language):
+    """Puts every lecture in the queryset in `language` with one update, then
+    re-syncs the languages of the topics they're in. Returns how many changed."""
+    topic_ids = set(lectures.values_list("topic_id", flat=True))
+    changed = lectures.exclude(language=language).update(language=language)
+    sync_topics_languages(topic_ids)
+    return changed
+
+
+# A topic's languages follow its lectures: saving (Lecture.save) or deleting a
+# lecture re-syncs the topics it touched. Bulk queryset writes skip both, so
+# code using them calls sync_topics_languages itself (or goes through
+# set_lectures_language).
+
+
+def sync_topics_languages(topic_ids):
+    """Re-syncs the languages of the topics with these ids that still exist."""
+    for topic in Topic.objects.filter(pk__in=set(topic_ids) - {None}):
+        topic.sync_languages()
+
+
+@receiver(post_delete, sender=Lecture)
+def sync_topic_languages_on_delete(sender, instance, **kwargs):
+    # Sent for queryset and cascade deletes too, which skip Lecture.delete();
+    # when the topic itself is going, it's gone already and nothing syncs.
+    sync_topics_languages({instance.topic_id})

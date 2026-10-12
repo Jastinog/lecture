@@ -24,6 +24,17 @@
             <fieldset class="module aligned">
                 <div class="form-row">
                     <div>
+                        <label for="id_language" class="required">{% trans 'Language' %}:</label>
+                        <select name="language" id="id_language" required>
+                            {% for language in languages %}
+                            <option value="{{ language.pk }}"{% if language.code == "ru" %} selected{% endif %}>{{ language.native_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="help">{% trans 'All files in this import get this language; change single lectures on the topic page.' %}</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div>
                         <label for="id_lecture_files" class="required">{% trans 'Audio Files' %}:</label>
                         <input type="file" name="lecture_files" id="id_lecture_files" multiple 
                                accept=".mp3,.wav,.m4a,.flac,.ogg,.aac" required>

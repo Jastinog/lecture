@@ -154,9 +154,7 @@ class LecturerSyncService:
 
     def create_topic(self, lecturer, topic_data):
         """Create new topic for lecturer"""
-        # Get group and languages from JSON
         group_code = topic_data["group"]
-        language_codes = topic_data["languages"]
 
         try:
             group = TopicGroup.objects.get(code=group_code)
@@ -176,14 +174,6 @@ class LecturerSyncService:
 
         # Save to get ID
         topic.save()
-
-        # Add languages to topic
-        for lang_code in language_codes:
-            try:
-                language = Language.objects.get(code=lang_code)
-                topic.languages.add(language)
-            except Language.DoesNotExist:
-                self.add_message(f"Language not found: {lang_code}", "warning")
 
         self.topics_created_count += 1
         self.add_message(f"Created topic: {lecturer.name} - {topic.title}")
@@ -214,21 +204,6 @@ class LecturerSyncService:
                 updated = True
         except TopicGroup.DoesNotExist:
             self.add_message(f"Topic group not found: {group_code}", "warning")
-
-        # Update languages
-        language_codes = topic_data["languages"]
-        current_languages = set(topic.languages.values_list("code", flat=True))
-        new_languages = set(language_codes)
-
-        if current_languages != new_languages:
-            topic.languages.clear()
-            for lang_code in language_codes:
-                try:
-                    language = Language.objects.get(code=lang_code)
-                    topic.languages.add(language)
-                    updated = True
-                except Language.DoesNotExist:
-                    self.add_message(f"Language not found: {lang_code}", "warning")
 
         if updated:
             topic.save()
@@ -271,9 +246,8 @@ class LecturerSyncService:
                 self.add_message(f"Language not found: {lecture_data['language']}", "warning")
                 continue
 
-            last_order = topic.lectures.filter(language=language).aggregate(
-                last=Max("order")
-            )["last"]
+            # One sequence per topic across languages.
+            last_order = topic.lectures.aggregate(last=Max("order"))["last"]
             try:
                 self.download_lecture(
                     topic, lecture_data, language, (last_order or 0) + 1, file_hash

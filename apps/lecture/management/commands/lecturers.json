@@ -11,9 +11,6 @@
         "title": "Беседы",
         "description": "Беседы Шрилы Прабхупады",
         "group": "conversations",
-        "languages": [
-          "ru"
-        ],
         "order": 3
       },
       {
@@ -21,9 +18,6 @@
         "title": "Брахма Самхита",
         "description": "Лекции по Брахма Самхите",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 4
       },
       {
@@ -31,10 +25,6 @@
         "title": "Бхагавад Гита",
         "description": "Лекции по Бхагавад Гите",
         "group": "lectures",
-        "languages": [
-          "ru",
-          "en"
-        ],
         "order": 5,
         "lectures": [
           {
@@ -58,9 +48,6 @@
         "title": "Интервью",
         "description": "Интервью Шрилы Прабхупады",
         "group": "interviews",
-        "languages": [
-          "ru"
-        ],
         "order": 6
       },
       {
@@ -68,9 +55,6 @@
         "title": "Лекции",
         "description": "Лекции Шрилы Прабхупады",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 7
       },
       {
@@ -78,9 +62,6 @@
         "title": "Нектар Преданности",
         "description": "Лекции по Нектару Преданности",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 8
       },
       {
@@ -88,9 +69,6 @@
         "title": "Праздники",
         "description": "Лекции на праздники",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 9
       },
       {
@@ -98,9 +76,6 @@
         "title": "Разное",
         "description": "Разные лекции",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 10
       },
       {
@@ -108,9 +83,6 @@
         "title": "Утренние Прогулки",
         "description": "Утренние прогулки с Шрилой Прабхупадой",
         "group": "walks",
-        "languages": [
-          "ru"
-        ],
         "order": 11
       },
       {
@@ -118,9 +90,6 @@
         "title": "Чайтанья Чаритамрита",
         "description": "Лекции по Чайтанье Чаритамрите",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 12
       },
       {
@@ -128,10 +97,6 @@
         "title": "Шри Ишопанишад",
         "description": "Лекции по Шри Ишопанишаду",
         "group": "lectures",
-        "languages": [
-          "ru",
-          "en"
-        ],
         "order": 13,
         "lectures": [
           {
@@ -155,9 +120,6 @@
         "title": "Шримад Бхагаватам",
         "description": "Лекции по Шримад Бхагаватам на русском",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 14
       }
     ]
@@ -174,9 +136,6 @@
         "title": "Госвами Вриндавана",
         "description": "Лекции о шести Госвами Вриндавана",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 1
       },
       {
@@ -184,9 +143,6 @@
         "title": "Милость Шрилы Прабхупады",
         "description": "Лекции о милости Шрилы Прабхупады",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 2
       },
       {
@@ -194,9 +150,6 @@
         "title": "Брихад Бхагаватамрита (1999)",
         "description": "Лекции по Брихад Бхагаватамрите 1999 года",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 3,
         "lectures": [
           {
@@ -220,9 +173,6 @@
         "title": "Важнейшие качества Вайшнавов (Pune 2002)",
         "description": "Лекции о важнейших качествах вайшнавов, Пуна 2002",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 4
       },
       {
@@ -230,9 +180,6 @@
         "title": "Путешествие домой - Радханатха Свами",
         "description": "Лекции по книге Путешествие домой",
         "group": "books",
-        "languages": [
-          "ru"
-        ],
         "order": 5
       },
       {
@@ -240,9 +187,6 @@
         "title": "Радханатх Свами Фестивали",
         "description": "Фестивальные лекции Радханатха Свами",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 6
       },
       {
@@ -250,9 +194,6 @@
         "title": "Чайтанья Чаритамрита",
         "description": "Лекции по Чайтанье Чаритамрите",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 7
       }
     ]
@@ -268,9 +209,6 @@
         "title": "Карма",
         "description": "Лекции о законе кармы",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 1,
         "lectures": [
           {
@@ -303,9 +241,6 @@
         "title": "Бхагавад Гита",
         "description": "Лекции по Бхагавад Гите с русским переводом",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 1,
         "lectures": [
           {
@@ -338,9 +273,6 @@
         "title": "Шримад Бхагаватам",
         "description": "Лекции по Шримад Бхагаватам с русским переводом",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 1,
         "lectures": [
           {
@@ -373,9 +305,6 @@
         "title": "Святые места Вриндавана",
         "description": "Семинар о святых местах Вриндавана с русским переводом",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 1,
         "lectures": [
           {
@@ -408,9 +337,6 @@
         "title": "Шримад Бхагаватам",
         "description": "Лекции по Шримад Бхагаватам с русским переводом",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 1,
         "lectures": [
           {
@@ -443,9 +369,6 @@
         "title": "Бхагавад Гита",
         "description": "Лекции по Бхагавад Гите с русским переводом",
         "group": "lectures",
-        "languages": [
-          "ru"
-        ],
         "order": 1,
         "lectures": [
           {
@@ -478,9 +401,6 @@
         "title": "Бхагавад Гита",
         "description": "Лекции по Бхагавад Гите на английском",
         "group": "lectures",
-        "languages": [
-          "en"
-        ],
         "order": 1,
         "lectures": [
           {
@@ -513,9 +433,6 @@
         "title": "Бхагавад Гита",
         "description": "Лекции по Бхагавад Гите на английском",
         "group": "lectures",
-        "languages": [
-          "en"
-        ],
         "order": 1,
         "lectures": [
           {

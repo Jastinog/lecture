@@ -12,11 +12,31 @@ from apps.lecture.models import (
     Lecturer,
     Topic,
     Lecture,
+    set_lectures_language,
 )
 
 from .services import LectureImport
 
 logger = logging.getLogger(__name__)
+
+
+def language_actions(lectures_of):
+    """One "Set language → …" action per active language. `lectures_of` maps
+    the selected objects to the lectures the action relabels."""
+
+    def make(language):
+        def action(modeladmin, request, queryset):
+            changed = set_lectures_language(lectures_of(queryset), language)
+            modeladmin.message_user(
+                request,
+                f"{changed} lecture(s) set to {language.native_name}",
+                messages.SUCCESS,
+            )
+
+        name = f"set_language_{language.code}"
+        return name, (action, name, f"Set language → {language.native_name}")
+
+    return dict(make(language) for language in Language.objects.filter(is_active=True))
 
 
 @admin.register(Language)
@@ -148,7 +168,9 @@ class TopicAdmin(admin.ModelAdmin):
     ]
     list_editable = ["order"]
     inlines = [LectureInline]
-    filter_horizontal = ["languages"]
+    # Languages follow the topic's lectures; set each lecture's instead.
+    exclude = ["languages"]
+    readonly_fields = ["languages_display"]
 
     def cover_thumbnail(self, obj):
         if obj.cover:
@@ -187,6 +209,16 @@ class TopicAdmin(admin.ModelAdmin):
 
     lecture_count_with_import.short_description = "Lectures"
 
+    def get_actions(self, request):
+        # On topics, the actions relabel every lecture of the selected topics,
+        # so they need the right to change lectures.
+        actions = super().get_actions(request)
+        if request.user.has_perm("lecture.change_lecture"):
+            actions.update(
+                language_actions(lambda topics: Lecture.objects.filter(topic__in=topics))
+            )
+        return actions
+
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
@@ -200,20 +232,26 @@ class TopicAdmin(admin.ModelAdmin):
 
     def import_lectures_view(self, request, object_id):
         topic = get_object_or_404(Topic, id=object_id)
+        languages = Language.objects.filter(is_active=True)
+        context = {"topic": topic, "languages": languages}
 
         if request.method == "POST":
             uploaded_files = request.FILES.getlist("lecture_files")
+            language = languages.filter(pk=request.POST.get("language")).first()
 
             if not uploaded_files:
                 messages.error(request, "Please select files to import")
-                return render(request, "admin/import_lectures.html", {"topic": topic})
+                return render(request, "admin/import_lectures.html", context)
+            if not language:
+                messages.error(request, "Please choose the lectures' language")
+                return render(request, "admin/import_lectures.html", context)
 
             logger.info(
                 f"Files received for import: {[f.name for f in uploaded_files]}"
             )
 
             try:
-                service = LectureImport(topic)
+                service = LectureImport(topic, language)
                 imported_count = service.import_files(uploaded_files)
 
                 messages.success(
@@ -224,7 +262,7 @@ class TopicAdmin(admin.ModelAdmin):
             except Exception as e:
                 messages.error(request, f"Import failed: {str(e)}")
 
-        return render(request, "admin/import_lectures.html", {"topic": topic})
+        return render(request, "admin/import_lectures.html", context)
 
     def get_queryset(self, request):
         return (
@@ -294,6 +332,13 @@ class LectureAdmin(admin.ModelAdmin):
         return "-"
 
     file_hash_short.short_description = "Hash"
+
+    def get_actions(self, request):
+        # Added after Django's permission filtering, so checked here.
+        actions = super().get_actions(request)
+        if self.has_change_permission(request):
+            actions.update(language_actions(lambda lectures: lectures))
+        return actions
 
     def get_queryset(self, request):
         return (
