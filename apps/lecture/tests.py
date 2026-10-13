@@ -1,4 +1,7 @@
+from io import StringIO
+
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 
@@ -359,3 +362,67 @@ class SelectionAdminTests(TestCase):
         response = self.client.post(f"/admin/lecture/selection/{self.gita.id}/change/", form)
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Selection.objects.get(title="Chapter 3").lecturer, self.lecturer)
+
+
+@override_settings(STORAGES=LOCAL_STORAGE, MEDIA_URL="/media/")
+class BuildSelectionTests(TestCase):
+    """`build_selection gita` files a lecturer's Gita lectures by chapter,
+    from every topic and language, and re-runs refill it in place."""
+
+    @classmethod
+    def setUpTestData(cls):
+        en = Language.objects.create(code="en", name="English", native_name="English")
+        ru = Language.objects.create(code="ru", name="Russian", native_name="Русский")
+        group = TopicGroup.objects.create(code="lectures", name="Lectures")
+        cls.sp = Lecturer.objects.create(code="sp", name="Prabhupada", order=1)
+        en_gita = Topic.objects.create(lecturer=cls.sp, code="en-bg", title="BG", group=group, order=1)
+        ru_gita = Topic.objects.create(lecturer=cls.sp, code="ru-bg", title="БГ", group=group, order=2)
+
+        def lecture(topic, title, language, year, order):
+            return Lecture.objects.create(
+                topic=topic, title=title, language=language, year=year, order=order,
+                audio_file=ContentFile(b"mp3", name="part.mp3"),
+            )
+
+        cls.later = lecture(en_gita, "BG 2.13 — Later", en, 1974, 1)
+        cls.earlier = lecture(ru_gita, "БГ 2.13 — Раньше", ru, 1966, 1)
+        cls.verse_1 = lecture(en_gita, "BG 2.1–10", en, 1975, 2)
+        cls.span = lecture(en_gita, "BG 8.28–9.1 — Across", en, 1973, 3)
+        cls.intro = lecture(ru_gita, "БГ, введение 1", ru, 1966, 2)
+        lecture(en_gita, "SB 1.1.1", en, 1972, 4)
+
+    def build(self):
+        call_command("build_selection", "gita", lecturer="sp", stdout=StringIO())
+        return Selection.objects.get(lecturer=self.sp, parent=None, title="Bhagavad-gita")
+
+    def lectures(self, gita, title):
+        return list(gita.children.get(title=title).entries.values_list("lecture_id", flat=True))
+
+    def test_files_lectures_by_chapter_and_verse(self):
+        gita = self.build()
+        self.assertEqual(
+            list(gita.children.values_list("title", flat=True))[:3],
+            ["Introduction", "Chapter 1", "Chapter 2"],
+        )
+        self.assertEqual(gita.children.count(), 19)
+        self.assertEqual(self.lectures(gita, "Introduction"), [self.intro.id])
+        # Verse first, then year, whatever the language.
+        self.assertEqual(
+            self.lectures(gita, "Chapter 2"), [self.verse_1.id, self.earlier.id, self.later.id]
+        )
+        # A lecture running into the next chapter goes where it starts.
+        self.assertEqual(self.lectures(gita, "Chapter 8"), [self.span.id])
+        self.assertEqual(self.lectures(gita, "Chapter 9"), [])
+
+    def test_rerun_refills_in_place(self):
+        gita = self.build()
+        chapter = gita.children.get(title="Chapter 2")
+        chapter.description = "Edited"
+        chapter.save()
+        self.later.delete()
+        again = self.build()
+        self.assertEqual(again.pk, gita.pk)
+        self.assertEqual(Selection.objects.filter(lecturer=self.sp).count(), 20)
+        chapter.refresh_from_db()
+        self.assertEqual(chapter.description, "Edited")
+        self.assertEqual(self.lectures(again, "Chapter 2"), [self.verse_1.id, self.earlier.id])
