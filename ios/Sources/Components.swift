@@ -219,6 +219,7 @@ final class NavRouter: ObservableObject {
 enum TabRouter {
     static let home = NavRouter()
     static let lecturers = NavRouter()
+    static let downloads = NavRouter()
     static let history = NavRouter()
     static let settings = NavRouter()
 }

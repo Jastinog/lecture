@@ -33,6 +33,7 @@
 		C05AB8DAB60EB1B3BC797A9A /* Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2588FAFE38DDC6B721F515E6 /* Library.swift */; };
 		CF88E62CFE4F9318625E4376 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CB72ADE053EA3FFC5933E556 /* PrivacyInfo.xcprivacy */; };
 		D2B4CA8F8F2EBD4C483149AF /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96390247652C03F599484CF8 /* SearchView.swift */; };
+		DF172C9FF5E13E2D1CB9F976 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B544D87B647654BA319F63C /* DownloadsView.swift */; };
 		E3050B28E337144FC9C25F75 /* RemoteLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE0430F7C72F57050E6F304 /* RemoteLibrary.swift */; };
 		E5B2EE1057C22E1B4A4C6128 /* Chrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = E218CCAC223ADB0DFD715D34 /* Chrome.swift */; };
 		EB8ED84770563FE398CCF630 /* Pins.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17802F1D4CA09A39F0E3871 /* Pins.swift */; };
@@ -47,6 +48,7 @@
 		1C7448A5F900F0F76A106255 /* Transitions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transitions.swift; sourceTree = "<group>"; };
 		2017493E0524D3385E3169E7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2588FAFE38DDC6B721F515E6 /* Library.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library.swift; sourceTree = "<group>"; };
+		2B544D87B647654BA319F63C /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
 		3FBD2996CAC81A89B0D35A79 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		46170F2FBD542B54D62DFC21 /* LectureApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureApp.swift; sourceTree = "<group>"; };
 		4A07D5BB0371FD82033A1ACA /* AudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayer.swift; sourceTree = "<group>"; };
@@ -134,6 +136,7 @@
 				73EFCF604B5DEECFA3E46ADF /* CatalogView.swift */,
 				09524EB8B3B823DA32C269D0 /* Components.swift */,
 				1B37A698B24CE77A4A39D8D7 /* DownloadManager.swift */,
+				2B544D87B647654BA319F63C /* DownloadsView.swift */,
 				06303A36682078BBBC0D5577 /* HistoryView.swift */,
 				80FBDAEACD0174A5681F5C0D /* Info.plist */,
 				46170F2FBD542B54D62DFC21 /* LectureApp.swift */,
@@ -233,6 +236,7 @@
 				3F79864236DC919BC13B43E8 /* ClassicAlert.swift in Sources */,
 				7F7464C6E71D0DD92238A952 /* Components.swift in Sources */,
 				1BB8F83F24287B8D521B0D89 /* DownloadManager.swift in Sources */,
+				DF172C9FF5E13E2D1CB9F976 /* DownloadsView.swift in Sources */,
 				4463FF2B6B4BD8A45FDA3E7D /* Grouped.swift in Sources */,
 				A5A3C069A4D1707905F4E05A /* HistoryView.swift in Sources */,
 				3240DEDD460B77E74EDB8E19 /* LectureApp.swift in Sources */,

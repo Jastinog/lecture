@@ -37,16 +37,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
-/// The four top-level sections. Single source of truth for each section's
+/// The top-level sections. Single source of truth for each section's
 /// label and root stack.
 enum SidebarTab: String, CaseIterable, Identifiable {
-    case home, lecturers, history, settings
+    case home, lecturers, downloads, history, settings
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .home:      return "Home"
         case .lecturers: return "Lecturers"
+        case .downloads: return "Downloads"
         case .history:   return "History"
         case .settings:  return "Settings"
         }
@@ -57,6 +58,7 @@ enum SidebarTab: String, CaseIterable, Identifiable {
         switch self {
         case .home:      return .home
         case .lecturers: return .lecturer
+        case .downloads: return .classic("TabDownloads")
         case .history:   return .classic("TabHistory")
         case .settings:  return .gear
         }
@@ -67,6 +69,7 @@ enum SidebarTab: String, CaseIterable, Identifiable {
         switch self {
         case .home:      return TabRouter.home
         case .lecturers: return TabRouter.lecturers
+        case .downloads: return TabRouter.downloads
         case .history:   return TabRouter.history
         case .settings:  return TabRouter.settings
         }
@@ -107,6 +110,7 @@ struct RootView: View {
             switch tab {
             case .home:      CatalogView().libraryDestinations()
             case .lecturers: LecturersView().libraryDestinations()
+            case .downloads: DownloadsView()
             case .history:   HistoryView()
             case .settings:  SettingsView()
             }

@@ -176,6 +176,13 @@ final class DownloadManager: NSObject, ObservableObject {
     func isFullyDownloaded(_ topic: TopicDetail) -> Bool {
         downloadedCount(topic.id) == topic.lectures.count && topic.lectures.count > 0
     }
+    /// How much of the topic is on the phone, counting the part of each lecture
+    /// still coming in.
+    func topicFraction(_ topic: TopicDetail) -> Double {
+        guard !topic.lectures.isEmpty else { return 0 }
+        let partial = topic.lectures.reduce(0.0) { $0 + (live.values[$1.id] ?? 0) }
+        return (Double(downloadedCount(topic.id)) + partial) / Double(topic.lectures.count)
+    }
 
     /// Local chapter file, if downloaded.
     func localLectureURL(topicID: Int, lectureID: Int) -> URL? {
