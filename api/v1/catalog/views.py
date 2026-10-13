@@ -6,6 +6,7 @@ Every list takes `?lang=en,ru`: only lectures in those languages count, and
 topics and lecturers with none of them drop out. A topic's own `languages`
 always lists all of them, so the app can offer the others."""
 
+from dataclasses import dataclass, field
 from itertools import groupby
 from operator import itemgetter
 
@@ -17,12 +18,14 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.lecture.models import Lecture, Lecturer, Topic, TopicGroup
+from apps.lecture.models import Lecture, Lecturer, Selection, SelectionLecture, Topic, TopicGroup
 
 from .serializers import (
     GroupSerializer,
     LectureSerializer,
     LecturerSerializer,
+    SelectionSerializer,
+    TopicRefSerializer,
     TopicSerializer,
 )
 
@@ -90,6 +93,96 @@ def language_counts(lectures):
     ]
 
 
+def page_details(lecturer_id, all_lectures, lectures, context):
+    """What a topic or selection page adds to its card: the lecturer, every
+    language it has with its count (for the switcher), and the years its
+    shown `lectures` span."""
+    years = lectures.aggregate(first=Min("year"), last=Max("year"))
+    return {
+        "lecturer": LecturerSerializer(
+            lecturers_queryset().get(pk=lecturer_id), context=context
+        ).data,
+        "languages": language_counts(all_lectures),
+        "years": years if years["first"] else None,
+    }
+
+
+@dataclass
+class SelectionNode:
+    parent_id: int | None
+    title: str
+    children: list = field(default_factory=list)
+    lectures_count: int = 0
+    duration: int = 0
+    languages: set = field(default_factory=set)
+
+
+class SelectionTree(dict):
+    """A lecturer's selections by id, each with its parent and children, and
+    its lectures in `languages` and their length, and every language it has,
+    each taking in the selections nested in it. Two queries."""
+
+    def __init__(self, lecturer_id, languages=None):
+        super().__init__(
+            (pk, SelectionNode(parent_id, title))
+            for pk, parent_id, title in Selection.objects.filter(
+                lecturer_id=lecturer_id
+            ).values_list("id", "parent_id", "title")
+        )
+        for pk, node in self.items():
+            if node.parent_id in self:
+                self[node.parent_id].children.append(pk)
+        rows = (
+            SelectionLecture.objects.filter(selection_id__in=self)
+            .values("selection_id", "lecture__language__code")
+            .annotate(count=Count("id"), duration=Coalesce(Sum("lecture__duration"), 0))
+        )
+        for row in rows:
+            code = row["lecture__language__code"]
+            counted = not languages or code in languages
+            for pk in self.ancestors(row["selection_id"]):
+                node = self[pk]
+                node.languages.add(code)
+                if counted:
+                    node.lectures_count += row["count"]
+                    node.duration += row["duration"]
+
+    def ancestors(self, pk):
+        """Ids of the selection and the ones it sits in, innermost first. Stops
+        at a loop, should one ever get past `Selection.clean`."""
+        seen = set()
+        while pk in self and pk not in seen:
+            seen.add(pk)
+            yield pk
+            pk = self[pk].parent_id
+
+    def nested_in(self, pk):
+        """The selection and every one nested in it, at any depth."""
+        found, stack = set(), [pk]
+        while stack:
+            pk = stack.pop()
+            if pk not in found:
+                found.add(pk)
+                stack.extend(self[pk].children)
+        return found
+
+    def cards(self, selections, languages, context):
+        """`selections` as list cards; with `?lang=`, those with no lectures
+        in those languages left out."""
+        shown = []
+        for selection in selections:
+            node = self[selection.pk]
+            if languages and not node.lectures_count:
+                continue
+            selection.holds = "selections" if node.children else "lectures"
+            selection.children_count = len(node.children)
+            selection.lectures_count = node.lectures_count
+            selection.duration = node.duration
+            selection.language_codes = sorted(node.languages)
+            shown.append(selection)
+        return SelectionSerializer(shown, many=True, context=context).data
+
+
 class TopicPagination(PageNumberPagination):
     page_size = 20
 
@@ -147,7 +240,6 @@ class TopicDetailView(APIView):
             .select_related("language")
             .order_by(*LECTURE_ORDER)
         )
-        years = lectures.aggregate(first=Min("year"), last=Max("year"))
         related = (
             topics_with_lectures_in(languages)
             .filter(lecturer=topic.lecturer_id)
@@ -156,13 +248,9 @@ class TopicDetailView(APIView):
         )
         context = {"request": request}
         data = TopicSerializer(topic, context=context).data
+        data.update(page_details(topic.lecturer_id, all_lectures, lectures, context))
         data.update(
             {
-                "lecturer": LecturerSerializer(
-                    lecturers_queryset().get(pk=topic.lecturer_id), context=context
-                ).data,
-                "languages": language_counts(all_lectures),
-                "years": years if years["first"] else None,
                 "created_at": topic.created_at,
                 "lectures": LectureSerializer(lectures, many=True, context=context).data,
                 "related": TopicSerializer(related, many=True, context=context).data,
@@ -211,6 +299,65 @@ class LecturerTopicsView(generics.ListAPIView):
             .filter(lecturer=lecturer)
             .order_by("group__order", "order")
         )
+
+
+class LecturerSelectionsView(APIView):
+    """The lecturer's top-level selections."""
+
+    def get(self, request, pk):
+        lecturer = get_object_or_404(Lecturer, pk=pk)
+        languages = requested_languages(request)
+        top = Selection.objects.filter(lecturer=lecturer, parent=None).order_by("order", "id")
+        return Response(
+            SelectionTree(lecturer.pk, languages).cards(top, languages, {"request": request})
+        )
+
+
+class SelectionDetailView(APIView):
+    """The selection page, shaped as the topic page (the app plays a selection
+    of lectures as it plays a topic), plus the selections it sits in
+    (outermost first), the ones nested in it, and each lecture's topic.
+    `holds` says whether it's a folder of selections or a list of lectures."""
+
+    def get(self, request, pk):
+        selection = get_object_or_404(Selection, pk=pk)
+        languages = requested_languages(request)
+        tree = SelectionTree(selection.lecturer_id, languages)
+        context = {"request": request}
+        data = tree.cards([selection], [], context)[0]
+
+        entries = (
+            SelectionLecture.objects.filter(lectures_in(languages, "lecture__"), selection=selection)
+            .select_related("lecture__language", "lecture__topic")
+            .order_by("order", "id")
+        )
+        all_lectures = Lecture.objects.filter(
+            pk__in=SelectionLecture.objects.filter(
+                selection_id__in=tree.nested_in(selection.pk)
+            ).values("lecture_id")
+        )
+        shown = Lecture.objects.filter(pk__in=entries.values("lecture_id"))
+        children = Selection.objects.filter(parent=selection).order_by("order", "id")
+        data.update(page_details(selection.lecturer_id, all_lectures, shown, context))
+        data.update(
+            {
+                "created_at": selection.created_at,
+                "path": [
+                    {"id": outer, "title": tree[outer].title}
+                    for outer in reversed(list(tree.ancestors(selection.pk))[1:])
+                ],
+                "children": tree.cards(children, languages, context),
+                "lectures": [
+                    {
+                        **LectureSerializer(entry.lecture, context=context).data,
+                        "topic": TopicRefSerializer(entry.lecture.topic).data,
+                    }
+                    for entry in entries
+                ],
+                "related": [],
+            }
+        )
+        return Response(data)
 
 
 class SearchView(APIView):

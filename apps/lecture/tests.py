@@ -2,7 +2,15 @@ from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 
-from apps.lecture.models import Language, Lecture, Lecturer, Topic, TopicGroup
+from apps.lecture.models import (
+    Language,
+    Lecture,
+    Lecturer,
+    Selection,
+    SelectionLecture,
+    Topic,
+    TopicGroup,
+)
 
 LOCAL_STORAGE = {
     "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
@@ -290,3 +298,64 @@ class DescribeNiranjanaFileTests(TestCase):
         self.assertFalse(is_his(ROOT + "2018/NRS_Bhajans_-_Hare_Krishna_Kirtan_-_2018-06-06_Boston.mp3"))
         self.assertFalse(is_his(ROOT + "2016/NRS_Gauranga_Festival_-_Evening_Kirtan_01_-_2016-06-09.mp3"))
         self.assertTrue(is_his(ROOT + "2011/NRS_BG_04-14_-_Sunday_Lecture_and_Kirtan_-_2011-03-13.mp3"))
+
+
+@override_settings(STORAGES=LOCAL_STORAGE, MEDIA_URL="/media/")
+class SelectionAdminTests(TestCase):
+    """Selections are built in the admin: nested ones and lectures go in as
+    rows on the selection's page."""
+
+    @classmethod
+    def setUpTestData(cls):
+        ru = Language.objects.create(code="ru", name="Russian", native_name="Русский")
+        group = TopicGroup.objects.create(code="lectures", name="Лекции")
+        cls.lecturer = Lecturer.objects.create(code="sp", name="Prabhupada", order=1)
+        topic = Topic.objects.create(lecturer=cls.lecturer, code="gita", title="Gita", group=group, order=1)
+        cls.lecture = Lecture.objects.create(
+            topic=topic, title="BG 2.13", language=ru, order=1,
+            audio_file=ContentFile(b"mp3", name="part.mp3"),
+        )
+        cls.gita = Selection.objects.create(lecturer=cls.lecturer, title="Bhagavad-gita")
+        cls.chapter = Selection.objects.create(parent=cls.gita, title="Chapter 2")
+        SelectionLecture.objects.create(selection=cls.chapter, lecture=cls.lecture)
+        cls.admin = get_user_model().objects.create_superuser("admin@example.com", "pw")
+
+    def setUp(self):
+        self.client.force_login(self.admin)
+
+    def test_nested_selection_takes_its_parents_lecturer(self):
+        other = Lecturer.objects.create(code="rs", name="Radhanath Swami", order=2)
+        verse = Selection.objects.create(lecturer=other, parent=self.gita, title="Chapter 3")
+        self.assertEqual(verse.lecturer, self.lecturer)
+
+    def test_only_the_kind_it_holds_can_be_added(self):
+        def inlines(selection):
+            response = self.client.get(f"/admin/lecture/selection/{selection.id}/change/")
+            return {formset.formset.prefix for formset in response.context["inline_admin_formsets"]}
+
+        self.assertEqual(inlines(self.gita), {"children"})
+        self.assertEqual(inlines(self.chapter), {"entries"})
+        empty = Selection.objects.create(lecturer=self.lecturer, title="Srimad-Bhagavatam")
+        self.assertEqual(inlines(empty), {"children", "entries"})
+
+    def test_pages_open(self):
+        for url in (
+            "/admin/lecture/selection/",
+            f"/admin/lecture/selection/{self.gita.id}/change/",
+            f"/admin/lecture/selection/{self.chapter.id}/change/",
+        ):
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+
+    def test_nested_selection_row_takes_the_lecturer(self):
+        form = {
+            "parent": "", "title": "Bhagavad-gita",
+            "description": "", "order": 0,
+            "children-TOTAL_FORMS": 2, "children-INITIAL_FORMS": 1,
+            "children-0-id": self.chapter.id, "children-0-parent": self.gita.id,
+            "children-0-title": "Chapter 2", "children-0-order": 2,
+            "children-1-parent": self.gita.id, "children-1-title": "Chapter 3",
+            "children-1-order": 3,
+        }
+        response = self.client.post(f"/admin/lecture/selection/{self.gita.id}/change/", form)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Selection.objects.get(title="Chapter 3").lecturer, self.lecturer)

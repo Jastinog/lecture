@@ -1,8 +1,17 @@
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from apps.lecture.models import Language, Lecture, Lecturer, Topic, TopicGroup
+from apps.lecture.models import (
+    Language,
+    Lecture,
+    Lecturer,
+    Selection,
+    SelectionLecture,
+    Topic,
+    TopicGroup,
+)
 
 LOCAL_STORAGE = {
     "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
@@ -247,3 +256,111 @@ class LanguageTests(TestCase):
 
         data = self.client.get("/api/v1/search/", {"q": "radhanath", "lang": "en"}).json()
         self.assertEqual((data["lecturers"], data["topics"]), ([], []))
+
+
+@override_settings(STORAGES=LOCAL_STORAGE, MEDIA_URL="/media/")
+class SelectionAPITests(TestCase):
+    """A lecturer's selections nest (Gita -> chapters), take lectures from any
+    of their topics, and count what's nested in them."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.en = Language.objects.create(code="en", name="English", native_name="English")
+        cls.ru = Language.objects.create(code="ru", name="Russian", native_name="Русский")
+        group = TopicGroup.objects.create(code="lectures", name="Lectures", order=1)
+        cls.sp = Lecturer.objects.create(code="sp", name="Prabhupada", level=1, order=1)
+        cls.other = Lecturer.objects.create(code="rs", name="Radhanath Swami", level=2, order=2)
+        london = Topic.objects.create(lecturer=cls.sp, code="london", title="London", group=group, order=1)
+        bombay = Topic.objects.create(lecturer=cls.sp, code="bombay", title="Bombay", group=group, order=2)
+        theirs = Topic.objects.create(lecturer=cls.other, code="t", title="Theirs", group=group, order=1)
+
+        def lecture(topic, title, language, order):
+            return Lecture.objects.create(
+                topic=topic, title=title, language=language, order=order, duration=600,
+                audio_file=ContentFile(b"mp3", name="part.mp3"),
+            )
+
+        cls.bg_2_13 = lecture(london, "BG 2.13", cls.en, 1)
+        cls.bg_2_13_ru = lecture(bombay, "BG 2.13", cls.ru, 1)
+        cls.bg_1_1 = lecture(bombay, "BG 1.1", cls.en, 2)
+        cls.foreign = lecture(theirs, "BG 2.13", cls.en, 1)
+
+        cls.gita = Selection.objects.create(lecturer=cls.sp, title="Bhagavad-gita", order=1)
+        cls.ch1 = Selection.objects.create(lecturer=cls.sp, parent=cls.gita, title="Chapter 1", order=1)
+        cls.ch2 = Selection.objects.create(lecturer=cls.sp, parent=cls.gita, title="Chapter 2", order=2)
+        SelectionLecture.objects.create(selection=cls.ch1, lecture=cls.bg_1_1, order=1)
+        # Bombay's lecture first: the selection keeps its own order.
+        SelectionLecture.objects.create(selection=cls.ch2, lecture=cls.bg_2_13_ru, order=1)
+        SelectionLecture.objects.create(selection=cls.ch2, lecture=cls.bg_2_13, order=2)
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_lecturer_selections_count_what_is_nested(self):
+        data = self.client.get(f"/api/v1/lecturers/{self.sp.id}/selections/").json()
+        self.assertEqual(len(data), 1)
+        gita = data[0]
+        self.assertEqual(gita["title"], "Bhagavad-gita")
+        self.assertEqual(
+            (gita["children_count"], gita["lectures_count"], gita["duration"], gita["languages"]),
+            (2, 3, 1800, ["en", "ru"]),
+        )
+        self.assertEqual(self.client.get(f"/api/v1/lecturers/{self.other.id}/selections/").json(), [])
+
+    def test_folder_lists_its_selections(self):
+        data = self.client.get(f"/api/v1/selections/{self.gita.id}/").json()
+        self.assertEqual([c["title"] for c in data["children"]], ["Chapter 1", "Chapter 2"])
+        self.assertEqual([c["lectures_count"] for c in data["children"]], [1, 2])
+        self.assertEqual((data["kind"], data["holds"]), ("selection", "selections"))
+        self.assertEqual(data["lectures"], [])
+        self.assertEqual(data["path"], [])
+        self.assertEqual(data["lecturer"]["id"], self.sp.id)
+        self.assertEqual([x["code"] for x in data["languages"]], ["en", "ru"])
+
+    def test_leaf_plays_its_lectures_in_its_own_order(self):
+        data = self.client.get(f"/api/v1/selections/{self.ch2.id}/").json()
+        self.assertEqual(data["path"], [{"id": self.gita.id, "title": "Bhagavad-gita"}])
+        self.assertEqual(data["holds"], "lectures")
+        self.assertEqual(data["children"], [])
+        # Shaped as a topic page, so the app can play it as one.
+        self.assertEqual(data["related"], [])
+        self.assertIn("created_at", data)
+        self.assertEqual(
+            [(x["id"], x["topic"]["title"]) for x in data["lectures"]],
+            [(self.bg_2_13_ru.id, "Bombay"), (self.bg_2_13.id, "London")],
+        )
+
+    def test_language_narrows_counts_children_and_lectures(self):
+        top = self.client.get(f"/api/v1/lecturers/{self.sp.id}/selections/", {"lang": "ru"}).json()
+        self.assertEqual(top[0]["lectures_count"], 1)
+        # The card's languages still list every one, for the switcher.
+        self.assertEqual(top[0]["languages"], ["en", "ru"])
+        folder = self.client.get(f"/api/v1/selections/{self.gita.id}/", {"lang": "ru"}).json()
+        self.assertEqual([c["title"] for c in folder["children"]], ["Chapter 2"])
+        leaf = self.client.get(f"/api/v1/selections/{self.ch2.id}/", {"lang": "ru"}).json()
+        self.assertEqual([x["id"] for x in leaf["lectures"]], [self.bg_2_13_ru.id])
+
+    def test_selection_missing(self):
+        self.assertEqual(self.client.get("/api/v1/selections/999999/").status_code, 404)
+
+    def test_holds_lectures_or_selections_not_both(self):
+        with self.assertRaises(ValidationError):
+            SelectionLecture(selection=self.gita, lecture=self.bg_2_13).full_clean()
+        with self.assertRaises(ValidationError):
+            Selection(lecturer=self.sp, parent=self.ch2, title="Verse 13").full_clean()
+
+    def test_only_the_lecturers_own_lectures(self):
+        with self.assertRaises(ValidationError):
+            SelectionLecture(selection=self.ch2, lecture=self.foreign).full_clean()
+
+    def test_moving_to_another_lecturers_selection(self):
+        theirs = Selection.objects.create(lecturer=self.other, title="Theirs")
+        self.ch1.parent = theirs
+        with self.assertRaises(ValidationError):
+            self.ch1.full_clean()
+
+    def test_no_selection_inside_itself(self):
+        self.gita.parent = self.ch1
+        with self.assertRaises(ValidationError):
+            self.gita.full_clean()
+

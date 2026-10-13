@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.lecture.models import Lecture, Lecturer, Topic, TopicGroup
+from apps.lecture.models import Lecture, Lecturer, Selection, Topic, TopicGroup
 
 
 def file_url(request, field):
@@ -97,3 +97,46 @@ class LectureSerializer(serializers.ModelSerializer):
 
     def get_duration(self, obj):
         return obj.duration or 0
+
+
+class TopicRefSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Topic
+        fields = ["id", "title"]
+
+
+class SelectionSerializer(serializers.ModelSerializer):
+    """A selection as lists show it. Expects `holds`, `children_count`,
+    `lectures_count`, `duration` and `language_codes`, set by
+    `SelectionTree.cards` (see views): counts take in nested selections.
+    `kind` tells the app it's not a topic, whose ids it shares."""
+
+    kind = serializers.SerializerMethodField()
+    cover_url = serializers.SerializerMethodField()
+    about = serializers.CharField(source="description")
+    holds = serializers.CharField()
+    children_count = serializers.IntegerField()
+    lectures_count = serializers.IntegerField()
+    duration = serializers.IntegerField()
+    languages = serializers.ListField(source="language_codes")
+
+    class Meta:
+        model = Selection
+        fields = [
+            "id",
+            "kind",
+            "title",
+            "cover_url",
+            "about",
+            "holds",
+            "children_count",
+            "lectures_count",
+            "duration",
+            "languages",
+        ]
+
+    def get_kind(self, obj):
+        return "selection"
+
+    def get_cover_url(self, obj):
+        return file_url(self.context.get("request"), obj.cover)

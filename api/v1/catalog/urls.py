@@ -18,5 +18,11 @@ urlpatterns = [
         views.LecturerTopicsView.as_view(),
         name="catalog_lecturer_topics",
     ),
+    path(
+        "lecturers/<int:pk>/selections/",
+        views.LecturerSelectionsView.as_view(),
+        name="catalog_lecturer_selections",
+    ),
+    path("selections/<int:pk>/", views.SelectionDetailView.as_view(), name="catalog_selection"),
     path("search/", views.SearchView.as_view(), name="catalog_search"),
 ]

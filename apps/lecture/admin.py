@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib import admin
+from django.db.models import Count
 from django.urls import path
 from django.shortcuts import render, get_object_or_404
 from django.contrib import messages
@@ -12,12 +13,24 @@ from apps.lecture.models import (
     Lecturer,
     Topic,
     Lecture,
+    Selection,
+    SelectionLecture,
     set_lectures_language,
 )
 
 from .services import LectureImport
 
 logger = logging.getLogger(__name__)
+
+
+def thumbnail(image):
+    """A 40px preview of an image field for list pages, or "-"."""
+    if not image:
+        return "-"
+    return format_html(
+        '<img src="{}" width="40" height="40" style="border-radius: 4px; object-fit: cover;" />',
+        image.url,
+    )
 
 
 def language_actions(lectures_of):
@@ -94,12 +107,7 @@ class LecturerAdmin(admin.ModelAdmin):
     )
 
     def photo_thumbnail(self, obj):
-        if obj.photo:
-            return format_html(
-                '<img src="{}" width="40" height="40" style="border-radius: 4px; object-fit: cover;" />',
-                obj.photo.url,
-            )
-        return "-"
+        return thumbnail(obj.photo)
 
     photo_thumbnail.short_description = "Photo"
 
@@ -173,12 +181,7 @@ class TopicAdmin(admin.ModelAdmin):
     readonly_fields = ["languages_display"]
 
     def cover_thumbnail(self, obj):
-        if obj.cover:
-            return format_html(
-                '<img src="{}" width="40" height="40" style="border-radius: 4px; object-fit: cover;" />',
-                obj.cover.url,
-            )
-        return "-"
+        return thumbnail(obj.cover)
 
     cover_thumbnail.short_description = "Cover"
 
@@ -343,4 +346,83 @@ class LectureAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return (
             super().get_queryset(request).select_related("topic__lecturer", "language")
+        )
+
+
+class ChildSelectionInline(admin.TabularInline):
+    model = Selection
+    fk_name = "parent"
+    extra = 0
+    fields = ["title", "order"]
+    show_change_link = True
+    verbose_name = "Nested selection"
+
+
+class SelectionLectureInline(admin.TabularInline):
+    model = SelectionLecture
+    extra = 0
+    fields = ["lecture", "order", "topic", "language"]
+    readonly_fields = ["topic", "language"]
+    autocomplete_fields = ["lecture"]
+    verbose_name = "Lecture"
+
+    def topic(self, obj):
+        return obj.lecture.topic.title if obj.lecture_id else "-"
+
+    def language(self, obj):
+        return obj.lecture.language.code if obj.lecture_id else "-"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("lecture__topic", "lecture__language")
+
+
+@admin.register(Selection)
+class SelectionAdmin(admin.ModelAdmin):
+    list_display = ["cover_thumbnail", "title", "parent_title", "lecturer", "order", "contents", "created_at"]
+    list_display_links = ["title"]
+    list_filter = ["lecturer", ("parent", admin.EmptyFieldListFilter)]
+    search_fields = ["title", "parent__title", "lecturer__name"]
+    list_editable = ["order"]
+    autocomplete_fields = ["parent"]
+    fields = ["lecturer", "parent", "title", "description", "cover", "order"]
+
+    def get_inlines(self, request, obj):
+        # A selection holds selections or lectures: once it has one, only that
+        # kind can be added; an empty one offers both.
+        if obj and obj.children.exists():
+            return [ChildSelectionInline]
+        if obj and obj.entries.exists():
+            return [SelectionLectureInline]
+        return [ChildSelectionInline, SelectionLectureInline]
+
+    def get_readonly_fields(self, request, obj=None):
+        # Chosen once: nested selections follow their parent's.
+        return ["lecturer"] if obj else []
+
+    def cover_thumbnail(self, obj):
+        return thumbnail(obj.cover)
+
+    cover_thumbnail.short_description = "Cover"
+
+    def parent_title(self, obj):
+        return obj.parent.title if obj.parent_id else "-"
+
+    parent_title.short_description = "Inside"
+
+    def contents(self, obj):
+        if obj.children_count:
+            return f"{obj.children_count} selections"
+        return f"{obj.entries_count} lectures"
+
+    contents.short_description = "Holds"
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("lecturer", "parent")
+            .annotate(
+                children_count=Count("children", distinct=True),
+                entries_count=Count("entries", distinct=True),
+            )
         )

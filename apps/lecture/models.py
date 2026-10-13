@@ -1,6 +1,7 @@
 import uuid
 import os
 import hashlib
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
@@ -36,6 +37,14 @@ def topic_cover_path(instance, filename):
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
     folder = get_lecturers_folder()
     return f"{folder}/{instance.lecturer.id}/topics/{instance.id}/cover/{short_name}"
+
+
+def selection_cover_path(instance, filename):
+    """Upload path for selection covers using IDs"""
+    ext = os.path.splitext(filename)[1].lower()
+    short_name = f"{uuid.uuid4().hex[:8]}{ext}"
+    folder = get_lecturers_folder()
+    return f"{folder}/{instance.lecturer.id}/selections/{instance.id}/cover/{short_name}"
 
 
 class Language(models.Model):
@@ -229,6 +238,101 @@ class Lecture(models.Model):
     def generate_file_hash(filename):
         """Generate SHA256 hash from filename"""
         return hashlib.sha256(filename.encode("utf-8")).hexdigest()
+
+
+class Selection(models.Model):
+    """A lecturer's own grouping of their lectures across topics, e.g. every
+    lecture on the Bhagavad-gita. Selections nest: one holds either further
+    selections (its chapters, say) or lectures, never both, so the app shows
+    it as a folder or as a playable list."""
+
+    lecturer = models.ForeignKey(
+        Lecturer,
+        on_delete=models.CASCADE,
+        related_name="selections",
+        help_text="A nested selection always takes its parent's",
+    )
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="children",
+        help_text="The selection this one sits in; empty for a top-level one",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    cover = models.ImageField(upload_to=selection_cover_path, blank=True, null=True)
+    order = models.PositiveIntegerField(
+        default=0, help_text="Order among the selections next to it"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return " / ".join(s.title for s in self.path())
+
+    def path(self):
+        """This selection and the ones it sits in, outermost first. Stops at a
+        loop, so `clean` can catch one being made."""
+        chain, seen = [self], {self.pk}
+        while chain[-1].parent_id and chain[-1].parent_id not in seen:
+            seen.add(chain[-1].parent_id)
+            chain.append(chain[-1].parent)
+        return chain[::-1]
+
+    def clean(self):
+        if not self.parent_id:
+            return
+        if self.pk and self.pk in {s.pk for s in self.parent.path()}:
+            raise ValidationError({"parent": "A selection can't sit inside itself."})
+        if self.pk and self.parent.lecturer_id != self.lecturer_id:
+            # Its nested selections would stay with the old lecturer.
+            raise ValidationError({"parent": "It belongs to another lecturer."})
+        if self.parent.entries.exists():
+            raise ValidationError(
+                {"parent": "It holds lectures; a selection holds lectures or selections."}
+            )
+
+    def save(self, *args, **kwargs):
+        if self.parent_id:
+            self.lecturer_id = self.parent.lecturer_id
+        super().save(*args, **kwargs)
+
+    class Meta:
+        # Siblings together, in their order.
+        ordering = ["lecturer", "parent_id", "order", "id"]
+        indexes = [models.Index(fields=["lecturer", "parent"])]
+
+
+class SelectionLecture(models.Model):
+    """A lecture in a selection, in the selection's own order. The lecture
+    stays in its topic."""
+
+    selection = models.ForeignKey(
+        Selection, on_delete=models.CASCADE, related_name="entries"
+    )
+    lecture = models.ForeignKey("Lecture", on_delete=models.CASCADE)
+    order = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.selection} - {self.lecture.title}"
+
+    def clean(self):
+        if not (self.selection_id and self.lecture_id):
+            return
+        theirs = Lecture.objects.filter(
+            pk=self.lecture_id, topic__lecturer_id=self.selection.lecturer_id
+        )
+        if not theirs.exists():
+            raise ValidationError({"lecture": "It's another lecturer's lecture."})
+        if self.selection.children.exists():
+            raise ValidationError(
+                {"selection": "It holds selections; a selection holds lectures or selections."}
+            )
+
+    class Meta:
+        ordering = ["selection", "order", "id"]
+        unique_together = ["selection", "lecture"]
 
 
 def set_lectures_language(lectures, language):
