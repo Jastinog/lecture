@@ -128,6 +128,7 @@ class LectureImport:
 
     def _create_lecture(self, uploaded_file, order):
         """Create lecture from uploaded file"""
+        lecture = None
         try:
             with transaction.atomic():
                 logger.debug(f"Creating lecture from file: {uploaded_file.name}")
@@ -168,10 +169,10 @@ class LectureImport:
 
                 # Verify file exists in storage
                 if not default_storage.exists(lecture.audio_file.name):
-                    logger.error(
+                    # Raised, not returned, so the row is rolled back too.
+                    raise RuntimeError(
                         f"File was not saved to storage: {lecture.audio_file.name}"
                     )
-                    return False
 
                 logger.info(
                     f"Lecture created: id {lecture.id}, order {lecture.order}, "
@@ -181,6 +182,12 @@ class LectureImport:
 
         except Exception:
             logger.exception(f"Exception creating lecture from {uploaded_file.name}")
+            # The row was rolled back; don't leave its file behind.
+            if lecture is not None and lecture.audio_file.name:
+                try:
+                    default_storage.delete(lecture.audio_file.name)
+                except Exception:
+                    logger.exception(f"Couldn't remove {lecture.audio_file.name}")
             return False
 
     def _extract_title(self, filename):
@@ -217,14 +224,9 @@ class LectureImport:
         try:
             logger.debug(f"Extracting duration from: {uploaded_file.name}")
 
-            # Create temporary file-like object
-            file_data = uploaded_file.read()
-            uploaded_file.seek(0)  # Reset file pointer
-
-            # Try to get duration with mutagen
-            from io import BytesIO
-
-            audio_file = mutagen.File(BytesIO(file_data))
+            # Read in place: a large upload sits in a temp file, not memory.
+            audio_file = mutagen.File(uploaded_file)
+            uploaded_file.seek(0)
 
             if audio_file and hasattr(audio_file.info, "length"):
                 seconds = int(audio_file.info.length)

@@ -67,6 +67,12 @@ SCRIPTURES = {
 }
 
 
+def first_or_create(selections, **fields):
+    """The oldest of `selections`, or a new one with `fields`: a copy made in
+    the admin doesn't stop a re-run."""
+    return selections.order_by("id").first() or Selection.objects.create(**fields)
+
+
 class Command(BaseCommand):
     help = "Builds a lecturer's selection for a scripture from their lectures' verses"
 
@@ -100,17 +106,23 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Built {title} for {lecturer.name}"))
 
     def build(self, lecturer, title, sections, placed):
-        root, _ = Selection.objects.get_or_create(lecturer=lecturer, parent=None, title=title)
+        root = first_or_create(
+            Selection.objects.filter(lecturer=lecturer, parent=None, title=title),
+            lecturer=lecturer, title=title,
+        )
         # Numbered over every chapter, so one getting its first lecture later
-        # falls into place; until then it isn't made.
+        # falls into place; until then it isn't made, and one left with none
+        # (its lectures retitled) goes.
         for order, (section, description) in enumerate(sections, start=1):
+            existing = root.children.filter(title=section)
             if section not in placed:
+                existing.delete()
                 continue
-            child, created = Selection.objects.get_or_create(
-                parent=root, title=section,
-                defaults={"lecturer": lecturer, "description": description, "order": order},
+            child = first_or_create(
+                existing, parent=root, title=section,
+                lecturer=lecturer, description=description, order=order,
             )
-            if not created and child.order != order:
+            if child.order != order:
                 child.order = order
                 child.save(update_fields=["order"])
             child.entries.all().delete()

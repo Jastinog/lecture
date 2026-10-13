@@ -1,7 +1,9 @@
 import logging
 
 from django.contrib import admin
+from django.core.exceptions import ValidationError
 from django.db.models import Count
+from django.forms.models import BaseInlineFormSet
 from django.urls import path
 from django.shortcuts import render, get_object_or_404
 from django.contrib import messages
@@ -358,8 +360,36 @@ class ChildSelectionInline(admin.TabularInline):
     verbose_name = "Nested selection"
 
 
+def posts_rows(data, prefix, field):
+    """Whether the admin form posted rows with `field` filled, not marked for
+    deletion, in the inline formset `prefix`."""
+    try:
+        total = int(data.get(f"{prefix}-TOTAL_FORMS") or 0)
+    except ValueError:
+        return False
+    return any(
+        data.get(f"{prefix}-{i}-{field}") and not data.get(f"{prefix}-{i}-DELETE")
+        for i in range(total)
+    )
+
+
+class SelectionEntriesFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        # An empty selection offers both inlines; each row's own check looks
+        # at the database, where neither kind is yet.
+        adding = any(
+            form.cleaned_data.get("lecture") and not form.cleaned_data.get("DELETE")
+            for form in self.forms
+            if hasattr(form, "cleaned_data")
+        )
+        if adding and posts_rows(self.data, "children", "title"):
+            raise ValidationError("A selection holds lectures or selections, not both.")
+
+
 class SelectionLectureInline(admin.TabularInline):
     model = SelectionLecture
+    formset = SelectionEntriesFormSet
     extra = 0
     fields = ["lecture", "order", "topic", "language"]
     readonly_fields = ["topic", "language"]

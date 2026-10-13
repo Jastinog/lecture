@@ -106,6 +106,14 @@ class CatalogAPITests(TestCase):
         self.assertEqual([l["id"] for l in data["lecturers"]], [self.disciple.id])
         self.assertEqual([t["id"] for t in data["topics"]], [self.journey.id])
 
+    def test_nul_in_a_parameter_is_no_error(self):
+        # Postgres refuses NUL in a string; it used to come back as a 500.
+        for url in (
+            "/api/v1/search/?q=%00", "/api/v1/search/?q=a&lang=%00",
+            "/api/v1/topics/?group=%00", "/api/v1/topics/?lang=%00",
+        ):
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+
     def test_empty_search(self):
         data = self.client.get("/api/v1/search/", {"q": "  "}).json()
         self.assertEqual(data, {"lecturers": [], "topics": [], "lectures": []})
@@ -364,3 +372,26 @@ class SelectionAPITests(TestCase):
         with self.assertRaises(ValidationError):
             self.gita.full_clean()
 
+
+    def test_lecture_in_two_selections_counts_once(self):
+        SelectionLecture.objects.create(selection=self.ch1, lecture=self.bg_2_13, order=2)
+        gita = self.client.get(f"/api/v1/selections/{self.gita.id}/").json()
+        self.assertEqual((gita["lectures_count"], gita["duration"]), (3, 1800))
+        self.assertEqual(sum(x["lectures_count"] for x in gita["languages"]), 3)
+
+    def test_folder_spans_the_years_of_whats_nested(self):
+        Lecture.objects.filter(pk=self.bg_1_1.pk).update(year=1973)
+        gita = self.client.get(f"/api/v1/selections/{self.gita.id}/").json()
+        self.assertEqual(gita["years"], {"first": 1973, "last": 1973})
+
+    def test_new_selection_takes_only_the_lecturers_lectures(self):
+        # As the admin checks it: the selection isn't saved yet.
+        new = Selection(lecturer=self.sp, title="Srimad-Bhagavatam")
+        with self.assertRaises(ValidationError):
+            SelectionLecture(selection=new, lecture=self.foreign).full_clean(exclude=["selection"])
+        SelectionLecture(selection=new, lecture=self.bg_1_1).full_clean(exclude=["selection"])
+
+    def test_filled_selection_keeps_its_lecturer(self):
+        self.gita.lecturer = self.other
+        with self.assertRaises(ValidationError):
+            self.gita.full_clean()

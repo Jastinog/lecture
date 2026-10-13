@@ -5,6 +5,7 @@ from django.core.management import call_command
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 
+from apps.lecture.management.commands.create_lecturers import create_lecture
 from apps.lecture.models import (
     Language,
     Lecture,
@@ -349,6 +350,20 @@ class SelectionAdminTests(TestCase):
         ):
             self.assertEqual(self.client.get(url).status_code, 200, url)
 
+    def test_new_rows_of_both_kinds_refused(self):
+        empty = Selection.objects.create(lecturer=self.lecturer, title="Srimad-Bhagavatam")
+        form = {
+            "parent": "", "title": "Srimad-Bhagavatam", "description": "", "order": 0,
+            "children-TOTAL_FORMS": 1, "children-INITIAL_FORMS": 0,
+            "children-0-parent": empty.id, "children-0-title": "Canto 1", "children-0-order": 1,
+            "entries-TOTAL_FORMS": 1, "entries-INITIAL_FORMS": 0,
+            "entries-0-selection": empty.id, "entries-0-lecture": self.lecture.id,
+            "entries-0-order": 1,
+        }
+        response = self.client.post(f"/admin/lecture/selection/{empty.id}/change/", form)
+        self.assertContains(response, "holds lectures or selections, not both")
+        self.assertFalse(empty.children.exists() or empty.entries.exists())
+
     def test_nested_selection_row_takes_the_lecturer(self):
         form = {
             "parent": "", "title": "Bhagavad-gita",
@@ -424,3 +439,53 @@ class BuildSelectionTests(TestCase):
         chapter.refresh_from_db()
         self.assertEqual(chapter.description, "Edited")
         self.assertEqual(self.lectures(again, "Chapter 2"), [self.verse_1.id, self.earlier.id])
+
+    def test_chapter_left_without_lectures_goes(self):
+        self.build()
+        self.span.title = "BG 2.20 — Retitled"
+        self.span.save()
+        gita = self.build()
+        self.assertEqual(
+            list(gita.children.values_list("title", flat=True)), ["Introduction", "Chapter 2"]
+        )
+        self.assertIn(self.span.id, self.lectures(gita, "Chapter 2"))
+
+
+@override_settings(STORAGES=LOCAL_STORAGE, MEDIA_URL="/media/")
+class MediaFileTests(TestCase):
+    """Files in storage go with their rows."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.ru = Language.objects.create(code="ru", name="Russian", native_name="Русский")
+        group = TopicGroup.objects.create(code="lectures", name="Лекции")
+        lecturer = Lecturer.objects.create(code="sp", name="Prabhupada", order=1)
+        cls.topic = Topic.objects.create(lecturer=lecturer, code="gita", title="Gita", group=group, order=1)
+
+    def lecture(self, order=1):
+        return Lecture.objects.create(
+            topic=self.topic, title="BG 2.13", language=self.ru, order=order,
+            audio_file=ContentFile(b"mp3", name="part.mp3"),
+        )
+
+    def test_deleting_a_lecture_or_its_topic_deletes_the_audio(self):
+        lecture = self.lecture()
+        storage, name = lecture.audio_file.storage, lecture.audio_file.name
+        with self.captureOnCommitCallbacks(execute=True):
+            lecture.delete()
+        self.assertFalse(storage.exists(name))
+
+        lecture = self.lecture()
+        name = lecture.audio_file.name
+        with self.captureOnCommitCallbacks(execute=True):
+            self.topic.delete()
+        self.assertFalse(storage.exists(name))
+
+    def test_imported_upload_removed_when_the_lecture_fails(self):
+        self.lecture(order=1)
+        field = Lecture._meta.get_field("audio_file")
+        name = field.storage.save("lecturers_dev/x.mp3", ContentFile(b"mp3"))
+        with self.assertRaises(Exception):
+            # Order 1 is taken.
+            create_lecture(self.topic, {"title": "Dup"}, self.ru, 1, "hash", {"audio_file": name})
+        self.assertFalse(field.storage.exists(name))

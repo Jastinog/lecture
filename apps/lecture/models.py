@@ -2,7 +2,8 @@ import uuid
 import os
 import hashlib
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.core.validators import FileExtensionValidator
+from django.db import models, transaction
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.conf import settings
@@ -45,6 +46,11 @@ def selection_cover_path(instance, filename):
     short_name = f"{uuid.uuid4().hex[:8]}{ext}"
     folder = get_lecturers_folder()
     return f"{folder}/{instance.lecturer.id}/selections/{instance.id}/cover/{short_name}"
+
+
+# What a lecture's file may be; anything else uploaded to the public bucket
+# could be served as a page.
+AUDIO_EXTENSIONS = ["mp3", "m4a", "wav", "flac", "ogg", "aac"]
 
 
 class Language(models.Model):
@@ -172,9 +178,12 @@ class Topic(models.Model):
     class Meta:
         ordering = ["lecturer", "group", "order"]
         unique_together = ["lecturer", "order", "code"]
+        constraints = [
+            # Importers find a lecturer's topic by its code.
+            models.UniqueConstraint(fields=["lecturer", "code"], name="topic_code_per_lecturer"),
+        ]
         indexes = [
             models.Index(fields=["lecturer", "group"]),
-            models.Index(fields=["group"]),
         ]
 
 
@@ -182,7 +191,9 @@ class Lecture(models.Model):
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="lectures")
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    audio_file = models.FileField(upload_to=lecture_upload_path)
+    audio_file = models.FileField(
+        upload_to=lecture_upload_path, validators=[FileExtensionValidator(AUDIO_EXTENSIONS)]
+    )
     language = models.ForeignKey(
         Language,
         on_delete=models.PROTECT,
@@ -213,9 +224,17 @@ class Lecture(models.Model):
         # mixed topic plays in its own sequence.
         ordering = ["topic", "order"]
         unique_together = ["topic", "order"]
+        constraints = [
+            # Importers skip a file whose hash is in the topic already; this
+            # keeps two runs at once from both adding it.
+            models.UniqueConstraint(
+                fields=["topic", "file_hash"],
+                condition=~models.Q(file_hash=""),
+                name="lecture_file_once_per_topic",
+            ),
+        ]
         indexes = [
             models.Index(fields=["topic", "language", "file_hash"]),
-            models.Index(fields=["language"]),
         ]
 
     def save(self, *args, **kwargs):
@@ -282,6 +301,13 @@ class Selection(models.Model):
 
     def clean(self):
         if not self.parent_id:
+            moved = (
+                self.pk
+                and Selection.objects.filter(pk=self.pk).exclude(lecturer_id=self.lecturer_id).exists()
+            )
+            if moved and (self.children.exists() or self.entries.exists()):
+                # What's in it would stay with the old lecturer.
+                raise ValidationError({"lecturer": "Empty it before giving it to another lecturer."})
             return
         if self.pk and self.pk in {s.pk for s in self.parent.path()}:
             raise ValidationError({"parent": "A selection can't sit inside itself."})
@@ -318,14 +344,17 @@ class SelectionLecture(models.Model):
         return f"{self.selection} - {self.lecture.title}"
 
     def clean(self):
-        if not (self.selection_id and self.lecture_id):
+        # The selection may be unsaved yet: one added with its lectures.
+        try:
+            selection = self.selection
+        except Selection.DoesNotExist:
             return
-        theirs = Lecture.objects.filter(
-            pk=self.lecture_id, topic__lecturer_id=self.selection.lecturer_id
-        )
+        if not self.lecture_id:
+            return
+        theirs = Lecture.objects.filter(pk=self.lecture_id, topic__lecturer_id=selection.lecturer_id)
         if not theirs.exists():
             raise ValidationError({"lecture": "It's another lecturer's lecture."})
-        if self.selection.children.exists():
+        if selection.pk and selection.children.exists():
             raise ValidationError(
                 {"selection": "It holds selections; a selection holds lectures or selections."}
             )
@@ -354,6 +383,22 @@ def sync_topics_languages(topic_ids):
     """Re-syncs the languages of the topics with these ids that still exist."""
     for topic in Topic.objects.filter(pk__in=set(topic_ids) - {None}):
         topic.sync_languages()
+
+
+# Files go with their rows, once the delete is committed: a rolled-back delete
+# keeps its file. Each upload gets a name of its own, so no other row shares it.
+FILE_FIELDS = {Lecture: "audio_file", Lecturer: "photo", Topic: "cover", Selection: "cover"}
+
+
+def delete_file_with_row(sender, instance, **kwargs):
+    file = getattr(instance, FILE_FIELDS[sender])
+    if file:
+        storage, name = file.storage, file.name
+        transaction.on_commit(lambda: storage.delete(name))
+
+
+for model in FILE_FIELDS:
+    post_delete.connect(delete_file_with_row, sender=model, dispatch_uid=f"delete_file_{model.__name__}")
 
 
 @receiver(post_delete, sender=Lecture)

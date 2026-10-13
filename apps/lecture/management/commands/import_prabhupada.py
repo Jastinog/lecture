@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from django.core.files import File
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 from django.db.models import F, Max
 
 from apps.lecture.models import Language, Lecture, Lecturer, Topic, TopicGroup
@@ -179,11 +180,13 @@ def renumber(topic, hashes):
     lectures = sorted(topic.lectures.all(), key=lambda l: (position.get(l.file_hash, len(hashes)), l.order))
     if [l.order for l in lectures] == list(range(1, len(lectures) + 1)):
         return
-    # Move everyone out of the way first: (topic, order) is unique.
-    topic.lectures.update(order=F("order") + 1_000_000)
     for order, lecture in enumerate(lectures, 1):
         lecture.order = order
-    Lecture.objects.bulk_update(lectures, ["order"])
+    # Move everyone out of the way first: (topic, order) is unique. Together,
+    # so an interrupted run doesn't leave them there.
+    with transaction.atomic():
+        topic.lectures.update(order=F("order") + 1_000_000)
+        Lecture.objects.bulk_update(lectures, ["order"])
 
 
 class Command(BaseCommand):

@@ -223,14 +223,21 @@ class Command(BaseCommand):
                         continue
                     title, year, place, date = describe(self.name_of(link))
                     last_order = topic_obj.lectures.aggregate(last=Max("order"))["last"] or 0
-                    create_lecture(
-                        topic_obj,
-                        {"title": title, "year": year, "event": place, "description": date},
-                        russian,
-                        last_order + 1,
-                        self.hash_of(link),
-                        stored,
-                    )
+                    # Failing here mustn't stop the loop: the pool goes on
+                    # uploading the rest either way.
+                    try:
+                        create_lecture(
+                            topic_obj,
+                            {"title": title, "year": year, "event": place, "description": date},
+                            russian,
+                            last_order + 1,
+                            self.hash_of(link),
+                            stored,
+                        )
+                    except Exception as e:
+                        failed += 1
+                        self.stdout.write(self.style.WARNING(f"  Failed {link}: {e}"))
+                        continue
                     added += 1
                     self.stdout.write(f"  [{i}/{len(todo)}] {title}", ending="\n")
                     self.stdout.flush()

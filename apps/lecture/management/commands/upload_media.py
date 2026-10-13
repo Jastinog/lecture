@@ -2,10 +2,7 @@ from django.conf import settings
 from django.core.files.storage import FileSystemStorage, default_storage
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.lecture.models import Lecture, Lecturer, Topic
-
-# Every model field that holds a media file.
-FILE_FIELDS = [(Lecture, "audio_file"), (Lecturer, "photo"), (Topic, "cover")]
+from apps.lecture.models import FILE_FIELDS
 
 
 class Command(BaseCommand):
@@ -20,7 +17,7 @@ class Command(BaseCommand):
             raise CommandError("Media storage is the local disk: set SPACES_BUCKET first.")
 
         copied = skipped = missing = 0
-        for model, field in FILE_FIELDS:
+        for model, field in FILE_FIELDS.items():
             for obj in model.objects.exclude(**{field: ""}).iterator():
                 name = getattr(obj, field).name
                 if default_storage.exists(name):

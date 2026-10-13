@@ -30,15 +30,23 @@ from .serializers import (
 )
 
 SEARCH_LIMIT = 30
+# Longer queries are cut: no title is that long, and each one is a table scan.
+QUERY_LIMIT = 100
 RELATED_LIMIT = 10
 # The order lectures play in within a topic, whatever their language; search
 # reports positions in it.
 LECTURE_ORDER = ["order", "id"]
 
 
+def query_param(request, name):
+    """`?name=`, or "" when absent. NUL is dropped: Postgres refuses it in a
+    string, which would be a 500 rather than an empty result."""
+    return request.query_params.get(name, "").replace("\x00", "")
+
+
 def requested_languages(request):
     """The language codes in `?lang=en,ru`, or None when it's absent or empty."""
-    codes = [c.strip() for c in request.query_params.get("lang", "").split(",")]
+    codes = [c.strip() for c in query_param(request, "lang").split(",")]
     return [c for c in codes if c] or None
 
 
@@ -115,6 +123,8 @@ class SelectionNode:
     lectures_count: int = 0
     duration: int = 0
     languages: set = field(default_factory=set)
+    # Counted once however many of its nested selections it's in.
+    lecture_ids: set = field(default_factory=set)
 
 
 class SelectionTree(dict):
@@ -132,20 +142,18 @@ class SelectionTree(dict):
         for pk, node in self.items():
             if node.parent_id in self:
                 self[node.parent_id].children.append(pk)
-        rows = (
-            SelectionLecture.objects.filter(selection_id__in=self)
-            .values("selection_id", "lecture__language__code")
-            .annotate(count=Count("id"), duration=Coalesce(Sum("lecture__duration"), 0))
+        rows = SelectionLecture.objects.filter(selection_id__in=self).values_list(
+            "selection_id", "lecture_id", "lecture__language__code", "lecture__duration"
         )
-        for row in rows:
-            code = row["lecture__language__code"]
+        for selection_id, lecture_id, code, duration in rows:
             counted = not languages or code in languages
-            for pk in self.ancestors(row["selection_id"]):
+            for pk in self.ancestors(selection_id):
                 node = self[pk]
                 node.languages.add(code)
-                if counted:
-                    node.lectures_count += row["count"]
-                    node.duration += row["duration"]
+                if counted and lecture_id not in node.lecture_ids:
+                    node.lecture_ids.add(lecture_id)
+                    node.lectures_count += 1
+                    node.duration += duration or 0
 
     def ancestors(self, pk):
         """Ids of the selection and the ones it sits in, innermost first. Stops
@@ -220,7 +228,7 @@ class TopicListView(generics.ListAPIView):
     def get_queryset(self):
         languages = requested_languages(self.request)
         qs = topics_with_lectures_in(languages)
-        group = self.request.query_params.get("group")
+        group = query_param(self.request, "group")
         if group:
             qs = qs.filter(group__code=group)
         return qs.order_by("-created_at", "-id")
@@ -244,7 +252,7 @@ class TopicDetailView(APIView):
             topics_with_lectures_in(languages)
             .filter(lecturer=topic.lecturer_id)
             .exclude(pk=topic.pk)
-            .order_by("group__order", "order")[:RELATED_LIMIT]
+            .order_by("group__order", "order", "id")[:RELATED_LIMIT]
         )
         context = {"request": request}
         data = TopicSerializer(topic, context=context).data
@@ -297,7 +305,7 @@ class LecturerTopicsView(generics.ListAPIView):
         return (
             topics_with_lectures_in(languages)
             .filter(lecturer=lecturer)
-            .order_by("group__order", "order")
+            .order_by("group__order", "order", "id")
         )
 
 
@@ -336,7 +344,8 @@ class SelectionDetailView(APIView):
                 selection_id__in=tree.nested_in(selection.pk)
             ).values("lecture_id")
         )
-        shown = Lecture.objects.filter(pk__in=entries.values("lecture_id"))
+        # A folder's years are its nested selections'.
+        shown = all_lectures.filter(lectures_in(languages))
         children = Selection.objects.filter(parent=selection).order_by("order", "id")
         data.update(page_details(selection.lecturer_id, all_lectures, shown, context))
         data.update(
@@ -366,7 +375,7 @@ class SearchView(APIView):
     the topic page lists it under the same `?lang=`."""
 
     def get(self, request):
-        q = request.query_params.get("q", "").strip()
+        q = query_param(request, "q").strip()[:QUERY_LIMIT]
         if not q:
             return Response({"lecturers": [], "topics": [], "lectures": []})
         context = {"request": request}
@@ -375,7 +384,7 @@ class SearchView(APIView):
 
         lecturers = lecturers_with_lectures_in(languages).filter(name__icontains=q).order_by(
             "level", "order"
-        )
+        )[:SEARCH_LIMIT]
         topics = (
             topics_with_lectures_in(languages)
             .filter(Q(title__icontains=q) | Q(lecturer__name__icontains=q))

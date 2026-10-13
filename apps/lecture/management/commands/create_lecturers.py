@@ -5,7 +5,7 @@ import tempfile
 import urllib.request
 
 import mutagen
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.core.files import File
 from django.db.models import Max
 from apps.lecture.models import Lecture, Lecturer, Topic, TopicGroup, Language
@@ -46,18 +46,23 @@ def store_audio(topic, audio_file):
 
 
 def create_lecture(topic, lecture_data, language, order, file_hash, stored):
-    """Creates a lecture of `topic` around audio store_audio uploaded."""
-    return Lecture.objects.create(
-        topic=topic,
-        title=lecture_data["title"],
-        description=lecture_data.get("description", ""),
-        language=language,
-        order=order,
-        year=lecture_data.get("year"),
-        event=lecture_data.get("event", ""),
-        file_hash=file_hash,
-        **stored,
-    )
+    """Creates a lecture of `topic` around audio store_audio uploaded. If the
+    lecture can't be made, the upload is removed rather than left orphaned."""
+    try:
+        return Lecture.objects.create(
+            topic=topic,
+            title=lecture_data["title"],
+            description=lecture_data.get("description", ""),
+            language=language,
+            order=order,
+            year=lecture_data.get("year"),
+            event=lecture_data.get("event", ""),
+            file_hash=file_hash,
+            **stored,
+        )
+    except BaseException:
+        Lecture._meta.get_field("audio_file").storage.delete(stored["audio_file"])
+        raise
 
 
 def save_lecture(topic, lecture_data, language, order, file_hash, audio_file):
@@ -405,3 +410,5 @@ class Command(BaseCommand):
                     f"Topics {summary['topics_created_count']}/{summary['topics_updated_count']}"
                 )
             )
+        else:
+            raise CommandError("Sync failed")

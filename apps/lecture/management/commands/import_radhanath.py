@@ -292,14 +292,21 @@ class Command(BaseCommand):
                         continue
                     title, year, place, date = self.describe(path)
                     last_order = topic_obj.lectures.aggregate(last=Max("order"))["last"] or 0
-                    create_lecture(
-                        topic_obj,
-                        {"title": title, "year": year, "event": place, "description": date},
-                        languages[specs[code][4]],
-                        last_order + 1,
-                        Lecture.generate_file_hash(ARCHIVE + path),
-                        stored,
-                    )
+                    # Failing here mustn't stop the loop: the pool goes on
+                    # uploading the rest either way.
+                    try:
+                        create_lecture(
+                            topic_obj,
+                            {"title": title, "year": year, "event": place, "description": date},
+                            languages[specs[code][4]],
+                            last_order + 1,
+                            Lecture.generate_file_hash(ARCHIVE + path),
+                            stored,
+                        )
+                    except Exception as e:
+                        failed += 1
+                        self.stdout.write(self.style.WARNING(f"  Failed {ARCHIVE + path}: {e}"))
+                        continue
                     added += 1
                     self.stdout.write(f"  [{i}/{len(todo)}] {title}")
             self.update_details(topic_obj, paths)

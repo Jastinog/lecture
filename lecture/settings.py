@@ -26,6 +26,13 @@ CSRF_TRUSTED_ORIGINS = env.list(
 # nginx terminates TLS; trust its header so absolute URLs come out as https.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# Served over https only (nginx redirects plain http): the admin's cookies
+# never go out unencrypted, and browsers remember to use https.
+SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0 if DEBUG else 31536000)
+# nginx redirects to https; HSTS covers this host only, not its siblings.
+SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W008", "security.W021"]
+
 AUTH_USER_MODEL = "users.User"
 
 INSTALLED_APPS = [
@@ -45,6 +52,8 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    # ETags: an unchanged catalog page answers 304, and the app can keep it.
+    "django.middleware.http.ConditionalGetMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -77,7 +86,6 @@ DEFAULT_ADMIN_EMAIL = env.str("DEFAULT_ADMIN_EMAIL")
 DEFAULT_ADMIN_PASSWORD = env.str("DEFAULT_ADMIN_PASSWORD")
 
 DATABASES = {"default": env.db("DATABASE_URL")}
-DATABASES["default"]["ATOMIC_REQUESTS"] = True
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -161,8 +169,7 @@ if SPACES_BUCKET:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Lectures are uploaded in batches through the admin.
+# Lectures are uploaded in batches through the admin. Files over Django's
+# 2.5MB default go to a temp file rather than staying in memory.
 DATA_UPLOAD_MAX_NUMBER_FILES = 2000
-FILE_UPLOAD_MAX_MEMORY_SIZE = 500 * 1024 * 1024
-DATA_UPLOAD_MAX_MEMORY_SIZE = 500 * 1024 * 1024
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
