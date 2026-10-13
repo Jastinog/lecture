@@ -442,7 +442,8 @@ struct TopicRow: View {
             HStack(alignment: .top, spacing: 12) {
                 CoverImage(url: topic.coverURL, width: RowMetrics.coverWidth, corner: 0)
                     .bookCover()
-                    .accessibilityLabel(Text("Cover: \(topic.title)"))
+                    // The title is read out next to it.
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(topic.title)
                         .font(.rowTitle)

@@ -70,9 +70,13 @@ struct SearchView: View {
     @Environment(\.dismiss) private var dismiss
     /// The lecture hit whose topic is loading, to play it.
     @State private var starting: Int?
+    /// The topic being fetched to play a hit; cancelled on leaving the screen, so
+    /// the player doesn't open over wherever the listener went meanwhile.
+    @State private var playing: Task<Void, Never>?
 
     var body: some View {
-        let result = vm.hasQuery ? vm.result : SearchResult()
+        // A failed search shows why, not the previous query's results.
+        let result = vm.hasQuery && vm.error == nil ? vm.result : SearchResult()
         List {
             if !vm.hasQuery && !history.list.items.isEmpty {
                 recentSection
@@ -111,6 +115,8 @@ struct SearchView: View {
         }
         .classicSwipeList()
         .listStyle(.plain)
+        // The previous query's results, dimmed while the new one runs.
+        .opacity(vm.isLoading && !result.isEmpty ? 0.5 : 1)
         .plainBackground()
         .overlay {
             if result.isEmpty { emptyState }
@@ -130,7 +136,10 @@ struct SearchView: View {
         .onChange(of: vm.query) { _, _ in vm.search() }
         .onChange(of: languages.language) { _, _ in vm.search() }
         // Leaving for a result counts as a successful search.
-        .onDisappear { if !vm.result.isEmpty { history.record(vm.query) } }
+        .onDisappear {
+            if !vm.result.isEmpty { history.record(vm.query) }
+            playing?.cancel()
+        }
     }
 
     /// Plays a found lecture in its topic and opens the player.
@@ -138,15 +147,17 @@ struct SearchView: View {
         guard starting == nil else { return }
         history.record(vm.query)
         starting = hit.id
-        Task {
+        playing = Task {
             defer { starting = nil }
             do {
                 let page = try await TopicCache.shared.resolve(hit.topic.id)
+                guard !Task.isCancelled else { return }
                 // Found by id: the hit's index counts only its language's lectures.
                 let index = page.detail.lectures.firstIndex { $0.id == hit.lecture.id } ?? hit.index
                 player.load(topic: page.detail, summary: page.summary, index: index)
                 router.openPlayer()
             } catch {
+                guard !error.isCancellation else { return }
                 Alerts.shared.show("Couldn’t Play", message: "Check your connection and try again.",
                                    [AlertButton(title: "OK", isDefault: true)])
             }

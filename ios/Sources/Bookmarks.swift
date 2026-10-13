@@ -170,9 +170,11 @@ struct BookmarkEditView: View {
                         .focused($focused)
                         .padding(.vertical, 11)
                 }
-                Button("Delete Bookmark") {
+                ConfirmingButton(confirm: "Delete Bookmark") {
                     store.remove(id: id)
                     dismiss()
+                } label: {
+                    Text("Delete Bookmark")
                 }
                 .buttonStyle(ClassicDeleteButtonStyle())
             }

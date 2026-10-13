@@ -42,7 +42,10 @@ targets:
         # Plain http to a dev server on this Mac or the local network.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
-        CFBundleShortVersionString: "1.0"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # HTTPS only: no export-compliance question on each upload.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations:
           - en

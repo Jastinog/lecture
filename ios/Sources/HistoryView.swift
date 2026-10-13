@@ -24,6 +24,7 @@ struct HistoryView: View {
         }
         .classicSwipeList()
         .listStyle(.plain)
+        .scrollDismissesKeyboard(.immediately)
         .plainBackground(emptyRowHeight: RowMetrics.bookRowHeight)
         .overlay {
             if recents.items.isEmpty {
@@ -73,6 +74,9 @@ struct ContinueListeningCard: View {
 
     @State private var starting = false
     @State private var error: String?
+    /// The topic being fetched to resume; cancelled if the card goes away, so
+    /// the player doesn't open over wherever the listener went meanwhile.
+    @State private var resuming: Task<Void, Never>?
 
     private var item: RecentTopic? {
         guard player.topic == nil else { return nil }
@@ -143,14 +147,19 @@ struct ContinueListeningCard: View {
             } header: {
                 PlainSectionHeader(title: "Continue")
             }
+            .onDisappear { resuming?.cancel() }
         }
     }
 
-    /// "Lecture 7 · 34%".
+    /// "Lecture 7 · 34%": the lecture's number in the whole topic, when its
+    /// lectures are at hand (the saved index counts a language-narrowed list).
     private func detail(_ item: RecentTopic) -> String {
         let percent = formatPercent(item.fraction)
         guard let entry = ProgressStore.entry(topicID: item.id) else { return percent }
-        return "Lecture \(entry.index + 1) · \(percent)"
+        let lectures = TopicCache.shared.get(item.id)?.detail.lectures
+            ?? DownloadManager.shared.savedTopics[item.id]?.lectures
+        let index = lectures.flatMap { entry.index(in: $0) } ?? entry.index
+        return "Lecture \(index + 1) · \(percent)"
     }
 
     /// Resumes the topic without opening its page. A downloaded copy starts
@@ -163,14 +172,15 @@ struct ContinueListeningCard: View {
             return
         }
         starting = true
-        Task {
+        resuming = Task {
             defer { starting = false }
             do {
-                player.load(topic: try await TopicCache.shared.resolve(summary.id).detail,
-                            summary: summary)
+                let detail = try await TopicCache.shared.resolve(summary.id).detail
+                guard !Task.isCancelled else { return }
+                player.load(topic: detail, summary: summary)
                 router.openPlayer()
             } catch {
-                self.error = "Couldn’t load the topic. Check your connection."
+                if !error.isCancellation { self.error = "Couldn’t load the topic. Check your connection." }
             }
         }
     }

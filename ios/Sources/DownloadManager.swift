@@ -1,13 +1,19 @@
 import Foundation
+import os
 
 /// Paths for offline storage: Application Support/Downloads/<bookId>/...
 enum DownloadPaths {
-    static var base: URL {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+    /// Kept out of iCloud and iTunes backups: the lectures can always be
+    /// downloaded again, and a few topics run to gigabytes.
+    static let base: URL = {
+        var dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Downloads", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? dir.setResourceValues(values)
         return dir
-    }
+    }()
     /// The topic's folder. Not created here: only saving a topic makes it, so a late
     /// transfer or size scan can't bring back a folder the user just deleted.
     static func topicDir(_ topicID: Int) -> URL {
@@ -23,10 +29,38 @@ enum DownloadPaths {
     static func cover(_ topicID: Int) -> URL { topicDir(topicID).appendingPathComponent("cover.jpg") }
 }
 
+/// One lecture's download into one topic. The same lecture can be in a topic and
+/// in a selection (a topic with a negative id), each downloading its own copy.
+struct DownloadKey: Hashable {
+    let topicID: Int
+    let lectureID: Int
+
+    /// What a task carries in its `taskDescription`, to be found after a relaunch.
+    var description: String { "\(topicID):\(lectureID)" }
+
+    init(_ topicID: Int, _ lectureID: Int) {
+        self.topicID = topicID
+        self.lectureID = lectureID
+    }
+
+    init?(_ description: String?) {
+        guard let parts = description?.split(separator: ":"), parts.count == 2,
+              let topicID = Int(parts[0]), let lectureID = Int(parts[1]) else { return nil }
+        self.init(topicID, lectureID)
+    }
+}
+
 /// Live per-chapter download progress. See `DownloadManager.live`.
 @MainActor
 final class DownloadProgress: ObservableObject {
-    @Published fileprivate(set) var values: [Int: Double] = [:]
+    @Published fileprivate(set) var values: [DownloadKey: Double] = [:]
+
+    func value(_ topicID: Int, _ lectureID: Int) -> Double? { values[DownloadKey(topicID, lectureID)] }
+
+    /// Any of the topic's lectures coming in.
+    func isDownloading(_ topic: TopicDetail) -> Bool {
+        topic.lectures.contains { value(topic.id, $0.id) != nil }
+    }
 }
 
 @MainActor
@@ -35,11 +69,10 @@ final class DownloadManager: NSObject, ObservableObject {
 
     /// topicID -> set of downloaded trackIDs.
     @Published private(set) var downloaded: [Int: Set<Int>] = [:]
-    /// lectureID -> active download progress (0…1). Published on its own object so
+    /// Active download progress (0…1) per lecture. Published on its own object so
     /// the 1%-step updates (constant while a topic downloads) redraw only the
     /// download indicators, not every screen that observes the manager.
     let live = DownloadProgress()
-    var progress: [Int: Double] { live.values }
     /// Saved topics (for the offline library).
     @Published private(set) var savedTopics: [Int: TopicDetail] = [:] {
         didSet { library = savedTopics.values.sorted { $0.title < $1.title } }
@@ -51,10 +84,15 @@ final class DownloadManager: NSObject, ObservableObject {
     @Published private(set) var topicSizes: [Int: Int64] = [:]
     var totalSize: Int64 { topicSizes.values.reduce(0, +) }
 
-    private var activeTasks: [Int: URLSessionDownloadTask] = [:]   // lectureID -> task
+    private var activeTasks: [DownloadKey: URLSessionDownloadTask] = [:]
     /// Resume data from an interrupted download, so a retry continues instead of
-    /// restarting from zero. lectureID -> resume blob.
-    private var resumeData: [Int: Data] = [:]
+    /// restarting from zero.
+    private var resumeData: [DownloadKey: Data] = [:]
+    /// Downloads that failed since the last alert about it, and whether one
+    /// failed for want of space. Reported once the batch settles.
+    private var failures = 0
+    private var outOfSpace = false
+    private var failureReport: Task<Void, Never>?
     /// Set by the app delegate when iOS relaunches us to deliver finished
     /// background transfers; called once all events are processed.
     var backgroundCompletionHandler: (() -> Void)?
@@ -152,15 +190,15 @@ final class DownloadManager: NSObject, ObservableObject {
     /// cancelled. Ones for topics no longer saved (or already on disk) are dropped.
     private func adoptRunningTasks() async {
         for case let task as URLSessionDownloadTask in await session.allTasks {
-            guard let (topicID, lectureID) = Self.parse(task.taskDescription) else { task.cancel(); continue }
-            if activeTasks[lectureID] === task { continue }   // queued this launch
+            guard let key = DownloadKey(task.taskDescription) else { task.cancel(); continue }
+            if activeTasks[key] === task { continue }   // queued this launch
             // Only the old fetch-ahead waited for Wi-Fi; nobody asked for those.
             guard task.allowsCellular else { task.cancel(); continue }
-            guard savedTopics[topicID] != nil, !isDownloaded(topicID, lectureID),
-                  activeTasks[lectureID] == nil else { task.cancel(); continue }
-            activeTasks[lectureID] = task
+            guard savedTopics[key.topicID] != nil, !isDownloaded(key.topicID, key.lectureID),
+                  activeTasks[key] == nil else { task.cancel(); continue }
+            activeTasks[key] = task
             let expected = task.countOfBytesExpectedToReceive
-            live.values[lectureID] = expected > 0 ? Double(task.countOfBytesReceived) / Double(expected) : 0
+            live.values[key] = expected > 0 ? Double(task.countOfBytesReceived) / Double(expected) : 0
         }
     }
 
@@ -171,7 +209,7 @@ final class DownloadManager: NSObject, ObservableObject {
     }
     func downloadedCount(_ topicID: Int) -> Int { downloaded[topicID]?.count ?? 0 }
     func isTopicDownloading(_ topic: TopicDetail) -> Bool {
-        topic.lectures.contains { activeTasks[$0.id] != nil }
+        topic.lectures.contains { activeTasks[DownloadKey(topic.id, $0.id)] != nil }
     }
     func isFullyDownloaded(_ topic: TopicDetail) -> Bool {
         downloadedCount(topic.id) == topic.lectures.count && topic.lectures.count > 0
@@ -180,15 +218,22 @@ final class DownloadManager: NSObject, ObservableObject {
     /// still coming in.
     func topicFraction(_ topic: TopicDetail) -> Double {
         guard !topic.lectures.isEmpty else { return 0 }
-        let partial = topic.lectures.reduce(0.0) { $0 + (live.values[$1.id] ?? 0) }
+        let partial = topic.lectures.reduce(0.0) { $0 + (live.value(topic.id, $1.id) ?? 0) }
         return (Double(downloadedCount(topic.id)) + partial) / Double(topic.lectures.count)
     }
 
-    /// Local chapter file, if downloaded.
+    /// Local chapter file, if downloaded: the topic's own copy, or one saved with
+    /// another topic or selection, so a lecture downloaded from its topic plays
+    /// offline from a selection too. Looks at the disk, not only at what the
+    /// launch scan has found so far, for a play pressed right after a cold start.
     func localLectureURL(topicID: Int, lectureID: Int) -> URL? {
-        guard isDownloaded(topicID, lectureID) else { return nil }
-        let f = DownloadPaths.lectureFile(topicID, lectureID)
-        return FileManager.default.fileExists(atPath: f.path) ? f : nil
+        let fm = FileManager.default
+        let own = DownloadPaths.lectureFile(topicID, lectureID)
+        if fm.fileExists(atPath: own.path) { return own }
+        return downloaded.lazy
+            .filter { $0.key != topicID && $0.value.contains(lectureID) }
+            .map { DownloadPaths.lectureFile($0.key, lectureID) }
+            .first { fm.fileExists(atPath: $0.path) }
     }
 
     /// Cover: local if present, otherwise the remote URL.
@@ -216,35 +261,50 @@ final class DownloadManager: NSObject, ObservableObject {
 
     /// Cancel the topic's active downloads.
     func cancelTopic(_ topic: TopicDetail) {
-        for lecture in topic.lectures {
-            activeTasks[lecture.id]?.cancel()
-            activeTasks[lecture.id] = nil
-            live.values[lecture.id] = nil
-        }
+        for lecture in topic.lectures { cancelLecture(topicID: topic.id, lectureID: lecture.id) }
     }
 
-    /// Remove the whole topic from downloads.
+    /// Cancel one chapter's download.
+    func cancelLecture(topicID: Int, lectureID: Int) {
+        let key = DownloadKey(topicID, lectureID)
+        activeTasks.removeValue(forKey: key)?.cancel()
+        live.values[key] = nil
+    }
+
+    /// Remove the whole topic from downloads. A chapter playing from it carries
+    /// on from the stream.
     func deleteTopic(_ topicID: Int) {
         if let topic = savedTopics[topicID] { cancelTopic(topic) }
         try? FileManager.default.removeItem(at: DownloadPaths.topicDir(topicID))
         downloaded[topicID] = nil
         savedTopics[topicID] = nil
         topicSizes[topicID] = nil
+        resumeData = resumeData.filter { $0.key.topicID != topicID }
+        AudioPlayer.shared.downloadsRemoved(topicID: topicID)
     }
 
     // MARK: - Internals
 
     private func enqueue(topic: TopicDetail, lecture: Lecture) {
-        guard activeTasks[lecture.id] == nil else { return }   // already on its way
+        let key = DownloadKey(topic.id, lecture.id)
+        guard activeTasks[key] == nil else { return }   // already on its way
+        // Already on the phone with another topic: a clone of that file costs
+        // no space on APFS, and no download.
+        if let other = localLectureURL(topicID: topic.id, lectureID: lecture.id),
+           (try? FileManager.default.copyItem(at: other, to: DownloadPaths.lectureFile(topic.id, lecture.id))) != nil {
+            downloaded[topic.id, default: []].insert(lecture.id)
+            scheduleSizeRefresh(topic.id)
+            return
+        }
         // Only download over https (the URL comes from inline page JS).
         guard lecture.url.scheme == "https" else { return }
-        live.values[lecture.id] = 0
+        live.values[key] = 0
         // Continue from where an interrupted download left off, if we have its
         // resume blob; otherwise start fresh.
-        let task = resumeData.removeValue(forKey: lecture.id).map { session.downloadTask(withResumeData: $0) }
+        let task = resumeData.removeValue(forKey: key).map { session.downloadTask(withResumeData: $0) }
             ?? session.downloadTask(with: URLRequest(url: lecture.url))
-        task.taskDescription = "\(topic.id):\(lecture.id)"
-        activeTasks[lecture.id] = task
+        task.taskDescription = key.description
+        activeTasks[key] = task
         task.resume()
     }
 
@@ -269,7 +329,8 @@ final class DownloadManager: NSObject, ObservableObject {
         if !FileManager.default.fileExists(atPath: coverFile.path), let url = topic.coverURL {
             Task {
                 if let (_, data) = await [url].firstAvailableData() {
-                    try? data.write(to: coverFile)
+                    // Atomic: a cut-off cover would stick, as it's only fetched when absent.
+                    try? data.write(to: coverFile, options: .atomic)
                 }
             }
         }
@@ -278,35 +339,57 @@ final class DownloadManager: NSObject, ObservableObject {
 
     /// True if `taskID` is the chapter's current task — callbacks from a replaced
     /// or cancelled one arrive late and mustn't touch the new task's state.
-    private func isCurrent(_ lectureID: Int, _ taskID: Int) -> Bool {
-        activeTasks[lectureID]?.taskIdentifier == taskID
+    private func isCurrent(_ key: DownloadKey, _ taskID: Int) -> Bool {
+        activeTasks[key]?.taskIdentifier == taskID
     }
 
-    fileprivate func markDownloaded(topicID: Int, lectureID: Int, taskID: Int) {
+    fileprivate func markDownloaded(_ key: DownloadKey, taskID: Int) {
         // The file is gone if the topic was deleted while the move hopped over here.
-        guard FileManager.default.fileExists(atPath: DownloadPaths.lectureFile(topicID, lectureID).path) else { return }
-        downloaded[topicID, default: []].insert(lectureID)
-        if activeTasks[lectureID] == nil || isCurrent(lectureID, taskID) {
-            live.values[lectureID] = nil
-            activeTasks[lectureID] = nil
+        guard FileManager.default.fileExists(atPath: DownloadPaths.lectureFile(key.topicID, key.lectureID).path)
+        else { return }
+        downloaded[key.topicID, default: []].insert(key.lectureID)
+        if activeTasks[key] == nil || isCurrent(key, taskID) {
+            live.values[key] = nil
+            activeTasks[key] = nil
         }
-        scheduleSizeRefresh(topicID)
+        scheduleSizeRefresh(key.topicID)
     }
 
-    fileprivate func markFailed(lectureID: Int, taskID: Int, resumeData: Data? = nil) {
-        guard isCurrent(lectureID, taskID) else { return }
-        live.values[lectureID] = nil
-        activeTasks[lectureID] = nil
-        if let resumeData { self.resumeData[lectureID] = resumeData }
+    /// `error` is why, when it's worth telling the listener (not a cancel).
+    fileprivate func markFailed(_ key: DownloadKey, taskID: Int, resumeData: Data? = nil, error: Error? = nil) {
+        // Resume data from a transfer cut off before this launch adopted it
+        // (the app was force-quit) is still worth keeping for a retry.
+        if let resumeData, activeTasks[key] == nil || isCurrent(key, taskID) {
+            self.resumeData[key] = resumeData
+        }
+        guard isCurrent(key, taskID) else { return }
+        live.values[key] = nil
+        activeTasks[key] = nil
+        if let error { reportFailure(error) }
     }
 
-    fileprivate func setProgress(lectureID: Int, taskID: Int, _ value: Double) {
-        guard isCurrent(lectureID, taskID) else { return }
-        // `didWriteData` fires hundreds of times/sec; only publish on a ≥1% change
-        // (or completion) so observing views don't redraw on every packet.
-        let last = live.values[lectureID] ?? -1
-        guard value >= 1.0 || abs(value - last) >= 0.01 else { return }
-        live.values[lectureID] = value
+    /// Collects failures and tells the listener once, when a batch has had a
+    /// moment to settle: one alert for a topic whose every lecture failed.
+    private func reportFailure(_ error: Error) {
+        failures += 1
+        let code = (error as NSError).code
+        if code == NSFileWriteOutOfSpaceError || code == NSURLErrorCannotWriteToFile { outOfSpace = true }
+        failureReport?.cancel()
+        failureReport = Task {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            let message = outOfSpace
+                ? "There isn’t enough space on this iPhone. Free some up and try again."
+                : "\(formatCount(failures, "lecture", "lectures")) couldn’t be downloaded. Try again later."
+            failures = 0
+            outOfSpace = false
+            Alerts.shared.show("Download Failed", message: message, [AlertButton(title: "OK") {}])
+        }
+    }
+
+    fileprivate func setProgress(_ key: DownloadKey, taskID: Int, _ value: Double) {
+        guard isCurrent(key, taskID) else { return }
+        live.values[key] = value
     }
 
     /// Scans disk off the main thread on startup, then publishes the result — so
@@ -322,7 +405,8 @@ final class DownloadManager: NSObject, ObservableObject {
     }
 
     /// Pure disk scan (no actor state). Only registers a topic's lectures when its
-    /// `topic.json` decodes — orphan lecture folders without metadata are skipped.
+    /// `topic.json` decodes, and only those still in it. A folder whose metadata
+    /// won't read could never be shown or deleted, so it goes.
     private nonisolated static func scanDiskContents()
         -> (topics: [Int: TopicDetail], downloaded: [Int: Set<Int>]) {
         let fm = FileManager.default
@@ -335,12 +419,16 @@ final class DownloadManager: NSObject, ObservableObject {
         for dir in dirs where (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
             guard let topicID = Int(dir.lastPathComponent) else { continue }
             guard let data = try? Data(contentsOf: DownloadPaths.topicJSON(topicID)),
-                  let topic = try? JSONDecoder().decode(TopicDetail.self, from: data) else { continue }
+                  let topic = try? JSONDecoder().decode(TopicDetail.self, from: data) else {
+                try? fm.removeItem(at: dir)
+                continue
+            }
             topics[topicID] = topic
             let files = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
-            let ids = files.filter { $0.pathExtension == "mp3" }
-                .compactMap { Int($0.deletingPathExtension().lastPathComponent) }
-            if !ids.isEmpty { downloaded[topicID] = Set(ids) }
+            let ids = Set(files.filter { $0.pathExtension == "mp3" }
+                .compactMap { Int($0.deletingPathExtension().lastPathComponent) })
+                .intersection(topic.lectures.map(\.id))
+            if !ids.isEmpty { downloaded[topicID] = ids }
         }
         return (topics, downloaded)
     }
@@ -351,43 +439,45 @@ final class DownloadManager: NSObject, ObservableObject {
 extension DownloadManager: URLSessionDownloadDelegate {
     nonisolated func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                                 didFinishDownloadingTo location: URL) {
-        guard let (topicID, lectureID) = Self.parse(downloadTask.taskDescription) else { return }
+        guard let key = DownloadKey(downloadTask.taskDescription) else { return }
         let fm = FileManager.default
         let taskID = downloadTask.taskIdentifier
+        Self.lastProgress.withLock { $0[taskID] = nil }
 
         // The topic was deleted while this chapter was in flight: drop the file
         // rather than bring its folder back untracked.
-        guard fm.fileExists(atPath: DownloadPaths.topicJSON(topicID).path) else {
+        guard fm.fileExists(atPath: DownloadPaths.topicJSON(key.topicID).path) else {
             try? fm.removeItem(at: location)
-            Task { @MainActor in self.markFailed(lectureID: lectureID, taskID: taskID) }
+            Task { @MainActor in self.markFailed(key, taskID: taskID) }
             return
         }
 
         // The task "finished" only means the bytes arrived — a 403/404 page or an
         // HTML error is just as "finished" as a real mp3. Reject anything that
-        // isn't a 200 audio body so we never save a broken file as a valid chapter.
+        // isn't an audio body so we never save a broken file as a valid chapter.
         if !Self.isValidAudio(response: downloadTask.response, fileAt: location) {
-            Task { @MainActor in self.markFailed(lectureID: lectureID, taskID: taskID) }
+            let error = URLError(.badServerResponse)
+            Task { @MainActor in self.markFailed(key, taskID: taskID, error: error) }
             return
         }
 
-        let dest = DownloadPaths.lectureFile(topicID, lectureID)
+        let dest = DownloadPaths.lectureFile(key.topicID, key.lectureID)
         do {
             if fm.fileExists(atPath: dest.path) {
                 _ = try fm.replaceItemAt(dest, withItemAt: location)
             } else {
                 try fm.moveItem(at: location, to: dest)
             }
-            Task { @MainActor in self.markDownloaded(topicID: topicID, lectureID: lectureID, taskID: taskID) }
+            Task { @MainActor in self.markDownloaded(key, taskID: taskID) }
         } catch {
-            Task { @MainActor in self.markFailed(lectureID: lectureID, taskID: taskID) }
+            Task { @MainActor in self.markFailed(key, taskID: taskID, error: error) }
         }
     }
 
-    /// True only for a 200 response whose body looks like real audio (not an HTML
-    /// error page) and is larger than a trivial threshold.
+    /// True only for a whole (200) or resumed (206) response whose body looks like
+    /// real audio (not an HTML error page) and is larger than a trivial threshold.
     private nonisolated static func isValidAudio(response: URLResponse?, fileAt location: URL) -> Bool {
-        if let http = response as? HTTPURLResponse, http.statusCode != 200 { return false }
+        if let http = response as? HTTPURLResponse, ![200, 206].contains(http.statusCode) { return false }
         if let mime = response?.mimeType?.lowercased(),
            mime.contains("html") || mime.contains("xml") || mime.contains("json") {
             return false
@@ -400,19 +490,33 @@ extension DownloadManager: URLSessionDownloadDelegate {
                                 didWriteData bytesWritten: Int64,
                                 totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         guard totalBytesExpectedToWrite > 0,
-              let (_, lectureID) = Self.parse(downloadTask.taskDescription) else { return }
+              let key = DownloadKey(downloadTask.taskDescription) else { return }
         let frac = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
         let taskID = downloadTask.taskIdentifier
-        Task { @MainActor in self.setProgress(lectureID: lectureID, taskID: taskID, frac) }
+        // This fires hundreds of times a second: hop to the main actor only on a
+        // 1% step, so neither the hops nor the redraws pile up.
+        let due = Self.lastProgress.withLock { last in
+            guard frac >= 1 || abs(frac - (last[taskID] ?? -1)) >= 0.01 else { return false }
+            last[taskID] = frac
+            return true
+        }
+        guard due else { return }
+        Task { @MainActor in self.setProgress(key, taskID: taskID, frac) }
     }
+
+    /// The fraction last sent to the main actor, per task.
+    private nonisolated static let lastProgress = OSAllocatedUnfairLock(initialState: [Int: Double]())
 
     nonisolated func urlSession(_ session: URLSession, task: URLSessionTask,
                                 didCompleteWithError error: Error?) {
-        guard let error, let (_, lectureID) = Self.parse(task.taskDescription) else { return }
+        Self.lastProgress.withLock { $0[task.taskIdentifier] = nil }
+        guard let error, let key = DownloadKey(task.taskDescription) else { return }
         // Keep the resume blob (if any) so a retry continues instead of restarting.
         let resume = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data
         let taskID = task.taskIdentifier
-        Task { @MainActor in self.markFailed(lectureID: lectureID, taskID: taskID, resumeData: resume) }
+        // A cancel is the listener's own doing (or the app being quit): nothing to say.
+        let reported = (error as? URLError)?.code == .cancelled ? nil : error
+        Task { @MainActor in self.markFailed(key, taskID: taskID, resumeData: resume, error: reported) }
     }
 
     /// All background events for this session have been delivered — invoke the
@@ -423,12 +527,6 @@ extension DownloadManager: URLSessionDownloadDelegate {
             self.backgroundCompletionHandler = nil
             handler?()
         }
-    }
-
-    private nonisolated static func parse(_ desc: String?) -> (Int, Int)? {
-        guard let parts = desc?.split(separator: ":"), parts.count == 2,
-              let b = Int(parts[0]), let t = Int(parts[1]) else { return nil }
-        return (b, t)
     }
 }
 

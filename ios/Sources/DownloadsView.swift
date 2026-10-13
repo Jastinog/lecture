@@ -20,6 +20,7 @@ struct DownloadsView: View {
         }
         .classicSwipeList()
         .listStyle(.plain)
+        .scrollDismissesKeyboard(.immediately)
         .plainBackground(emptyRowHeight: RowMetrics.bookRowHeight)
         .overlay {
             if dl.library.isEmpty {
@@ -78,7 +79,7 @@ private struct TopicProgressBar: View {
     @ObservedObject private var live = DownloadManager.shared.live
 
     var body: some View {
-        if topic.lectures.contains(where: { live.values[$0.id] != nil }) {
+        if live.isDownloading(topic) {
             ClassicProgressBar(value: DownloadManager.shared.topicFraction(topic))
         }
     }

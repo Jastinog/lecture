@@ -32,7 +32,14 @@ class TopicPager: PagedLoader {
         await load(reset: reset, { try await fetchPage(reset ? 1 : page + 1) }) { result in
             switch result {
             case .success(let result):
-                if reset { items = result.items } else { items += result.items }
+                if reset {
+                    items = result.items
+                } else {
+                    // Topics added meanwhile shift the pages: skip the ones already
+                    // shown rather than list them twice.
+                    let shown = Set(items.map(\.id))
+                    items += result.items.filter { !shown.contains($0.id) }
+                }
                 page = result.page; pages = result.pages; count = result.count
             case .failure:
                 error = errorMessage
@@ -172,6 +179,11 @@ struct BrowseView: View {
         .navigationTitle("Groups")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { NowPlayingToolbarItem() }
+        .overlay {
+            if groups.items.isEmpty {
+                if groups.failed { LoadFailedState { await groups.refresh() } } else { ClassicSpinner() }
+            }
+        }
         .task { await groups.refresh() }
     }
 }

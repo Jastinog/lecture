@@ -19,7 +19,8 @@ enum Palette {
     static let detailText = rgb(0x4C4C4C, dark: 0xB4B4B4)
     static let bodyText = rgb(0x333333, dark: 0xCCCCCC)
     /// Secondary text grey and the hairline between plain rows.
-    static let secondaryText = rgb(0x808080, dark: 0x8C8C8C)
+    // A touch darker than iOS 6's 0x808080, to read at WCAG AA (4.5:1) on white.
+    static let secondaryText = rgb(0x737373, dark: 0x8C8C8C)
     static let separator = rgb(0xE0E0E0, dark: 0x2E2E2E)
     /// A plain table's cells and backdrop. Black in the dark theme, which is
     /// also what `List` gives the rows it isn't told to colour.

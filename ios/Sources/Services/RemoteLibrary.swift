@@ -1,11 +1,22 @@
 import Foundation
+import os
 
 /// The catalog served by the Django backend (`api/v1/`, see `api/v1/catalog`).
 /// The wire format lives in private DTOs mapped onto the app's models, so the
 /// models' on-disk shape (downloads, history) never depends on the API's.
 struct RemoteLibrary: LibraryProviding {
     let baseURL: URL
-    var session: URLSession = .shared
+    var session: URLSession = Self.session
+
+    /// Gives up on a request after 15s rather than the system's minute, so a weak
+    /// network shows "Couldn't load" and a retry instead of a long spinner.
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 15
+        return URLSession(configuration: config)
+    }()
+
+    private static let log = Logger(subsystem: "com.personal.lecture", category: "api")
 
     func groups() async throws -> [TopicGroup] {
         try await get([GroupDTO].self, "groups/").map(\.model)
@@ -89,13 +100,17 @@ struct RemoteLibrary: LibraryProviding {
                                    query: [URLQueryItem] = []) async throws -> T {
         let base = baseURL.absoluteString.hasSuffix("/") ? baseURL.absoluteString : baseURL.absoluteString + "/"
         guard var components = URLComponents(string: base + "api/v1/" + path) else { throw APIError.badURL }
-        if !query.isEmpty { components.queryItems = query }
+        if !query.isEmpty {
+            components.queryItems = query
+            // A literal "+" would reach the server as a space ("C++" as "C  ").
+            components.percentEncodedQuery = components.percentEncodedQuery?
+                .replacingOccurrences(of: "+", with: "%2B")
+        }
         guard let url = components.url else { throw APIError.badURL }
 
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw APIError.noData }
+        let (data, http) = try await fetch(request)
         switch http.statusCode {
         case 200..<300: break
         case 404: throw APIError.notFound
@@ -104,9 +119,36 @@ struct RemoteLibrary: LibraryProviding {
         do {
             return try Self.decoder.decode(T.self, from: data)
         } catch {
+            Self.log.error("Couldn't decode \(path, privacy: .public): \(String(describing: error), privacy: .public)")
             throw APIError.parse
         }
     }
+
+    /// The response, trying once more after a moment when the server is briefly
+    /// down (a deploy restarting it); offline, the last copy the phone has of
+    /// it, so pages seen before still open.
+    private func fetch(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        do {
+            var (data, response) = try await session.data(for: request)
+            if let http = response as? HTTPURLResponse, (502...504).contains(http.statusCode) {
+                try await Task.sleep(for: .seconds(1))
+                (data, response) = try await session.data(for: request)
+            }
+            guard let http = response as? HTTPURLResponse else { throw APIError.noData }
+            return (data, http)
+        } catch let error as URLError where Self.offline.contains(error.code) {
+            var cached = request
+            cached.cachePolicy = .returnCacheDataDontLoad
+            guard let (data, response) = try? await session.data(for: cached),
+                  let http = response as? HTTPURLResponse else { throw error }
+            return (data, http)
+        }
+    }
+
+    private static let offline: Set<URLError.Code> = [
+        .notConnectedToInternet, .networkConnectionLost, .timedOut,
+        .cannotFindHost, .cannotConnectToHost, .dataNotAllowed,
+    ]
 }
 
 // MARK: - Wire format

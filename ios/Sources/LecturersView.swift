@@ -23,6 +23,11 @@ class PagedLoader: ObservableObject {
         let result: Result<Page, Error>
         do { result = .success(try await fetch()) } catch { result = .failure(error) }
         guard gen == generation else { return }
+        // Left before it came back (the view went away): not an error to show.
+        if case .failure(let error) = result, error.isCancellation {
+            loading = false; loadingMore = false
+            return
+        }
         apply(result)
         loading = false; loadingMore = false
     }
@@ -323,7 +328,8 @@ struct LecturerView: View {
         } catch {
             if !error.isCancellation { failed = true }
         }
-        loading = false
+        // A switch to another language cancelled this run, and the new one is loading.
+        if !Task.isCancelled { loading = false }
     }
 }
 
@@ -354,9 +360,9 @@ private struct LecturerHeader: View {
 
             if let lecturer {
                 HStack(spacing: 0) {
-                    stat(lecturer.topicsCount, "topics")
+                    stat(lecturer.topicsCount, "topic", "topics")
                     Rectangle().fill(Palette.groupedBorder).frame(width: 1)
-                    stat(lecturer.lecturesCount, "lectures")
+                    stat(lecturer.lecturesCount, "lecture", "lectures")
                 }
                 .frame(height: 54)
                 .groupedPanel()
@@ -374,10 +380,10 @@ private struct LecturerHeader: View {
     }
 
     /// One even column: the count in bold over its name in grey.
-    private func stat(_ value: Int, _ label: String) -> some View {
+    private func stat(_ value: Int, _ singular: String, _ plural: String) -> some View {
         VStack(spacing: 2) {
             Text(formatNumber(value)).font(.groupedLabel).foregroundStyle(Palette.text)
-            Text(label).font(.rowCaption).foregroundStyle(Palette.secondaryText)
+            Text(value == 1 ? singular : plural).font(.rowCaption).foregroundStyle(Palette.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)

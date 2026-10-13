@@ -61,7 +61,6 @@ struct SettingsView: View {
     private var aboutSection: some View {
         GroupedSection("About") {
             ValueRow(title: "Version", value: appVersion)
-            ValueRow(title: "Catalog", value: "Demo Data")
         }
     }
 

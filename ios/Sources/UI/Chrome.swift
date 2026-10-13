@@ -1201,7 +1201,7 @@ struct ClassicEmptyState<Actions: View>: View {
     }
 
     var body: some View {
-        let color = color ?? (onPinstripe ? Palette.embossed : Palette.rgb(0x8C8C8C))
+        let color = color ?? (onPinstripe ? Palette.embossed : Palette.secondaryText)
         VStack(spacing: 10) {
             Text(title)
                 .font(.helvetica(20, weight: .bold))

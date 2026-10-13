@@ -13,11 +13,14 @@ enum ProgressStore {
     private static let legacyKey = "lecture.progress"
     private static let file = "progress.json"
     private static let version = 1
+    /// Positions kept: the topics listened to most recently.
+    private static let maxEntries = 500
     /// In-memory cache so reads (e.g. in SwiftUI bodies) don't hit disk and
     /// re-decode the whole map on every access.
-    private static var cache: [String: Entry]?
+    @MainActor private static var cache: [String: Entry]?
 
-    // `fraction`/`savedAt` are optional-with-default so older blobs still decode.
+    // `savedAt`/`lectureID` are optional so older blobs still decode (a
+    // defaulted non-optional would not: see `Store`).
     struct Entry: Codable {
         /// The chapter's place in the lectures as they were played, which a
         /// language filter may have narrowed; `lectureID` is what identifies it.
@@ -34,23 +37,32 @@ enum ProgressStore {
         func index(in lectures: [Lecture]) -> Int? { lectures.index(of: lectureID, saved: index) }
     }
 
+    @MainActor
     static func save(topicID: Int, index: Int, lectureID: Int?, time: Double, fraction: Double) {
         var all = load()
         all[String(topicID)] = Entry(index: index, time: time, fraction: fraction,
                                     savedAt: Date().timeIntervalSince1970, lectureID: lectureID)
+        if all.count > maxEntries {
+            let oldest = all.sorted { ($0.value.savedAt ?? 0) < ($1.value.savedAt ?? 0) }
+                .prefix(all.count - maxEntries)
+            for (key, _) in oldest { all[key] = nil }
+        }
         cache = all
         Store.save(all, version: version, to: file)
     }
 
+    @MainActor
     static func entry(topicID: Int) -> Entry? { load()[String(topicID)] }
 
     /// Listened to the end (see `PlaybackMath.finishedFraction`).
+    @MainActor
     static func isFinished(topicID: Int) -> Bool {
         entry(topicID: topicID).map { PlaybackMath.isFinished($0.fraction) } ?? false
     }
 
     /// Forget a topic's position — kept consistent with history removal so a topic
     /// dropped from "Continue listening" doesn't silently resume mid-way.
+    @MainActor
     static func remove(topicID: Int) {
         var all = load()
         guard all.removeValue(forKey: String(topicID)) != nil else { return }
@@ -58,6 +70,14 @@ enum ProgressStore {
         Store.save(all, version: version, to: file)
     }
 
+    /// Forget every position.
+    @MainActor
+    static func removeAll() {
+        cache = [:]
+        Store.save([String: Entry](), version: version, to: file)
+    }
+
+    @MainActor
     private static func load() -> [String: Entry] {
         if let cache { return cache }
         let decoded = Store.loadOrMigrate([String: Entry].self, legacyKey: legacyKey,
@@ -127,11 +147,11 @@ final class RecentsStore: ObservableObject {
         persist()
     }
 
-    /// Clears the history and the listening positions it tracked. The curated shelf
-    /// (`ShelfStore`) is intentionally left alone — it's a deliberate user list, not
-    /// a byproduct of playback.
+    /// Clears the history and every listening position, including those of topics
+    /// that dropped off it. The curated shelf (`ShelfStore`) is intentionally left
+    /// alone — it's a deliberate user list, not a byproduct of playback.
     func clear() {
-        for item in items { ProgressStore.remove(topicID: item.id) }
+        ProgressStore.removeAll()
         items = []
         persist()
     }
@@ -199,6 +219,10 @@ final class AudioPlayer: ObservableObject {
     /// description / reader / series / duration that `TopicDetail` lacks, so the
     /// history shelf renders the same full card as the catalog and favorites.
     private var loadedSummary: Topic?
+    /// The whole topic's length, when `topic` is it narrowed to one language: the
+    /// overall progress is a share of the whole, so finishing one language doesn't
+    /// mark the topic finished (and up for "Clean Up").
+    private var wholeDuration: Double?
     @Published private(set) var currentIndex = 0
     @Published private(set) var isPlaying = false
     /// True while the player is stalled waiting for data (buffering), driven by
@@ -349,7 +373,7 @@ final class AudioPlayer: ObservableObject {
     /// A topic narrowed to one language comes with only those lectures; loading
     /// it over the whole topic (or the reverse) swaps the queue and keeps the
     /// spot, since positions are kept by lecture.
-    func load(topic: TopicDetail, summary: Topic? = nil, index: Int? = nil) {
+    func load(topic: TopicDetail, summary: Topic? = nil, index: Int? = nil, whole: TopicDetail? = nil) {
         // Same topic, same lectures, already loaded — switch chapter or just resume.
         if holds(topic), player != nil {
             if let summary { loadedSummary = summary }
@@ -365,6 +389,7 @@ final class AudioPlayer: ObservableObject {
         if self.topic != nil { persistProgress() }
         self.topic = topic
         self.loadedSummary = summary
+        wholeDuration = whole.map(\.totalDuration)
         // Each topic plays at its own remembered speed (or the default).
         rate = rates.rate(for: topic.id)
         // Resume where the topic was left (rewinding a little after a break), or
@@ -440,6 +465,8 @@ final class AudioPlayer: ObservableObject {
         currentTime = start
         isPlaying = autoplay
         isBuffering = autoplay
+        if autoplay { activateSession() }
+        scheduleLoadTimeout()
         updateNowPlaying()
         loadArtwork()
         persistProgress()
@@ -448,8 +475,10 @@ final class AudioPlayer: ObservableObject {
     /// Overall progress (0…1) across all chapters.
     private var overallFraction: Double {
         guard let topic else { return 0 }
-        return PlaybackMath.fraction(index: currentIndex, time: currentTime,
-                                     durations: topic.lectures.map(\.duration))
+        let played = PlaybackMath.fraction(index: currentIndex, time: currentTime,
+                                           durations: topic.lectures.map(\.duration))
+        guard let wholeDuration, wholeDuration > topic.totalDuration else { return played }
+        return played * topic.totalDuration / wholeDuration
     }
 
     /// Persist progress through the single source of truth (`ProgressStore`) and
@@ -492,6 +521,7 @@ final class AudioPlayer: ObservableObject {
             if back > 0 { seek(to: max(0, currentTime - back)) }
         }
         pausedAt = nil
+        activateSession()
         // Still loading: the ready handler starts playback once positioned.
         if pendingResumeTime != nil {
             isBuffering = true
@@ -519,16 +549,7 @@ final class AudioPlayer: ObservableObject {
             ProgressStore.save(topicID: topic.id, index: currentIndex, lectureID: currentLecture?.id,
                                time: currentTime, fraction: overallFraction)
         }
-        player?.pause()
-        if let timeObserver { player?.removeTimeObserver(timeObserver); self.timeObserver = nil }
-        if let endObserver { NotificationCenter.default.removeObserver(endObserver); self.endObserver = nil }
-        if let failObserver { NotificationCenter.default.removeObserver(failObserver); self.failObserver = nil }
-        timeControlObservation = nil
-        itemStatusObservation = nil
-        pendingResumeTime = nil
-        cancelSeeks()
-        player?.replaceCurrentItem(with: nil)
-        player = nil
+        tearDownPlayer()
         setSleep(.off)
         isPlaying = false
         isBuffering = false
@@ -540,6 +561,43 @@ final class AudioPlayer: ObservableObject {
         topicEnded = false
         nowPlayingTopicID = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        // Let the app that was playing before carry on.
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    /// Drops the AVPlayer with its item and observers; the next chapter load
+    /// builds a new one.
+    private func tearDownPlayer() {
+        player?.pause()
+        if let timeObserver { player?.removeTimeObserver(timeObserver); self.timeObserver = nil }
+        if let endObserver { NotificationCenter.default.removeObserver(endObserver); self.endObserver = nil }
+        if let failObserver { NotificationCenter.default.removeObserver(failObserver); self.failObserver = nil }
+        timeControlObservation = nil
+        itemStatusObservation = nil
+        pendingResumeTime = nil
+        cancelSeeks()
+        player?.replaceCurrentItem(with: nil)
+        player = nil
+    }
+
+    /// The topic's downloaded files are being deleted: a chapter playing from
+    /// one carries on from the stream (or another downloaded copy), where it was.
+    func downloadsRemoved(topicID: Int) {
+        guard topic?.id == topicID,
+              (player?.currentItem?.asset as? AVURLAsset)?.url.isFileURL == true else { return }
+        play(index: currentIndex, at: currentTime, autoplay: isPlaying)
+    }
+
+    /// A chapter whose stream never gets ready (a server that neither answers nor
+    /// errors) ends in the error state, not an endless spinner.
+    private func scheduleLoadTimeout() {
+        let generation = seekGeneration
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(30))
+            guard let self, generation == self.seekGeneration,
+                  self.pendingResumeTime != nil, self.isPlaying else { return }
+            self.fail("The lecture is taking too long to load")
+        }
     }
 
     func next() {
@@ -822,10 +880,11 @@ final class AudioPlayer: ObservableObject {
 
     // MARK: - Audio session
 
+    /// The category is set at launch, but the session only becomes active once
+    /// something plays: opening the app to browse mustn't stop other apps' audio.
     private func configureSession() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .spokenAudio)
-        try? session.setActive(true)
 
         // Pause on a phone call / Siri and resume afterwards if the system asks;
         // pause when headphones are unplugged. Without these, `isPlaying` would
@@ -841,6 +900,26 @@ final class AudioPlayer: ObservableObject {
         ) { [weak self] note in
             MainActor.assumeIsolated { self?.handleRouteChange(note) }
         })
+        sessionObservers.append(center.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification, object: session, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.handleMediaServicesReset() }
+        })
+    }
+
+    private func activateSession() {
+        try? AVAudioSession.sharedInstance().setActive(true)
+    }
+
+    /// The system's media server restarted (it happens with Bluetooth and
+    /// CarPlay): the session and player are dead. Set up again and reload the
+    /// chapter where it was, paused.
+    private func handleMediaServicesReset() {
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+        guard topic != nil else { return }
+        let index = currentIndex, time = currentTime
+        tearDownPlayer()
+        play(index: index, at: time, autoplay: false)
     }
 
     private func handleInterruption(_ note: Notification) {
@@ -873,7 +952,11 @@ final class AudioPlayer: ObservableObject {
               let reason = AVAudioSession.RouteChangeReason(rawValue: raw) else { return }
         // Old output device gone (e.g. headphones unplugged) → pause, like the
         // system Music app, instead of blasting audio from the speaker.
-        if reason == .oldDeviceUnavailable { pause() }
+        if reason == .oldDeviceUnavailable {
+            pause()
+            // Not a pause an interruption should undo onto the speaker.
+            externalPauseAt = nil
+        }
     }
 
     // MARK: - Observers
@@ -889,8 +972,9 @@ final class AudioPlayer: ObservableObject {
                 guard self.pendingResumeTime == nil, !self.isSeeking else { return }
                 let t = time.seconds
                 guard t.isFinite else { return }
+                // The lock screen runs its own clock from the rate; it's updated
+                // on play, pause, seeks and stalls rather than every tick.
                 self.currentTime = t
-                self.updateNowPlayingElapsed()
                 // "Until end of chapter" fades out over the chapter's last seconds.
                 if self.sleepMode == .endOfChapter, self.duration > 0 {
                     let left = self.duration - t
@@ -941,7 +1025,8 @@ final class AudioPlayer: ObservableObject {
     /// fake "playing" with no sound.
     private func observeTimeControlStatus() {
         timeControlObservation = player?.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
-            MainActor.assumeIsolated {
+            // KVO calls back on whichever thread changed it, which needn't be main.
+            DispatchQueue.main.async { MainActor.assumeIsolated {
                 // While a chapter loads, the player is deliberately paused and
                 // `isPlaying` holds the user's intent — don't let that flip it.
                 guard let self, self.pendingResumeTime == nil else { return }
@@ -964,7 +1049,7 @@ final class AudioPlayer: ObservableObject {
                     break
                 }
                 self.updateNowPlaying()
-            }
+            } }
         }
     }
 
@@ -1029,11 +1114,28 @@ final class AudioPlayer: ObservableObject {
 
     private func configureRemoteCommands() {
         let c = MPRemoteCommandCenter.shared()
-        c.playCommand.addTarget { [weak self] _ in self?.play(); return .success }
-        c.pauseCommand.addTarget { [weak self] _ in self?.pause(); return .success }
-        c.togglePlayPauseCommand.addTarget { [weak self] _ in self?.togglePlayPause(); return .success }
-        c.nextTrackCommand.addTarget { [weak self] _ in self?.next(); return .success }
-        c.previousTrackCommand.addTarget { [weak self] _ in self?.previous(); return .success }
+        /// Runs `action` on the loaded topic; with none (iOS relaunched the app
+        /// and the headphones said play), says so instead of claiming success.
+        func onTopic(_ action: @escaping (AudioPlayer, MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus)
+            -> (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
+            { [weak self] event in
+                MainActor.assumeIsolated {
+                    guard let self, self.topic != nil else { return .noActionableNowPlayingItem }
+                    return action(self, event)
+                }
+            }
+        }
+        c.playCommand.addTarget(handler: onTopic { p, _ in p.play(); return .success })
+        c.pauseCommand.addTarget(handler: onTopic { p, _ in p.pause(); return .success })
+        c.togglePlayPauseCommand.addTarget(handler: onTopic { p, _ in p.togglePlayPause(); return .success })
+        c.nextTrackCommand.addTarget(handler: onTopic { p, _ in p.next(); return .success })
+        c.previousTrackCommand.addTarget(handler: onTopic { p, _ in p.previous(); return .success })
+        c.changePlaybackRateCommand.supportedPlaybackRates = Self.ratePresets.map { NSNumber(value: $0) }
+        c.changePlaybackRateCommand.addTarget(handler: onTopic { p, event in
+            guard let e = event as? MPChangePlaybackRateCommandEvent else { return .commandFailed }
+            p.setRate(e.playbackRate)
+            return .success
+        })
 
         // Show seek arrows (the Settings step) on the lock screen. iOS hides the
         // lecture prev/next buttons whenever the skip commands are enabled, so we get
@@ -1041,22 +1143,22 @@ final class AudioPlayer: ObservableObject {
         updateSkipIntervals()
         c.skipForwardCommand.isEnabled = true
         c.skipBackwardCommand.isEnabled = true
-        c.skipForwardCommand.addTarget { [weak self] event in
+        c.skipForwardCommand.addTarget(handler: onTopic { p, event in
             guard let e = event as? MPSkipIntervalCommandEvent else { return .commandFailed }
-            self?.skip(e.interval)
+            p.skip(e.interval)
             return .success
-        }
-        c.skipBackwardCommand.addTarget { [weak self] event in
+        })
+        c.skipBackwardCommand.addTarget(handler: onTopic { p, event in
             guard let e = event as? MPSkipIntervalCommandEvent else { return .commandFailed }
-            self?.skip(-e.interval)
+            p.skip(-e.interval)
             return .success
-        }
+        })
 
-        c.changePlaybackPositionCommand.addTarget { [weak self] event in
+        c.changePlaybackPositionCommand.addTarget(handler: onTopic { p, event in
             guard let e = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
-            self?.seek(to: e.positionTime)
+            p.seek(to: e.positionTime)
             return .success
-        }
+        })
     }
 
     private func updateNowPlaying() {
@@ -1069,7 +1171,8 @@ final class AudioPlayer: ObservableObject {
         info[MPMediaItemPropertyAlbumTitle] = loadedSummary?.group?.name
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
-        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? rate : 0
+        info[MPNowPlayingInfoPropertyPlaybackRate] = lockScreenRate
+        info[MPNowPlayingInfoPropertyDefaultPlaybackRate] = rate
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         updateTrackCommands()
     }
@@ -1086,9 +1189,13 @@ final class AudioPlayer: ObservableObject {
     private func updateNowPlayingElapsed() {
         var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
-        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? rate : 0
+        info[MPNowPlayingInfoPropertyPlaybackRate] = lockScreenRate
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
+
+    /// The rate the lock screen's clock runs at: stopped while buffering, so it
+    /// doesn't run ahead of the sound.
+    private var lockScreenRate: Float { isPlaying && !isBuffering ? rate : 0 }
 
     /// The topic's cover on the lock screen: the downloaded copy when there is one
     /// (works offline), else the remote image. Loaded once per topic: the info
@@ -1112,10 +1219,16 @@ final class AudioPlayer: ObservableObject {
             // The topic may have changed while the cover was loading — don't let
             // a stale image overwrite the current topic's artwork.
             guard self.topic?.id == topicID, self.nowPlayingTopicID == topicID else { return }
-            let art = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            let art = Self.artwork(image)
             var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
             info[MPMediaItemPropertyArtwork] = art
             MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         }
+    }
+
+    /// Built outside the main actor: MediaPlayer asks for the image on its own
+    /// queue.
+    private nonisolated static func artwork(_ image: UIImage) -> MPMediaItemArtwork {
+        MPMediaItemArtwork(boundsSize: image.size) { _ in image }
     }
 }

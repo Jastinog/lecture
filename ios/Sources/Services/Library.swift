@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// The catalog the app reads: lecturers, their topics and the lectures in them.
 /// Views talk to `API.library`, the Django backend (`RemoteLibrary`).
@@ -56,11 +57,18 @@ enum API {
     static let library: LibraryProviding = RemoteLibrary(baseURL: baseURL)
 
     /// The backend's root: `APIBaseURL` in Info.plist, set per configuration by
-    /// the `API_BASE_URL` build setting (project.yml).
+    /// the `API_BASE_URL` build setting (project.yml). Should that ever be
+    /// missing, a release build still reads production, not this Mac.
     static let baseURL: URL = {
         guard let string = Bundle.main.object(forInfoDictionaryKey: "APIBaseURL") as? String,
               let url = URL(string: string), url.host != nil
-        else { return URL(string: "http://127.0.0.1:8765")! }
+        else {
+            #if DEBUG
+            return URL(string: "http://127.0.0.1:8765")!
+            #else
+            return URL(string: "https://lecture.intentio.pro")!
+            #endif
+        }
         return url
     }()
 }
@@ -74,13 +82,21 @@ final class GroupStore: ObservableObject {
     private let version = 1
 
     @Published private(set) var items: [TopicGroup] = []
+    /// The last refresh failed (worth saying only while there are none to show).
+    @Published private(set) var failed = false
 
     private init() { items = Store.load([TopicGroup].self, from: file) ?? [] }
 
     func refresh() async {
-        guard let fresh = try? await API.library.groups(), fresh != items else { return }
-        items = fresh
-        Store.save(items, version: version, to: file)
+        failed = false
+        do {
+            let fresh = try await API.library.groups()
+            guard fresh != items else { return }
+            items = fresh
+            Store.save(items, version: version, to: file)
+        } catch {
+            failed = !error.isCancellation
+        }
     }
 }
 
@@ -148,29 +164,52 @@ final class LanguageChoiceStore: ObservableObject {
 }
 
 /// In-memory cache of topic pages (main-thread use only), so a reopened topic —
-/// and the view rebuild when playback starts — renders instantly.
+/// and the view rebuild when playback starts — renders instantly. Pages are
+/// fetched again after a while, so lectures added since show up, and only the
+/// most recent are kept (a topic can list thousands of lectures).
 @MainActor
 final class TopicCache {
     static let shared = TopicCache()
-    private var pages: [Int: TopicPage] = [:]
+    private static let lifetime: TimeInterval = 10 * 60
+    private static let capacity = 30
+    private var pages: [Int: (page: TopicPage, at: Date)] = [:]
 
-    func get(_ id: Int) -> TopicPage? { pages[id] }
+    private init() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.pages = [:] }
+        }
+    }
 
-    /// The page for `id`: from memory, else fetched and cached; if that fails, a
-    /// downloaded copy of the topic (lectures and cover, no page extras).
+    func get(_ id: Int) -> TopicPage? { pages[id]?.page }
+
+    /// The page for `id`: from memory while fresh, else fetched and cached; if
+    /// that fails, the copy in memory, or a downloaded copy of the topic
+    /// (lectures and cover, no page extras).
     func resolve(_ id: Int) async throws -> TopicPage {
-        if let cached = pages[id] { return cached }
+        if let cached = pages[id], Date().timeIntervalSince(cached.at) < Self.lifetime { return cached.page }
         do {
             let page = try await API.library.topicPage(id: id)
-            pages[id] = page
+            store(page, id: id)
             NetworkStatus.shared.showingSaved = false
             return page
         } catch {
+            if let stale = pages[id]?.page, !error.isCancellation { return stale }
             if let saved = DownloadManager.shared.savedTopics[id], !error.isCancellation {
                 NetworkStatus.shared.showingSaved = true
                 return TopicPage(detail: saved, summary: Topic(saved), lecturer: nil, description: nil)
             }
             throw error
+        }
+    }
+}
+
+private extension TopicCache {
+    func store(_ page: TopicPage, id: Int) {
+        pages[id] = (page, Date())
+        if pages.count > Self.capacity, let oldest = pages.min(by: { $0.value.at < $1.value.at }) {
+            pages[oldest.key] = nil
         }
     }
 }

@@ -8,6 +8,10 @@ import Foundation
 /// itself. On a decode failure the bad file is backed up to
 /// `<name>.corrupt-<timestamp>` rather than silently discarded — user data (shelf, history, listening
 /// positions) is never quietly wiped, and the backup is a recoverable signal.
+///
+/// A field added to a stored model must be Optional (or decoded by hand with
+/// `decodeIfPresent`): synthesized decoding requires every non-optional key,
+/// default value or not, so a `var new = 0` would fail every saved element.
 enum Store {
     struct Versioned<T: Codable>: Codable {
         var schemaVersion: Int
@@ -57,9 +61,27 @@ enum Store {
         }
     }
 
+    /// A map loads entry by entry, the same way.
+    static func load<V: Codable>(_ type: [String: V].Type, from name: String) -> [String: V]? {
+        let file = fileURL(name)
+        guard let data = try? Data(contentsOf: file) else { return nil }
+        do {
+            let entries = try JSONDecoder().decode(LossyMap<V>.self, from: data).data
+            let kept = entries.compactMapValues(\.value)
+            if kept.count < entries.count { backup(file) }
+            return kept
+        } catch {
+            backup(file)
+            return nil
+        }
+    }
+
     /// The envelope of a list, each element decoded on its own.
     private struct LossyList<E: Decodable>: Decodable {
         var data: [Lossy<E>]
+    }
+    private struct LossyMap<V: Decodable>: Decodable {
+        var data: [String: Lossy<V>]
     }
     private struct Lossy<E: Decodable>: Decodable {
         var value: E?
@@ -105,6 +127,15 @@ enum Store {
     static func loadOrMigrate<E: Codable>(_ type: [E].Type, legacyKey: String,
                                           version: Int, file name: String,
                                           default fallback: [E]) -> [E] {
+        migrateFromDefaults(type, key: legacyKey, version: version, to: name)
+            ?? load(type, from: name)
+            ?? fallback
+    }
+
+    /// The same for a map, read entry by entry.
+    static func loadOrMigrate<V: Codable>(_ type: [String: V].Type, legacyKey: String,
+                                          version: Int, file name: String,
+                                          default fallback: [String: V]) -> [String: V] {
         migrateFromDefaults(type, key: legacyKey, version: version, to: name)
             ?? load(type, from: name)
             ?? fallback

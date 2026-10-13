@@ -61,7 +61,7 @@ struct TopicView: View {
         return List {
             Section {
                 TopicPageHead(page: shown, cover: dl.coverURL(for: topic), progress: progressLine(topic)) {
-                    listenButton(topic, summary: page.summary)
+                    listenButton(topic, whole: page.detail, summary: page.summary)
                     // Downloads keep the whole topic, whatever the page shows.
                     TopicDownloadButton(topic: page.detail, dl: dl)
                     TopicShelfButton(topic: page.summary)
@@ -194,16 +194,18 @@ struct TopicView: View {
                         : nil,
                     language: tagged ? lecture.language : nil,
                     downloaded: dl.isDownloaded(topic.id, lecture.id),
+                    topicID: topic.id,
                     live: dl.live,
                     onPlay: {
                         if isCurrent(topic, lecture) && loaded {
                             player.togglePlayPause()
                         } else {
-                            player.load(topic: topic, summary: summary, index: index)
+                            player.load(topic: topic, summary: summary, index: index, whole: whole)
                             router.openPlayer()
                         }
                     },
-                    onDownload: { dl.downloadLecture(topic: whole, lecture: lecture) }
+                    onDownload: { dl.downloadLecture(topic: whole, lecture: lecture) },
+                    onStopDownload: { dl.cancelLecture(topicID: topic.id, lectureID: lecture.id) }
                 )
             }
             .plainRow()
@@ -233,7 +235,7 @@ struct TopicView: View {
     /// The main call to action, worded for where the listener is: "Listen",
     /// "Resume", "Pause" or "Start Over". Over lectures other than the ones
     /// playing, it loads these in their place, keeping the spot.
-    private func listenButton(_ topic: TopicDetail, summary: Topic) -> some View {
+    private func listenButton(_ topic: TopicDetail, whole: TopicDetail, summary: Topic) -> some View {
         let loaded = player.holds(topic)
         let entry = ProgressStore.entry(topicID: topic.id)
         let finished = !loaded && ProgressStore.isFinished(topicID: topic.id)
@@ -247,7 +249,7 @@ struct TopicView: View {
                 player.togglePlayPause()
             } else {
                 if finished { ProgressStore.remove(topicID: topic.id) }
-                player.load(topic: topic, summary: summary)
+                player.load(topic: topic, summary: summary, whole: whole)
                 router.openPlayer()
             }
         } label: {
@@ -267,8 +269,9 @@ struct TopicView: View {
             return
         }
         failed = false
+        // Shown at once; `resolve` then fetches it again if it's gone stale.
         if let cached = TopicCache.shared.get(id) {
-            page = cached; loading = false; return
+            page = cached; loading = false
         }
         if page == nil { loading = true }
         do {
@@ -515,10 +518,12 @@ private struct LectureRow: View {
     /// The lecture's language code, on a page listing more than one.
     let language: String?
     let downloaded: Bool
+    let topicID: Int
     /// Observed only by the download indicator, so progress ticks redraw it alone.
     let live: DownloadProgress
     let onPlay: () -> Void
     let onDownload: () -> Void
+    let onStopDownload: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
@@ -567,33 +572,41 @@ private struct LectureRow: View {
                 .padding(.vertical, 5)
                 .frame(minHeight: 44)
             }
+            // What the speaker glyph and the grey title say to the eye.
+            .accessibilityValue(isCurrent ? "Now playing" : listened ? "Played" : "")
 
-            LectureDownloadIndicator(lectureID: lecture.id, downloaded: downloaded, live: live,
-                                     onDownload: onDownload)
+            LectureDownloadIndicator(topicID: topicID, lectureID: lecture.id, downloaded: downloaded,
+                                     live: live, onDownload: onDownload, onStop: onStopDownload)
         }
     }
 }
 
 /// Music's iCloud control: the cloud to fetch a lecture, the ring filling blue
-/// while it comes in, nothing once it's on the phone.
+/// while it comes in (tap its stop square to stop), nothing once it's on the phone.
 private struct LectureDownloadIndicator: View {
+    let topicID: Int
     let lectureID: Int
     let downloaded: Bool
     @ObservedObject var live: DownloadProgress
     let onDownload: () -> Void
+    let onStop: () -> Void
 
     var body: some View {
         Group {
             if downloaded {
                 Color.clear
-            } else if let progress = live.values[lectureID] {
-                ZStack {
-                    Image.classic("DownloadBase")
-                    Image.classic("DownloadFill")
-                        .mask { PieSlice(fraction: progress) }
-                    Image.classic("DownloadStop")
+            } else if let progress = live.value(topicID, lectureID) {
+                Button(action: onStop) {
+                    ZStack {
+                        Image.classic("DownloadBase")
+                        Image.classic("DownloadFill")
+                            .mask { PieSlice(fraction: progress) }
+                        Image.classic("DownloadStop")
+                    }
                 }
-                .accessibilityLabel("Downloading")
+                .buttonStyle(.plain)
+                .accessibilityLabel("Stop Download")
+                .accessibilityValue("\(Int(progress * 100))%")
             } else {
                 Button(action: onDownload) { Image.classic("CloudDownload") }
                     .buttonStyle(.plain)
@@ -601,6 +614,8 @@ private struct LectureDownloadIndicator: View {
             }
         }
         .frame(width: 34, height: 29)
+        // A 44pt target around the small glyph.
+        .contentShape(Rectangle().inset(by: -8))
     }
 }
 
