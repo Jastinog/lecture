@@ -226,6 +226,12 @@ class Command(BaseCommand):
         "Import Radhanath Swami's lectures (originals and Russian translations) from "
         "the ISKCON Desire Tree archive. Re-runs skip what's imported."
     )
+    # What another lecturer's import overrides.
+    root = ROOT
+    lecturer_code = LECTURER_CODE
+    topic_for = staticmethod(topic_for)
+    is_his = staticmethod(is_his)
+    skipped_label = "by other speakers"
 
     def add_arguments(self, parser):
         parser.add_argument("--topic", action="append", help="Only these topic codes, e.g. en-1989")
@@ -236,11 +242,11 @@ class Command(BaseCommand):
     def handle(self, *args, topic=None, limit=None, dry_run=False, workers=8, **options):
         by_topic, specs = {}, {}
         skipped = 0
-        for path in walk(ROOT):
-            spec = topic_for(path)
+        for path in walk(self.root):
+            spec = self.topic_for(path)
             if not spec:
                 continue
-            if not is_his(path):
+            if not self.is_his(path):
                 skipped += 1
                 continue
             specs[spec[0]] = spec
@@ -249,9 +255,9 @@ class Command(BaseCommand):
         unknown = set(codes) - set(specs)
         if unknown:
             raise CommandError(f"Unknown topics: {', '.join(sorted(unknown))}")
-        self.stdout.write(f"{sum(map(len, by_topic.values()))} recordings in {len(specs)} topics, {skipped} by other speakers skipped")
+        self.stdout.write(f"{sum(map(len, by_topic.values()))} recordings in {len(specs)} topics, {skipped} {self.skipped_label} skipped")
 
-        lecturer = Lecturer.objects.get(code=LECTURER_CODE)
+        lecturer = Lecturer.objects.get(code=self.lecturer_code)
         languages = {code: Language.objects.get(code=code) for code in ("en", "ru")}
         added = failed = duplicates = 0
         for code in codes:

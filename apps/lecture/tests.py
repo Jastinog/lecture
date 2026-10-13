@@ -249,3 +249,44 @@ class DescribeRadhanathFileTests(TestCase):
         self.assertTrue(is_his(yatra + "Mayapur_Yatra_1997_16_Pastimes_at_Ramkeli.mp3"))
         self.assertFalse(is_his(yatra + "2009-10-22_-_Ohe_Vaishnava_Thakur_-_Murari_Hari_Prabhu_ISKCON_Mayapur.mp3"))
         self.assertFalse(is_his(yatra + "2009-10-17_Invite_EU_-_Jayapataka_Sw.mp3"))
+
+
+class DescribeNiranjanaFileTests(TestCase):
+    """import_niranjana names lectures after the archive's filenames."""
+
+    def test_names(self):
+        from apps.lecture.management.commands.import_niranjana import describe
+
+        cases = [
+            ("NRS_SB_01-02-19_Russian_Translation_-_Becoming_Free_from_the_three_Modes_of_Nature_-_2014-06-15_Ukraine.mp3",
+             ("SB 1.2.19 — Becoming Free from the three Modes of Nature", 2014, "Ukraine", "2014-06-15")),
+            ("NRS_CC_Adi_Lila_02-90-92_Russian_Translation_-_2013-05-04_Moscow.mp3",
+             ("CC Adi 2.90–92", 2013, "Moscow", "2013-05-04")),
+            ("NRS_BG_10-04-05_ Hungarian_Translation_-_2014-04-06_Budapest.mp3",
+             ("BG 10.4–5 (with Hungarian translation)", 2014, "Budapest", "2014-04-06")),
+            ("NRS_Various_Chinese_Translation_-_Morning_Talk-Controlling_the_Mind_-_2015-12-16_Taipei.mp3",
+             ("Morning Talk — Controlling the Mind (with Chinese translation)", 2015, "Taipei", "2015-12-16")),
+            ("NRS_SB_04-16-23_-_Real_pleasure_means_Sankirtan_-_89-05-27_US.mp3",
+             ("SB 4.16.23 — Real pleasure means Sankirtan", 1989, "USA", "1989-05-27")),
+            ("NRS_Various_-_Lecture-13_-_1993-07-28_Russian-23_Kiev.mp3",
+             ("Lecture 13, Kiev, 1993-07-28", 1993, "Kiev", "1993-07-28")),
+            ("NRS_SB_-_95-10-03.mp3", ("Srimad-Bhagavatam, 1995-10-03", 1995, "", "1995-10-03")),
+            ("NRS_SB_04-02-24_-_1998-11-20_Part-02.mp3", ("SB 4.2.24 (part 2)", 1998, "", "1998-11-20")),
+            ("NRS_1999_59_10May_SB_4-30-31_Xarikov.mp3", ("SB 4.30.31", 1999, "Kharkov", "1999-05-10")),
+            ("NRS_1998_191_engru_1-20-46.mp3", ("Lecture 191, 1998", 1998, "", "")),
+        ]
+        for filename, expected in cases:
+            with self.subTest(filename):
+                self.assertEqual(describe(filename), expected)
+
+    def test_topics(self):
+        from apps.lecture.management.commands.import_niranjana import ROOT, is_his, topic_for
+
+        self.assertEqual(topic_for(ROOT + "2014/NRS_SB_03-16-19_Russian_Translation_-_2014-04-26_Minsk.mp3")[0], "ru-2014")
+        self.assertEqual(topic_for(ROOT + "2020/NRS_Various_Russian_-_Invoking_Mercy_-_2020-07-20_Mayapur.mp3")[0], "ru-2020")
+        self.assertEqual(topic_for(ROOT + "2018/NRS_Various_-_Talk_given_to_Russian_Devotees_-_2018-12-28_New_York.mp3")[0], "en-2018")
+        self.assertEqual(topic_for(ROOT + "1993/NRS_BG_03-08_-_1993-08-03_Russian_25.mp3")[0], "en-1993")
+        self.assertEqual(topic_for(ROOT + "1990/NRS_Various_-_Kaunas_lecture_-_1990-oct.mp3")[0], "en-1986-1991")
+        self.assertFalse(is_his(ROOT + "2018/NRS_Bhajans_-_Hare_Krishna_Kirtan_-_2018-06-06_Boston.mp3"))
+        self.assertFalse(is_his(ROOT + "2016/NRS_Gauranga_Festival_-_Evening_Kirtan_01_-_2016-06-09.mp3"))
+        self.assertTrue(is_his(ROOT + "2011/NRS_BG_04-14_-_Sunday_Lecture_and_Kirtan_-_2011-03-13.mp3"))
