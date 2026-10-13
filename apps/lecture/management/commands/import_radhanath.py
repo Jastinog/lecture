@@ -1,9 +1,12 @@
 import os
 import re
+import subprocess
+import tempfile
 import threading
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 
+import mutagen
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Max
 
@@ -43,6 +46,8 @@ YEARS = "00_-_Year_wise/"            # Devotional_Nectar_-_1989/ ... one topic a
 YATRAS = "02_-_Yatra/"               # one topic a yatra
 RU_YEARS = "Russian_Translation/Yearwise/"
 RU_PARIKRAMAS = "Russian_Translation/Parikramas/"
+# Shorter files in the archive are broken stubs: a tag and a second of sound.
+MIN_SECONDS = 30
 # Folders where other speakers' talks sit next to his.
 MIXED = (YATRAS, RU_PARIKRAMAS, "00_-_Year_wise/Gita_Nagari_Retreat_")
 
@@ -205,6 +210,17 @@ def is_his(path):
     return bool(HIM.search(name)) or not OTHERS.search(name)
 
 
+def to_mp3(path):
+    """Encodes an audio file as a temporary mp3 (closing deletes it)."""
+    mp3 = tempfile.NamedTemporaryFile(suffix=".mp3")
+    subprocess.run(
+        ["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-i", path, "-codec:a", "libmp3lame", "-b:a", "128k", mp3.name],
+        check=True,
+    )
+    mp3.seek(0)
+    return mp3
+
+
 class Command(BaseCommand):
     help = (
         "Import Radhanath Swami's lectures (originals and Russian translations) from "
@@ -260,6 +276,10 @@ class Command(BaseCommand):
                     if stored is None:
                         duplicates += 1
                         continue
+                    if stored == "short":
+                        failed += 1
+                        self.stdout.write(self.style.WARNING(f"  Skipped {ARCHIVE + path}: under {MIN_SECONDS}s, a broken file"))
+                        continue
                     if isinstance(stored, Exception):
                         failed += 1
                         self.stdout.write(self.style.WARNING(f"  Failed {ARCHIVE + path}: {stored}"))
@@ -296,6 +316,8 @@ class Command(BaseCommand):
         return (date or str(year or ""), natural_key(urllib.parse.unquote(path)))
 
     def transfer(self, topic, path):
+        """Downloads and uploads one recording: its stored fields, None for a
+        duplicate, "short" for a broken stub, or the error."""
         try:
             with fetch_audio(ARCHIVE + path) as audio_file:
                 size = os.path.getsize(audio_file.name)
@@ -303,9 +325,21 @@ class Command(BaseCommand):
                     if size in self.sizes:
                         return None
                     self.sizes.add(size)
-                return store_audio(topic, audio_file)
+                if audio_file.read(4) == b"RIFF":
+                    # A WAV under an .mp3 name: encode it the way the rest are.
+                    with to_mp3(audio_file.name) as mp3:
+                        return self.store(topic, mp3)
+                audio_file.seek(0)
+                return self.store(topic, audio_file)
         except Exception as e:
             return e
+
+    @staticmethod
+    def store(topic, audio_file):
+        audio = mutagen.File(audio_file.name)
+        if audio is not None and audio.info and audio.info.length < MIN_SECONDS:
+            return "short"
+        return store_audio(topic, audio_file)
 
     def update_details(self, topic, paths):
         """Brings imported lectures' titles, places and dates up to date with
