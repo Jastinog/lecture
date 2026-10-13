@@ -401,10 +401,9 @@ class BuildSelectionTests(TestCase):
     def test_files_lectures_by_chapter_and_verse(self):
         gita = self.build()
         self.assertEqual(
-            list(gita.children.values_list("title", flat=True))[:3],
-            ["Introduction", "Chapter 1", "Chapter 2"],
+            list(gita.children.values_list("title", flat=True)),
+            ["Introduction", "Chapter 2", "Chapter 8"],
         )
-        self.assertEqual(gita.children.count(), 19)
         self.assertEqual(self.lectures(gita, "Introduction"), [self.intro.id])
         # Verse first, then year, whatever the language.
         self.assertEqual(
@@ -412,7 +411,6 @@ class BuildSelectionTests(TestCase):
         )
         # A lecture running into the next chapter goes where it starts.
         self.assertEqual(self.lectures(gita, "Chapter 8"), [self.span.id])
-        self.assertEqual(self.lectures(gita, "Chapter 9"), [])
 
     def test_rerun_refills_in_place(self):
         gita = self.build()
@@ -422,7 +420,7 @@ class BuildSelectionTests(TestCase):
         self.later.delete()
         again = self.build()
         self.assertEqual(again.pk, gita.pk)
-        self.assertEqual(Selection.objects.filter(lecturer=self.sp).count(), 20)
+        self.assertEqual(Selection.objects.filter(lecturer=self.sp).count(), 4)
         chapter.refresh_from_db()
         self.assertEqual(chapter.description, "Edited")
         self.assertEqual(self.lectures(again, "Chapter 2"), [self.verse_1.id, self.earlier.id])

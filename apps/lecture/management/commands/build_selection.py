@@ -101,8 +101,11 @@ class Command(BaseCommand):
 
     def build(self, lecturer, title, sections, placed):
         root, _ = Selection.objects.get_or_create(lecturer=lecturer, parent=None, title=title)
-        # A chapter with no lectures yet still gets its place.
+        # Numbered over every chapter, so one getting its first lecture later
+        # falls into place; until then it isn't made.
         for order, (section, description) in enumerate(sections, start=1):
+            if section not in placed:
+                continue
             child, created = Selection.objects.get_or_create(
                 parent=root, title=section,
                 defaults={"lecturer": lecturer, "description": description, "order": order},
