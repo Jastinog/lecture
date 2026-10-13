@@ -1224,6 +1224,17 @@ extension ClassicEmptyState where Actions == EmptyView {
     static var noResults: Self { Self("No Results", message: "Try a different search") }
 }
 
+/// A page that couldn't load, with a button to try again.
+struct LoadFailedState: View {
+    let retry: () async -> Void
+
+    var body: some View {
+        ClassicEmptyState("Couldn’t Load", message: "Check your connection") {
+            Button("Try Again") { Task { await retry() } }.buttonStyle(.classicWhite)
+        }
+    }
+}
+
 // MARK: - Table rows
 
 private struct RowHighlightedKey: EnvironmentKey {

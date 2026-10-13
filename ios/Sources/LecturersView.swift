@@ -182,6 +182,8 @@ struct LecturerView: View {
     @State private var languages: [Language] = []
     /// The topics as fetched per language ("" for all), so switching back is instant.
     @State private var topicsByLanguage: [String: [Topic]] = [:]
+    /// The lecturer's top-level selections, per language like the topics.
+    @State private var selectionsByLanguage: [String: [Selection]] = [:]
     @State private var loading = true
     @State private var failed = false
     @ObservedObject private var choices = LanguageChoiceStore.shared
@@ -264,6 +266,15 @@ struct LecturerView: View {
                 }.plainRow()
             }
 
+            if let selections = selectionsByLanguage[language ?? ""], !selections.isEmpty {
+                Section {
+                    ForEach(selections) { SelectionRow(selection: $0) }
+                        .plainRow()
+                } header: {
+                    PlainSectionHeader(title: "Selections")
+                }
+            }
+
             ForEach(sections, id: \.group) { section in
                 Section {
                     ForEach(section.topics) { TopicRow(topic: $0) }
@@ -281,6 +292,18 @@ struct LecturerView: View {
         .toolbar { NowPlayingToolbarItem() }
         .task { await loadLecturer() }
         .task(id: language) { await loadTopics(language) }
+        .task(id: language) { await loadSelections(language) }
+    }
+
+    /// Fetches the selections in `language` (all for nil), once per language.
+    /// Without them the page is still whole, so a failure just leaves them out.
+    private func loadSelections(_ language: String?) async {
+        let key = language ?? ""
+        guard selectionsByLanguage[key] == nil else { return }
+        let ref = LecturerRef(id: id, name: lecturer?.name ?? fallbackName)
+        if let selections = try? await API.library.selections(lecturer: ref, language: language) {
+            selectionsByLanguage[key] = selections
+        }
     }
 
     private func loadLecturer() async {

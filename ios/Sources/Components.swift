@@ -289,6 +289,7 @@ private struct LibraryDestinations<Content: View>: View {
             .navigationDestination(for: TopicDetail.self) { TopicView(detail: $0).environmentObject(router).classicBackButton() }
             .navigationDestination(for: Lecturer.self) { LecturerView(lecturer: $0).environmentObject(router).classicBackButton() }
             .navigationDestination(for: LecturerRef.self) { LecturerView(ref: $0).environmentObject(router).classicBackButton() }
+            .navigationDestination(for: Selection.self) { SelectionFolderView(selection: $0).environmentObject(router).classicBackButton() }
             .navigationDestination(for: TopicGroup.self) { CatalogView(group: $0).environmentObject(router).classicBackButton() }
             .navigationDestination(for: LecturersRoute.self) { _ in LecturersView().environmentObject(router).classicBackButton() }
             .navigationDestination(for: BrowseRoute.self) { _ in BrowseView().environmentObject(router).classicBackButton() }

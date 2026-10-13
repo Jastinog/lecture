@@ -13,7 +13,14 @@ protocol LibraryProviding {
     func lecturer(id: Int) async throws -> LecturerPage
     /// With `language`, only topics with lectures in it, counted over those.
     func topics(lecturerID: Int, language: String?) async throws -> [Topic]
+    /// A topic's page; for a negative id, the selection it stands for
+    /// (`Selection.topicID`), which plays as a topic.
     func topicPage(id: Int) async throws -> TopicPage
+    /// The lecturer's top-level selections. With `language`, only those with
+    /// lectures in it, counted over those.
+    func selections(lecturer: LecturerRef, language: String?) async throws -> [Selection]
+    /// The selections in a folder selection, narrowed like `selections`.
+    func selections(in folder: Selection, language: String?) async throws -> [Selection]
     /// With `language`, only what has lectures in it.
     func search(_ query: String, language: String?) async throws -> SearchResult
 }

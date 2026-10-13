@@ -18,15 +18,14 @@ struct RemoteLibrary: LibraryProviding {
     func topics(group: TopicGroup?, page: Int, language: String?) async throws -> CatalogPage {
         var query = [URLQueryItem(name: "page", value: String(page))]
         if let group { query.append(URLQueryItem(name: "group", value: group.code)) }
-        if let language { query.append(URLQueryItem(name: "lang", value: language)) }
+        query += lang(language)
         let list = try await get(TopicListDTO.self, "topics/", query: query)
         return CatalogPage(items: list.results.map(\.model), page: list.page,
                            pages: list.pages, count: list.count)
     }
 
     func lecturers(language: String?) async throws -> [Lecturer] {
-        let query = language.map { [URLQueryItem(name: "lang", value: $0)] } ?? []
-        return try await get([LecturerDTO].self, "lecturers/", query: query).map(\.model)
+        try await get([LecturerDTO].self, "lecturers/", query: lang(language)).map(\.model)
     }
 
     func lecturer(id: Int) async throws -> LecturerPage {
@@ -35,17 +34,39 @@ struct RemoteLibrary: LibraryProviding {
     }
 
     func topics(lecturerID: Int, language: String?) async throws -> [Topic] {
-        let query = language.map { [URLQueryItem(name: "lang", value: $0)] } ?? []
-        return try await get([TopicDTO].self, "lecturers/\(lecturerID)/topics/", query: query).map(\.model)
+        try await get([TopicDTO].self, "lecturers/\(lecturerID)/topics/", query: lang(language)).map(\.model)
     }
 
     func topicPage(id: Int) async throws -> TopicPage {
-        try await get(TopicPageDTO.self, "topics/\(id)/").model
+        if id < 0 {
+            // A selection of lectures (`Selection.topicID`): its page has the
+            // topic page's shape.
+            let dto = try await get(TopicPageDTO.self, "selections/\(-id)/")
+            return dto.model(id: id, title: Selection.trail((dto.path ?? []).map(\.title) + [dto.title]))
+        }
+        return try await get(TopicPageDTO.self, "topics/\(id)/").model()
+    }
+
+    func selections(lecturer: LecturerRef, language: String?) async throws -> [Selection] {
+        // The cards don't name the lecturer: they're all theirs.
+        try await get([SelectionDTO].self, "lecturers/\(lecturer.id)/selections/", query: lang(language))
+            .map { $0.model(lecturer: lecturer, within: nil) }
+    }
+
+    func selections(in folder: Selection, language: String?) async throws -> [Selection] {
+        let page = try await get(SelectionChildrenDTO.self, "selections/\(folder.id)/", query: lang(language))
+        let within = Selection.trail([folder.within, folder.title])
+        return page.children.map { $0.model(lecturer: folder.lecturer, within: within) }
+    }
+
+    /// `?lang=` for `language`, nothing for every language.
+    private func lang(_ language: String?) -> [URLQueryItem] {
+        language.map { [URLQueryItem(name: "lang", value: $0)] } ?? []
     }
 
     func search(_ query: String, language: String?) async throws -> SearchResult {
         var items = [URLQueryItem(name: "q", value: query)]
-        if let language { items.append(URLQueryItem(name: "lang", value: language)) }
+        items += lang(language)
         let found = try await get(SearchDTO.self, "search/", query: items)
         return SearchResult(
             lecturers: found.lecturers.map(\.model),
@@ -189,8 +210,13 @@ private struct TopicPageDTO: Decodable {
     let createdAt: String?
     let lectures: [LectureDTO]
     let related: [TopicDTO]
+    /// Only on a selection's page: the selections it sits in, outermost first.
+    let path: [PathDTO]?
 
-    var model: TopicPage {
+    /// The page, under `id` and `title` when it stands for something else (a
+    /// selection, under its topic id and with the book it's from).
+    func model(id: Int? = nil, title: String? = nil) -> TopicPage {
+        let id = id ?? self.id, title = title ?? self.title
         let lecturer = lecturer.model
         let summary = Topic(id: id, title: title, coverURL: coverUrl, lecturer: lecturer.ref,
                             group: group?.model, languages: languages.map(\.code),
@@ -214,6 +240,38 @@ private struct TopicPageDTO: Decodable {
         let trimmed = string.replacingOccurrences(of: #"\.\d+"#, with: "", options: .regularExpression)
         return ISO8601DateFormatter().date(from: trimmed)
     }
+}
+
+private struct PathDTO: Decodable {
+    let id: Int
+    let title: String
+}
+
+/// A selection's card (`lecturers/<id>/selections/`, a page's `children`).
+private struct SelectionDTO: Decodable {
+    let id: Int
+    let title: String
+    let coverUrl: URL?
+    let about: String?
+    let holds: String
+    let childrenCount: Int
+    let lecturesCount: Int
+    let duration: Double
+    let languages: [String]
+
+    func model(lecturer: LecturerRef, within: String?) -> Selection {
+        Selection(id: id, title: title, coverURL: coverUrl, lecturer: lecturer,
+                  about: about?.isEmpty == false ? about : nil,
+                  holdsSelections: holds == "selections", childrenCount: childrenCount,
+                  lecturesCount: lecturesCount, duration: duration, languages: languages,
+                  within: within)
+    }
+}
+
+/// `GET selections/<id>/` read as a folder: just the selections in it (the
+/// folder's own card is the one it was opened from).
+private struct SelectionChildrenDTO: Decodable {
+    let children: [SelectionDTO]
 }
 
 private struct SearchDTO: Decodable {

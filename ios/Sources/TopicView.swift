@@ -41,9 +41,7 @@ struct TopicView: View {
             } else if let page {
                 content(page)
             } else if failed {
-                ClassicEmptyState("Couldn’t Load", message: "Check your connection") {
-                    Button("Try Again") { Task { await load() } }.buttonStyle(.classicWhite)
-                }
+                LoadFailedState { await load() }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

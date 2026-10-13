@@ -76,6 +76,47 @@ struct Topic: Identifiable, Hashable, Codable {
     var about: String? = nil
 }
 
+/// A lecturer's own grouping of their lectures across topics (the backend's
+/// selection): either a folder of further selections (the Bhagavad-gita's
+/// chapters) or a list of lectures, which the app opens and plays as a topic.
+struct Selection: Identifiable, Hashable {
+    /// The backend's id.
+    let id: Int
+    let title: String
+    var coverURL: URL? = nil
+    var lecturer: LecturerRef
+    var about: String? = nil
+    /// True for a folder of selections, false for a list of lectures.
+    var holdsSelections = false
+    var childrenCount = 0
+    /// Every lecture in it, nested ones included.
+    var lecturesCount = 0
+    var duration: Double = 0
+    var languages: [String] = []
+    /// The selections it sits in, as a title prefix ("Bhagavad-gita"), so a
+    /// chapter opened as a topic says which book it's from.
+    var within: String? = nil
+
+    /// The id it goes by as a topic. Negative, so progress, history, the shelf
+    /// and downloads, all kept by topic id, never mix one up with a topic (the
+    /// backend's are positive). `RemoteLibrary.topicPage` turns it back; the
+    /// rest of the app needn't know, as long as it reaches the backend for a
+    /// topic only through `TopicCache`.
+    var topicID: Int { -id }
+
+    /// "Bhagavad-gita · Chapter 2": a selection's title after the ones it sits in.
+    static func trail(_ titles: [String?]) -> String {
+        titles.compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// A list of lectures as the topic it opens as.
+    var asTopic: Topic {
+        Topic(id: topicID, title: Self.trail([within, title]),
+              coverURL: coverURL, lecturer: lecturer, languages: languages,
+              lecturesCount: lecturesCount, duration: duration, about: about)
+    }
+}
+
 /// A single recording in a topic.
 struct Lecture: Identifiable, Hashable, Codable {
     let id: Int

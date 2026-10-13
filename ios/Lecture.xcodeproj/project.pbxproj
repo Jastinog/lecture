@@ -28,6 +28,7 @@
 		8242CDA19CF7948F1464F5AF /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C3533AF886C47660B43CA2 /* Theme.swift */; };
 		93E281682ECF18D21F766639 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742CF1C4F4AD3343F0EAFC21 /* Persistence.swift */; };
 		97863B54539F30BEAD1B5FCB /* SwipeRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = D081BFAD756848BAE0FAC20E /* SwipeRows.swift */; };
+		A2DEBE9E234B6D0EE33BD312 /* SelectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4383331DE843ADF7967D485 /* SelectionsView.swift */; };
 		A5A3C069A4D1707905F4E05A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06303A36682078BBBC0D5577 /* HistoryView.swift */; };
 		B8ED2BD10925245EC8ADC634 /* LecturersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9D59FA609459A1BC27331E4 /* LecturersView.swift */; };
 		C05AB8DAB60EB1B3BC797A9A /* Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2588FAFE38DDC6B721F515E6 /* Library.swift */; };
@@ -70,6 +71,7 @@
 		CB72ADE053EA3FFC5933E556 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D081BFAD756848BAE0FAC20E /* SwipeRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeRows.swift; sourceTree = "<group>"; };
 		D08C68F858A8373B7AA101B1 /* Shelf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shelf.swift; sourceTree = "<group>"; };
+		D4383331DE843ADF7967D485 /* SelectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionsView.swift; sourceTree = "<group>"; };
 		DC8B4E5A4388E24C44506CD7 /* TopicView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicView.swift; sourceTree = "<group>"; };
 		DDA9EB5E8783ED1284F751A6 /* PlayerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerViews.swift; sourceTree = "<group>"; };
 		E218CCAC223ADB0DFD715D34 /* Chrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chrome.swift; sourceTree = "<group>"; };
@@ -146,6 +148,7 @@
 				DDA9EB5E8783ED1284F751A6 /* PlayerViews.swift */,
 				CB72ADE053EA3FFC5933E556 /* PrivacyInfo.xcprivacy */,
 				96390247652C03F599484CF8 /* SearchView.swift */,
+				D4383331DE843ADF7967D485 /* SelectionsView.swift */,
 				2017493E0524D3385E3169E7 /* SettingsView.swift */,
 				D08C68F858A8373B7AA101B1 /* Shelf.swift */,
 				DC8B4E5A4388E24C44506CD7 /* TopicView.swift */,
@@ -250,6 +253,7 @@
 				2D8D0CA6B8A852537BCCEF53 /* Refresh.swift in Sources */,
 				E3050B28E337144FC9C25F75 /* RemoteLibrary.swift in Sources */,
 				D2B4CA8F8F2EBD4C483149AF /* SearchView.swift in Sources */,
+				A2DEBE9E234B6D0EE33BD312 /* SelectionsView.swift in Sources */,
 				0A1EB829A26173AAF44FCD61 /* SettingsView.swift in Sources */,
 				27F645A85CD3242F5A9E5B93 /* Shelf.swift in Sources */,
 				97863B54539F30BEAD1B5FCB /* SwipeRows.swift in Sources */,
