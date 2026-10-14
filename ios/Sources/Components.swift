@@ -61,7 +61,7 @@ struct CoverImage: View {
     /// Portrait cover sized from its width (≈7:10, like the site). Pass `hiRes` for
     /// large covers (the detail hero) to pull the full-resolution original with a
     /// graceful fallback; lists keep the lightweight embedded thumb.
-    init(url: URL?, width: CGFloat, corner: CGFloat = 8, hiRes: Bool = false) {
+    init(url: URL?, width: CGFloat, corner: CGFloat = 0, hiRes: Bool = false) {
         self.urls = url.map { [$0] } ?? []
         self.width = width
         self.height = CoverAspect.height(forWidth: width)
@@ -347,8 +347,8 @@ struct MediaRow<Detail: View>: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            CoverImage(url: coverURL, width: RowMetrics.coverWidth, corner: 0)
-                .bookCover()
+            CoverImage(url: coverURL, width: RowMetrics.coverWidth)
+                .coverShadow()
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.rowTitle)
@@ -446,8 +446,8 @@ struct TopicRow: View {
     var body: some View {
         RowLink(value: topic) {
             HStack(alignment: .top, spacing: 12) {
-                CoverImage(url: topic.coverURL, width: RowMetrics.coverWidth, corner: 0)
-                    .bookCover()
+                CoverImage(url: topic.coverURL, width: RowMetrics.coverWidth)
+                    .coverShadow()
                     // The title is read out next to it.
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {

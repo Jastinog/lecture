@@ -176,8 +176,8 @@ private struct ContinueRow: View {
                 Button { router.push(summary) } label: {
                     HStack(alignment: .top, spacing: 12) {
                         CoverImage(url: summary.coverURL,
-                                   width: RowMetrics.coverWidth, corner: 0)
-                            .bookCover()
+                                   width: RowMetrics.coverWidth)
+                            .coverShadow()
                         VStack(alignment: .leading, spacing: 3) {
                             Text(item.title)
                                 .font(.rowTitle)

@@ -388,9 +388,9 @@ private struct ShelfTopicView: View {
     @ObservedObject private var shelf = ShelfStore.shared
 
     var body: some View {
-        CoverImage(url: item.summary.coverURL, width: width, corner: 0)
+        CoverImage(url: item.summary.coverURL, width: width)
             .overlay { if ribbon { sash } }
-            .bookCover()
+            .coverShadow()
             .contentShape(Rectangle())
             .onTapGesture { router.push(item.summary) }
             .onLongPressGesture(minimumDuration: 0.5) { showActions() }

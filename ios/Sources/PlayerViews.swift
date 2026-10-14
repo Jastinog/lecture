@@ -246,8 +246,8 @@ struct NowPlayingView: View {
     private var cover: some View {
         GeometryReader { geo in
             let width = max(60, min((geo.size.height - 36) * CoverAspect.ratio, geo.size.width - 80))
-            CoverImage(url: player.topic?.coverURL, width: width, corner: 0, hiRes: true)
-                .bookCover()
+            CoverImage(url: player.topic?.coverURL, width: width, hiRes: true)
+                .coverShadow()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(LinenBackground())

@@ -306,8 +306,8 @@ private struct TopicPageHead<Buttons: View>: View {
         let topic = page.detail
         VStack(spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
-                CoverImage(url: cover, width: TopicPageMetrics.coverWidth, corner: 0, hiRes: true)
-                    .bookCover()
+                CoverImage(url: cover, width: TopicPageMetrics.coverWidth, hiRes: true)
+                    .coverShadow()
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(topic.title)
@@ -455,8 +455,8 @@ private struct RelatedCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            CoverImage(url: topic.coverURL, width: RowMetrics.coverWidth, corner: 0)
-                .bookCover()
+            CoverImage(url: topic.coverURL, width: RowMetrics.coverWidth)
+                .coverShadow()
                 .padding(.bottom, 4)
             Text(topic.title)
                 .font(.helvetica(12, weight: .bold))
