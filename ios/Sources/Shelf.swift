@@ -247,8 +247,10 @@ struct ShelfView: View {
         return List {
             ForEach(sections, id: \.status) { section in
                 Section {
-                    ForEach(section.topics) { item in TopicRow(topic: item.summary) }
-                        .plainRow()
+                    ForEach(section.topics.indexed, id: \.element.id) { i, item in
+                        TopicRow(topic: item.summary).zebraRow(i)
+                    }
+                    .plainRow()
                 } header: {
                     if filter == .all { PlainSectionHeader(title: section.status.title) }
                 }

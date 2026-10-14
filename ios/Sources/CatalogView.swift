@@ -100,13 +100,15 @@ struct CatalogView: View {
                         ErrorRetryRow(message: error) { vm.reload() }
                     }
 
-                    ForEach(vm.items) { topic in
+                    ForEach(vm.items.indexed, id: \.element.id) { i, topic in
                         TopicRow(topic: topic)
+                            .zebraRow(i)
                             .onAppear { if topic.id == vm.items.last?.id { vm.loadMore() } }
                     }
 
                     PagingFooter(loading: vm.loadingMore, canLoadMore: vm.canLoadMore && !vm.items.isEmpty,
                                  loadMore: vm.loadMore)
+                        .zebraRow(vm.items.count)
                 }
                 .plainRow()
             }

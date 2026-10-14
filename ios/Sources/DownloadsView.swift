@@ -17,12 +17,13 @@ struct DownloadsView: View {
             }
             ForEach(sections, id: \.topic.id) { section in
                 Section {
-                    ForEach(section.lectures, id: \.lecture.id) { item in
+                    ForEach(section.lectures.indexed, id: \.element.lecture.id) { row, item in
                         DownloadedLectureRow(topic: section.topic, lecture: item.lecture, index: item.index,
                                              live: live) { play(item.index, of: section.topic) }
                             .classicSwipeButton(id: "\(section.topic.id)-\(item.lecture.id)") {
                                 dl.deleteLecture(topicID: section.topic.id, lectureID: item.lecture.id)
                             }
+                            .trackRow(row)
                     }
                     .plainRow()
                 } header: {
@@ -136,6 +137,7 @@ private struct DownloadedLectureRow: View {
                 .accessibilityValue("\(Int(progress * 100))%")
             }
         }
+        .nestedRowBackground()
     }
 
     private var isCurrent: Bool { player.topic?.id == topic.id && player.currentLecture?.id == lecture.id }

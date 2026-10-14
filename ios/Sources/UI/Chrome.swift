@@ -1250,49 +1250,80 @@ extension EnvironmentValues {
     }
 }
 
-private struct TrackIndexKey: EnvironmentKey {
-    static let defaultValue: Int? = nil
+/// A row's stripe in a list ruled as Music's: its place, for the alternating
+/// greys, and whether a numbered column is ruled off.
+struct RowStripe: Equatable {
+    let index: Int
+    var numbered = false
+}
+
+private struct RowStripeKey: EnvironmentKey {
+    static let defaultValue: RowStripe? = nil
 }
 
 extension EnvironmentValues {
-    /// The row's place in a track list (see `trackRow`), nil elsewhere.
-    var trackIndex: Int? {
-        get { self[TrackIndexKey.self] }
-        set { self[TrackIndexKey.self] = newValue }
+    /// The row's stripe (see `zebraRow`, `trackRow`), nil outside a list.
+    var rowStripe: RowStripe? {
+        get { self[RowStripeKey.self] }
+        set { self[RowStripeKey.self] = newValue }
     }
 }
 
 extension View {
-    /// A row of a track list, ruled as Music listed an album's songs: greys
-    /// alternating row by row, a line between rows and one after the number
-    /// column (`LectureNumber`). `index` is the row's place in the list. For
-    /// `RowLink` and `RowButton` rows, which paint the background.
+    /// A list row ruled as Music's lists: greys alternating row by row, a light
+    /// line along each row's top and a dark one along its bottom, whatever the
+    /// theme. `index` is the row's place in its section. `RowLink`, `RowButton`
+    /// and `nestedRowBackground` rows paint it themselves; any other row paints
+    /// it with `zebraBackground`.
+    func zebraRow(_ index: Int) -> some View {
+        environment(\.rowStripe, RowStripe(index: index))
+            .listRowSeparator(.hidden)
+    }
+
+    /// A row of a track list: a zebra row with a line after the number column
+    /// (`LectureNumber`), as Music listed an album's songs.
     func trackRow(_ index: Int) -> some View {
-        environment(\.trackIndex, index)
+        environment(\.rowStripe, RowStripe(index: index, numbered: true))
+            .listRowSeparator(.hidden)
+    }
+
+    /// The zebra ground for a row that isn't a button (a note, a spinner).
+    func zebraBackground(_ index: Int) -> some View {
+        listRowBackground(ZebraRowBackground(stripe: RowStripe(index: index)))
             .listRowSeparator(.hidden)
     }
 }
 
-/// A track-list row's ground: its grey, a light line along the top and a dark
-/// one along the bottom, and the same pair down the side of the number column.
-struct TrackRowBackground: View {
-    let index: Int
+extension RandomAccessCollection {
+    /// The elements with their places, for `ForEach` over zebra rows.
+    var indexed: [(offset: Int, element: Element)] { Array(enumerated()) }
+}
+
+/// A zebra row's ground: its grey, a light line along the top and a dark one
+/// along the bottom, and in a track list the same pair down the side of the
+/// number column.
+struct ZebraRowBackground: View {
+    let stripe: RowStripe
     @ScaledMetric(relativeTo: .callout) private var numberWidth = RowMetrics.trackNumberWidth
     @Environment(\.displayScale) private var scale
 
     var body: some View {
         let line = 1 / scale
-        (index.isMultiple(of: 2) ? Palette.trackRow : Palette.trackRowAlternate)
+        (stripe.index.isMultiple(of: 2) ? Palette.trackRow : Palette.trackRowAlternate)
             .overlay(alignment: .top) { Palette.trackRuleHighlight.frame(height: line) }
             .overlay(alignment: .bottom) { Palette.trackRule.frame(height: line) }
             .overlay(alignment: .leading) {
-                HStack(spacing: 0) {
-                    Palette.trackRule.frame(width: line)
-                    Palette.trackRuleHighlight.frame(width: line)
+                if stripe.numbered {
+                    HStack(spacing: 0) {
+                        Palette.trackRule.frame(width: line)
+                        Palette.trackRuleHighlight.frame(width: line)
+                    }
+                    // Halfway across the gap between the number and the title.
+                    .padding(.leading, RowMetrics.margin + numberWidth + 5)
                 }
-                // Halfway across the gap between the number and the title.
-                .padding(.leading, RowMetrics.margin + numberWidth + 5)
             }
+            // The greys of the back of the player, in either theme.
+            .environment(\.colorScheme, .light)
     }
 }
 
@@ -1337,13 +1368,13 @@ private struct RowDisclosure: View {
 }
 
 /// UIKit's blue selection gradient as a row background, else the plain cell
-/// or, in a track list, the ruled grey.
-private func rowBackground(_ on: Bool, track: Int?) -> some View {
+/// or, in a zebra list, the ruled grey.
+private func rowBackground(_ on: Bool, track: RowStripe?) -> some View {
     Group {
         if on {
             Image.classic("Selection").resizable()
         } else if let track {
-            TrackRowBackground(index: track)
+            ZebraRowBackground(stripe: track)
         } else {
             Palette.cell
         }
@@ -1360,7 +1391,7 @@ extension View {
 }
 
 private struct NestedRowBackground: ViewModifier {
-    @Environment(\.trackIndex) private var track
+    @Environment(\.rowStripe) private var track
     @State private var on = false
 
     func body(content: Content) -> some View {
@@ -1380,7 +1411,7 @@ struct RowLink<Label: View>: View {
 
     @EnvironmentObject private var router: NavRouter
     @State private var pressed = false
-    @Environment(\.trackIndex) private var track
+    @Environment(\.rowStripe) private var track
     /// Set when a long press fires, so letting go doesn't also open the row.
     @State private var longPressed = false
     /// Held after the push; cleared once the stack is back at `depth`.
@@ -1439,7 +1470,7 @@ struct RowButton<Label: View>: View {
     let action: () -> Void
     @ViewBuilder var label: Label
     @State private var pressed = false
-    @Environment(\.trackIndex) private var track
+    @Environment(\.rowStripe) private var track
 
     init(disclosure: Bool = false, action: @escaping () -> Void, @ViewBuilder label: () -> Label) {
         self.disclosure = disclosure

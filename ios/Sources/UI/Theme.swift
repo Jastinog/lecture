@@ -298,8 +298,9 @@ enum Texture {
 // MARK: - Screen and row styling
 
 extension View {
-    /// White (dark grey) backdrop for plain lists (catalog, history, search…). Apply to the
-    /// screen's root list.
+    /// White backdrop for plain lists (catalog, history, search…), whose rows
+    /// are zebra-striped (`zebraRow`) as the back of the player's are, light
+    /// in either theme. Apply to the screen's root list.
     /// Section bands sit flush against each other and the bar, as in iOS 6.
     ///
     /// Below the last row the hairlines carry on to the foot of the screen,
@@ -310,6 +311,7 @@ extension View {
             .scrollContentBackground(.hidden)
             .modifier(EmptyRowLines(pitch: emptyRowHeight))
             .background(Palette.cell.ignoresSafeArea())
+            .environment(\.colorScheme, .light)
     }
 
     @ViewBuilder

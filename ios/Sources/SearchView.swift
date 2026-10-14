@@ -84,8 +84,9 @@ struct SearchView: View {
 
             if !result.lecturers.isEmpty {
                 Section {
-                    ForEach(result.lecturers) { lecturer in
+                    ForEach(result.lecturers.indexed, id: \.element.id) { i, lecturer in
                         RowLink(value: lecturer) { LecturerRow(lecturer: lecturer) }
+                            .zebraRow(i)
                     }
                     .plainRow()
                 } header: {
@@ -95,8 +96,10 @@ struct SearchView: View {
 
             if !result.topics.isEmpty {
                 Section {
-                    ForEach(result.topics) { TopicRow(topic: $0) }
-                        .plainRow()
+                    ForEach(result.topics.indexed, id: \.element.id) { i, topic in
+                        TopicRow(topic: topic).zebraRow(i)
+                    }
+                    .plainRow()
                 } header: {
                     PlainSectionHeader(title: String(localized: "Topics"))
                 }
@@ -104,8 +107,9 @@ struct SearchView: View {
 
             if !result.lectures.isEmpty {
                 Section {
-                    ForEach(result.lectures) { hit in
+                    ForEach(result.lectures.indexed, id: \.element.id) { i, hit in
                         RowButton(action: { play(hit) }) { LectureHitRow(hit: hit, loading: starting == hit.id) }
+                            .zebraRow(i)
                     }
                     .plainRow()
                 } header: {
@@ -166,7 +170,7 @@ struct SearchView: View {
 
     private var recentSection: some View {
         Section {
-            ForEach(history.list.items, id: \.self) { q in
+            ForEach(history.list.items.indexed, id: \.element) { i, q in
                 RowButton(action: { vm.query = q }) {
                     Text(q)
                         .font(.rowLabel)
@@ -174,6 +178,7 @@ struct SearchView: View {
                         .lineLimit(1)
                 }
                 .classicSwipeButton(id: q) { history.remove(q) }
+                .zebraRow(i)
             }
             .plainRow()
         } header: {

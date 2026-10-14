@@ -56,7 +56,9 @@ struct HomeView: View {
 
             if !unfinished.isEmpty {
                 Section {
-                    ForEach(unfinished) { ContinueRow(item: $0) }
+                    ForEach(unfinished.indexed, id: \.element.id) { i, item in
+                        ContinueRow(item: item).zebraBackground(i)
+                    }
                 } header: {
                     PlainSectionHeader(title: String(localized: "Continue"))
                 }
@@ -65,6 +67,7 @@ struct HomeView: View {
             if let hit = model.feed?.lectureOfTheDay {
                 Section {
                     LectureOfTheDayRow(hit: hit)
+                        .zebraBackground(0)
                 } header: {
                     PlainSectionHeader(title: String(localized: "Lecture of the Day"))
                 }
@@ -73,8 +76,10 @@ struct HomeView: View {
             if let feed = model.feed {
                 if !feed.trending.isEmpty {
                     Section {
-                        ForEach(feed.trending) { TopicRow(topic: $0) }
-                            .plainRow()
+                        ForEach(feed.trending.indexed, id: \.element.id) { i, topic in
+                            TopicRow(topic: topic).zebraRow(i)
+                        }
+                        .plainRow()
                     } header: {
                         PlainSectionHeader(title: String(localized: "Trending"))
                     }
@@ -82,13 +87,16 @@ struct HomeView: View {
                 if !feed.newTopics.isEmpty {
                     Section {
                         Group {
-                            ForEach(feed.newTopics) { TopicRow(topic: $0) }
+                            ForEach(feed.newTopics.indexed, id: \.element.id) { i, topic in
+                                TopicRow(topic: topic).zebraRow(i)
+                            }
                             RowLink(value: NewTopicsRoute()) {
                                 Text("All New Topics")
                                     .font(.groupedLabel)
                                     .rowForeground(Palette.text)
                                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                             }
+                            .zebraRow(feed.newTopics.count)
                         }
                         .plainRow()
                     } header: {
@@ -97,8 +105,10 @@ struct HomeView: View {
                 }
                 if !feed.selections.isEmpty {
                     Section {
-                        ForEach(feed.selections) { SelectionRow(selection: $0, showsLecturer: true) }
-                            .plainRow()
+                        ForEach(feed.selections.indexed, id: \.element.id) { i, selection in
+                            SelectionRow(selection: selection, showsLecturer: true).zebraRow(i)
+                        }
+                        .plainRow()
                     } header: {
                         PlainSectionHeader(title: String(localized: "Selections"))
                     }

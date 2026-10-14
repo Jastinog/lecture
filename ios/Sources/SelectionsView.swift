@@ -56,8 +56,10 @@ struct SelectionFolderView: View {
 
     var body: some View {
         List {
-            ForEach(children ?? []) { SelectionRow(selection: $0) }
-                .plainRow()
+            ForEach((children ?? []).indexed, id: \.element.id) { i, selection in
+                SelectionRow(selection: selection).zebraRow(i)
+            }
+            .plainRow()
         }
         .listStyle(.plain)
         .plainBackground(emptyRowHeight: RowMetrics.bookRowHeight)

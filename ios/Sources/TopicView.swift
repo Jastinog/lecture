@@ -110,8 +110,10 @@ struct TopicView: View {
                 RowLink(value: page.lecturer ?? Lecturer(id: page.summary.lecturer.id, name: page.summary.lecturer.name)) {
                     FieldRow(label: String(localized: "lecturer", comment: "Topic information label"), value: page.summary.lecturer.name)
                 }
-                ForEach(information(page), id: \.label) { field in
+                .zebraRow(0)
+                ForEach(information(page).indexed, id: \.element.label) { i, field in
                     FieldRow(label: field.label, value: field.value, lines: 6)
+                        .zebraBackground(i + 1)
                 }
             }
             .plainRow()
@@ -514,7 +516,7 @@ enum LecturePlayed {
 
 /// A lecture's number in a track list, or the blue speaker on the one that's
 /// playing, centred in a column that widens with the text size so "100" never
-/// truncates. `TrackRowBackground` rules the column off.
+/// truncates. `ZebraRowBackground` rules the column off.
 struct LectureNumber: View {
     let index: Int
     let isCurrent: Bool

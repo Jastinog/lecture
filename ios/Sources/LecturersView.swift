@@ -77,11 +77,12 @@ struct LecturersView: View {
 
             if !pins.items.isEmpty {
                 Section {
-                    ForEach(pins.items) { pin in
+                    ForEach(pins.items.indexed, id: \.element.id) { i, pin in
                         RowLink(value: pin.ref) { PersonRow(name: pin.name, photo: pin.photoURL) }
                             .classicSwipeButton(String(localized: "Unpin"), id: "pin\(pin.id)", tint: .blue) {
                                 pins.unpin(id: pin.id)
                             }
+                            .zebraRow(i)
                     }
                     .plainRow()
                 } header: {
@@ -99,12 +100,13 @@ struct LecturersView: View {
                 let lecturers = vm.items.filter { $0.level == level }
                 if !lecturers.isEmpty {
                     Section {
-                        ForEach(lecturers) { lecturer in
+                        ForEach(lecturers.indexed, id: \.element.id) { i, lecturer in
                             RowLink(value: lecturer) { LecturerRow(lecturer: lecturer) }
                                 .classicSwipeButton(pins.isPinned(lecturer.id) ? String(localized: "Unpin") : String(localized: "Pin"),
                                                     id: lecturer.id, tint: .blue) {
                                     pins.toggle(lecturer)
                                 }
+                                .zebraRow(i)
                         }
                         .plainRow()
                     } header: {
@@ -274,8 +276,10 @@ struct LecturerView: View {
 
             if let selections = selectionsByLanguage[language ?? ""], !selections.isEmpty {
                 Section {
-                    ForEach(selections) { SelectionRow(selection: $0) }
-                        .plainRow()
+                    ForEach(selections.indexed, id: \.element.id) { i, selection in
+                        SelectionRow(selection: selection).zebraRow(i)
+                    }
+                    .plainRow()
                 } header: {
                     PlainSectionHeader(title: String(localized: "Selections"))
                 }
@@ -283,8 +287,10 @@ struct LecturerView: View {
 
             ForEach(sections, id: \.group) { section in
                 Section {
-                    ForEach(section.topics) { TopicRow(topic: $0) }
-                        .plainRow()
+                    ForEach(section.topics.indexed, id: \.element.id) { i, topic in
+                        TopicRow(topic: topic).zebraRow(i)
+                    }
+                    .plainRow()
                 } header: {
                     PlainSectionHeader(title: section.group)
                 }

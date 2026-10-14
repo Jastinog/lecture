@@ -38,8 +38,10 @@ struct ListeningCalendarView: View {
             List {
                 ForEach(days, id: \.self) { day in
                     Section {
-                        ForEach(log.entries(on: day)) { ListeningEntryRow(entry: $0) }
-                            .plainRow()
+                        ForEach(log.entries(on: day).indexed, id: \.element.id) { i, entry in
+                            ListeningEntryRow(entry: entry).zebraRow(i)
+                        }
+                        .plainRow()
                     } header: {
                         PlainSectionHeader(title: dayTitle(day))
                     }

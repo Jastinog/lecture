@@ -12,9 +12,10 @@ struct HistoryView: View {
             }
             ForEach(days, id: \.title) { day in
                 Section {
-                    ForEach(day.items) { item in
+                    ForEach(day.items.indexed, id: \.element.id) { i, item in
                         TopicRow(topic: item.summary)
                             .classicSwipeButton(id: item.id) { recents.remove(id: item.id) }
+                            .zebraRow(i)
                     }
                     .plainRow()
                 } header: {
