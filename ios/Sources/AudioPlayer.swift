@@ -40,8 +40,34 @@ enum ProgressStore {
     @MainActor
     static func save(topicID: Int, index: Int, lectureID: Int?, time: Double, fraction: Double) {
         var all = load()
-        all[String(topicID)] = Entry(index: index, time: time, fraction: fraction,
-                                    savedAt: Date().timeIntervalSince1970, lectureID: lectureID)
+        let entry = Entry(index: index, time: time, fraction: fraction,
+                          savedAt: Date().timeIntervalSince1970, lectureID: lectureID)
+        all[String(topicID)] = entry
+        write(all)
+        SyncEngine.shared.progressSaved(topicID: topicID, entry: entry)
+    }
+
+    /// Positions from the listener's other devices (nil removes one); not
+    /// synced back.
+    @MainActor
+    static func apply(_ changes: [Int: Entry?]) {
+        guard !changes.isEmpty else { return }
+        var all = load()
+        for (topicID, entry) in changes { all[String(topicID)] = entry }
+        write(all)
+    }
+
+    /// Every position, by topic id.
+    @MainActor
+    static func all() -> [Int: Entry] {
+        Dictionary(uniqueKeysWithValues: load().compactMap { key, entry in Int(key).map { ($0, entry) } })
+    }
+
+    /// Saves `all`, the oldest past `maxEntries` dropped (here only: that's
+    /// room on this phone, not a removal for the others).
+    @MainActor
+    private static func write(_ all: [String: Entry]) {
+        var all = all
         if all.count > maxEntries {
             let oldest = all.sorted { ($0.value.savedAt ?? 0) < ($1.value.savedAt ?? 0) }
                 .prefix(all.count - maxEntries)
@@ -68,11 +94,13 @@ enum ProgressStore {
         guard all.removeValue(forKey: String(topicID)) != nil else { return }
         cache = all
         Store.save(all, version: version, to: file)
+        SyncEngine.shared.progressRemoved(topicIDs: [topicID])
     }
 
     /// Forget every position.
     @MainActor
     static func removeAll() {
+        SyncEngine.shared.progressRemoved(topicIDs: load().keys.compactMap { Int($0) })
         cache = [:]
         Store.save([String: Entry](), version: version, to: file)
     }
@@ -138,12 +166,30 @@ final class RecentsStore: ObservableObject {
         if topChanged || time - lastPersist > 30 {
             lastPersist = time
             persist()
+            SyncEngine.shared.historyRecorded(entry)
         }
     }
 
     func remove(id: Int) {
         items.removeAll { $0.id == id }
         ProgressStore.remove(topicID: id)   // forget the resume point too — stay consistent
+        persist()
+        SyncEngine.shared.historyRemoved(topicIDs: [id])
+    }
+
+    /// Topics played or removed on the listener's other devices; not synced
+    /// back. Every fraction is read again, as their positions may have come
+    /// with them.
+    func apply(recorded: [RecentTopic], removed: Set<Int>) {
+        let replaced = removed.union(recorded.map(\.id))
+        var all = items.filter { !replaced.contains($0.id) } + recorded
+        all.sort { $0.updatedAt > $1.updatedAt }
+        for i in all.indices {
+            all[i].fraction = min(max(ProgressStore.entry(topicID: all[i].id)?.fraction ?? 0, 0), 1)
+        }
+        let merged = Array(all.prefix(maxItems))
+        guard merged != items else { return }
+        items = merged
         persist()
     }
 
@@ -152,6 +198,7 @@ final class RecentsStore: ObservableObject {
     /// (`ShelfStore`) is intentionally left alone — it's a deliberate user list,
     /// not a byproduct of playback.
     func clear() {
+        SyncEngine.shared.historyRemoved(topicIDs: items.map(\.id))
         ProgressStore.removeAll()
         ListeningLog.shared.clear()
         items = []
@@ -588,8 +635,10 @@ final class AudioPlayer: ObservableObject {
         isBuffering = false
         pausedAt = Date()
         updateNowPlaying()
-        // Save right away so pausing and leaving the app never loses the spot.
+        // Save right away so pausing and leaving the app never loses the spot,
+        // and let the listener's other devices know.
         persistProgress()
+        SyncEngine.shared.sync()
     }
 
     /// Fully stop playback and clear the current topic, so the mini player is

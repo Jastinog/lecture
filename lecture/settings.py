@@ -111,9 +111,13 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (),
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "UNAUTHENTICATED_USER": None,
-    # Plays (per listener, or per address without one) and registrations (per
-    # address) are throttled; the catalog is read-only.
-    "DEFAULT_THROTTLE_RATES": {"plays": "120/hour", "listeners": "10/hour"},
+    # Plays and registrations are throttled per address, syncs per listener;
+    # the catalog is read-only.
+    "DEFAULT_THROTTLE_RATES": {
+        "plays": "120/hour",
+        "listeners": "10/hour",
+        "sync": "600/hour",
+    },
     # nginx adds the client to X-Forwarded-For: throttle by that, not by nginx.
     "NUM_PROXIES": env.int("NUM_PROXIES", default=1),
 }

@@ -83,6 +83,7 @@ struct RootView: View {
     @StateObject private var player = AudioPlayer.shared
     @ObservedObject private var tabBar = TabBarVisibility.shared
     @State private var selection: SidebarTab = .home
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         content
@@ -91,9 +92,19 @@ struct RootView: View {
             .overlay { AlertHost() }
             .task {
                 Account.shared.start()
+                SyncEngine.shared.sync()
                 async let groups: Void = GroupStore.shared.refresh()
                 async let languages: Void = CatalogLanguageStore.shared.refresh()
                 _ = await (groups, languages)
+            }
+            // Coming back picks up what other devices changed; leaving sends
+            // what changed here.
+            .onChange(of: scenePhase) { _, phase in
+                switch phase {
+                case .active: SyncEngine.shared.sync()
+                case .background: SyncEngine.shared.syncInBackground()
+                default: break
+                }
             }
             // A lecture that won't play says so wherever the listener is.
             .onChange(of: player.playbackError) { _, error in

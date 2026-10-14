@@ -32,6 +32,8 @@ protocol LibraryProviding {
     /// Registers this phone's listener id; the token its requests carry from
     /// then on. `APIError.http(status: 409)` when the id is taken.
     func register(listener id: UUID, platform: String, appVersion: String) async throws -> String
+    /// Sends this phone's changes; the other devices' since `request.since`.
+    func sync(_ request: SyncRequest) async throws -> SyncResponse
 }
 
 /// Home's rows from the backend, five cards each.

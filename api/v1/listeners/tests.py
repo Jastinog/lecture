@@ -137,3 +137,14 @@ class ListenerAPITests(TestCase):
         Listener.objects.all().delete()
         self.assertFalse(ListenerPlay.objects.exists())
         self.assertEqual(self.plays(), 1)
+
+    def test_plays_are_throttled_per_address_whatever_the_listener(self):
+        tokens = [self.register().json()["token"] for _ in range(2)]
+        for n in range(120):
+            self.assertEqual(
+                self.play(self.lectures[n % 2], tokens[n % 2]).status_code, 204
+            )
+        self.assertEqual(
+            self.play(self.lectures[0], self.register().json()["token"]).status_code,
+            429,
+        )

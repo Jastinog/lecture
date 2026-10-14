@@ -96,16 +96,28 @@ struct RemoteLibrary: LibraryProviding {
     }
 
     func reportPlay(lectureID: Int) async throws {
-        _ = try await post("plays/", ["lecture": lectureID])
+        _ = try await post("plays/", JSONSerialization.data(withJSONObject: ["lecture": lectureID]))
     }
 
     func register(listener id: UUID, platform: String, appVersion: String) async throws -> String {
-        let data = try await post("listeners/", ["id": id.uuidString, "platform": platform,
-                                                 "app_version": appVersion])
+        let body = ["id": id.uuidString, "platform": platform, "app_version": appVersion]
+        let data = try await post("listeners/", JSONSerialization.data(withJSONObject: body))
         guard let token = try? Self.decoder.decode(TokenDTO.self, from: data).token else {
             throw APIError.parse
         }
         return token
+    }
+
+    /// Its records spell their keys out (snake case included), and carry the
+    /// app's own `Topic` encoding: no key strategy.
+    func sync(_ request: SyncRequest) async throws -> SyncResponse {
+        let data = try await post("sync/", JSONEncoder().encode(request))
+        do {
+            return try JSONDecoder().decode(SyncResponse.self, from: data)
+        } catch {
+            Self.log.error("Couldn't decode sync/: \(String(describing: error), privacy: .public)")
+            throw APIError.parse
+        }
     }
 
     // MARK: Transport
@@ -136,13 +148,13 @@ struct RemoteLibrary: LibraryProviding {
         return request
     }
 
-    /// POSTs `body` as JSON; the response's body. A token the server turned
+    /// POSTs the JSON `body`; the response's body. A token the server turned
     /// down sends the account to register again.
-    private func post(_ path: String, _ body: [String: Any]) async throws -> Data {
+    private func post(_ path: String, _ body: Data) async throws -> Data {
         var request = try request(path)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.httpBody = body
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError.noData }
         if http.statusCode == 401,

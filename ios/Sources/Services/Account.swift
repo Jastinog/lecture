@@ -25,10 +25,12 @@ final class Account {
 
     private var credentials: Credentials?
     private var registering: Task<Void, Never>?
-    /// The token, readable off the main actor by `RemoteLibrary`.
-    private nonisolated let current = OSAllocatedUnfairLock<String?>(initialState: nil)
+    /// The credentials, readable off the main actor by `RemoteLibrary`.
+    private nonisolated let current = OSAllocatedUnfairLock<Credentials?>(initialState: nil)
 
-    nonisolated var token: String? { current.withLock { $0 } }
+    nonisolated var token: String? { current.withLock { $0?.token } }
+    /// The listener the token is for; nil until it's registered.
+    nonisolated var listenerID: UUID? { current.withLock { $0?.token == nil ? nil : $0?.id } }
 
     nonisolated private init() {}
 
@@ -60,6 +62,7 @@ final class Account {
                 let token = try await API.library.register(
                     listener: credentials.id, platform: "ios", appVersion: Self.appVersion)
                 save(Credentials(id: credentials.id, token: token))
+                SyncEngine.shared.sync()
                 return
             } catch APIError.http(status: 409) {
                 // The id is taken, and its token isn't here (a registration
@@ -67,6 +70,7 @@ final class Account {
                 // would do; otherwise a new id.
                 if case .found(let synced) = Self.read(), synced.token != nil {
                     save(synced)
+                    SyncEngine.shared.sync()
                 } else {
                     save(Credentials(id: UUID(), token: nil))
                 }
@@ -86,7 +90,7 @@ final class Account {
         switch Self.read() {
         case .found(let saved):
             credentials = saved
-            current.withLock { $0 = saved.token }
+            current.withLock { $0 = saved }
         case .missing:
             save(Credentials(id: UUID(), token: nil))
         case .unavailable:
@@ -97,7 +101,7 @@ final class Account {
 
     private func save(_ new: Credentials) {
         credentials = new
-        current.withLock { $0 = new.token }
+        current.withLock { $0 = new }
         guard let data = try? JSONEncoder().encode(new) else { return }
         Keychain.write(data, account: Self.keychainAccount)
     }

@@ -537,13 +537,13 @@ class HomeView(APIView):
 
 
 class PlayThrottle(SimpleRateThrottle):
-    """Per listener, or per address for an app too old to send a token."""
+    """Per address, token or not: a throttle per listener would let one
+    address multiply its plays by registering more listeners."""
 
     scope = "plays"
 
     def get_cache_key(self, request, view):
-        ident = request.user.pk if request.user else self.get_ident(request)
-        return self.cache_format % {"scope": self.scope, "ident": ident}
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
 
 
 class PlaySerializer(serializers.Serializer):

@@ -27,6 +27,9 @@ class Listener(models.Model):
     last_seen = models.DateTimeField(default=timezone.now)
     platform = models.CharField(max_length=32, blank=True)
     app_version = models.CharField(max_length=32, blank=True)
+    # Counts the listener's synced writes; each record keeps the count it was
+    # written at, so a device asks for what changed after the last one it saw.
+    revision = models.BigIntegerField(default=0)
 
     # DRF's `request.user`: permissions and throttles ask this of it.
     is_authenticated = True
@@ -69,3 +72,54 @@ class ListenerPlay(models.Model):
                 fields=["listener", "lecture", "day"], name="listener_play_per_day"
             )
         ]
+
+
+class Synced(models.Model):
+    """A record the app keeps on the phone and syncs, one per topic (a
+    selection's negative id included, so no foreign key). The newest
+    `updated_at` wins; a removal stays as a tombstone (`deleted`), so it
+    reaches the listener's other devices."""
+
+    listener = models.ForeignKey(Listener, on_delete=models.CASCADE, related_name="+")
+    topic_id = models.IntegerField()
+    # The phone's clock, epoch seconds.
+    updated_at = models.FloatField()
+    deleted = models.BooleanField(default=False)
+    revision = models.BigIntegerField()
+
+    class Meta:
+        abstract = True
+
+
+class Progress(Synced):
+    """Where the listener is in a topic."""
+
+    lecture_id = models.IntegerField(null=True, blank=True)
+    index = models.PositiveIntegerField(default=0)
+    time = models.FloatField(default=0)
+    fraction = models.FloatField(default=0)
+
+    class Meta:
+        verbose_name_plural = "progress"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["listener", "topic_id"], name="progress_per_topic"
+            )
+        ]
+        indexes = [models.Index(fields=["listener", "revision"])]
+
+
+class HistoryEntry(Synced):
+    """A topic in the listener's history, with its list card as the app last
+    showed it, so the history draws without asking for each topic."""
+
+    topic = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        verbose_name_plural = "history"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["listener", "topic_id"], name="history_per_topic"
+            )
+        ]
+        indexes = [models.Index(fields=["listener", "revision"])]
