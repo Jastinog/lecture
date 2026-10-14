@@ -1445,6 +1445,22 @@
         }
       }
     },
+    "Calendar": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Календарь"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Календар"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "ru": {
@@ -1761,6 +1777,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дані"
+          }
+        }
+      }
+    },
+    "Day": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "День"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "День"
           }
         }
       }
@@ -2696,6 +2728,22 @@
         }
       }
     },
+    "Month": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Месяц"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Місяць"
+          }
+        }
+      }
+    },
     "More": {
       "localizations": {
         "ru": {
@@ -2740,6 +2788,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нові теми"
+          }
+        }
+      }
+    },
+    "Next": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вперёд"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вперед"
           }
         }
       }
@@ -2820,6 +2884,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Історія порожня"
+          }
+        }
+      }
+    },
+    "No Listening Yet": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока ничего не прослушано"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поки нічого не прослухано"
           }
         }
       }
@@ -3285,6 +3365,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Позиція в лекції"
+          }
+        }
+      }
+    },
+    "Previous": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назад"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назад"
           }
         }
       }
@@ -3813,6 +3909,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Лекція завантажується надто довго"
+          }
+        }
+      }
+    },
+    "The lectures you listen to show up here, day by day": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здесь по дням появятся лекции, которые вы слушаете"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тут по днях з’являться лекції, які ви слухаєте"
           }
         }
       }

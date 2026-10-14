@@ -292,7 +292,6 @@ private struct LibraryDestinations<Content: View>: View {
             .navigationDestination(for: Selection.self) { SelectionFolderView(selection: $0).environmentObject(router).classicBackButton() }
             .navigationDestination(for: TopicGroup.self) { CatalogView(group: $0).environmentObject(router).classicBackButton() }
             .navigationDestination(for: LecturersRoute.self) { _ in LecturersView().environmentObject(router).classicBackButton() }
-            .navigationDestination(for: BrowseRoute.self) { _ in BrowseView().environmentObject(router).classicBackButton() }
             .navigationDestination(for: SearchRoute.self) { _ in SearchView().environmentObject(router).classicBackButton() }
             .navigationDestination(for: NewTopicsRoute.self) { _ in CatalogView().environmentObject(router).classicBackButton() }
             .navigationDestination(for: ListeningCalendarRoute.self) { _ in

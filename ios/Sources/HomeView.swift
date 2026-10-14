@@ -35,8 +35,8 @@ final class HomeFeedModel: ObservableObject {
 struct NewTopicsRoute: Hashable {}
 
 /// The first tab: search, what's being listened to, the lecture of the day,
-/// the week in the listening calendar, then five each of what's trending,
-/// the newest topics and the newest selections.
+/// then five each of what's trending, the newest topics and the newest
+/// selections. The bar's left button opens the listening calendar.
 struct HomeView: View {
     @ObservedObject private var model = HomeFeedModel.shared
     @ObservedObject private var languages = CatalogLanguageStore.shared
@@ -68,13 +68,6 @@ struct HomeView: View {
                 } header: {
                     PlainSectionHeader(title: String(localized: "Lecture of the Day"))
                 }
-            }
-
-            Section {
-                ListeningWeekRow()
-                    .plainRow()
-            } header: {
-                PlainSectionHeader(title: String(localized: "Listening Calendar"))
             }
 
             if let feed = model.feed {
@@ -131,10 +124,10 @@ struct HomeView: View {
             ToolbarItem(placement: .principal) {
                 ClassicTitle(String(localized: "Home"))
             }
-            // iOS 6 bars held one button a side: "Groups" opens the groups,
-            // "Now Playing" the player.
+            // iOS 6 bars held one button a side: "Calendar" opens the
+            // listening calendar, "Now Playing" the player.
             ClassicToolbarItem(.leading) {
-                NavigationLink("Groups", value: BrowseRoute())
+                NavigationLink(String(localized: "Calendar"), value: ListeningCalendarRoute())
                     .buttonStyle(.classicBar)
             }
             NowPlayingToolbarItem()

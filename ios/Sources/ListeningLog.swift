@@ -1,5 +1,47 @@
 import Foundation
 
+/// A stretch of listening, in epoch seconds: `[start, end]` in JSON.
+struct ListeningSession: Codable, Hashable {
+    var start: Double
+    var end: Double
+
+    /// Stretches closer than this are one: a pause, a seek.
+    static let gap: Double = 120
+    /// Kept per lecture and day, the latest.
+    static let limit = 100
+
+    init(start: Double, end: Double) {
+        self.start = start
+        self.end = end
+    }
+
+    init(from decoder: Decoder) throws {
+        var c = try decoder.unkeyedContainer()
+        start = try c.decode(Double.self)
+        end = try c.decode(Double.self)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.unkeyedContainer()
+        try c.encode(start)
+        try c.encode(end)
+    }
+
+    /// `sessions` sorted, those that meet or nearly do joined, the latest
+    /// `limit` kept. The server joins them the same way.
+    static func merged(_ sessions: [ListeningSession]) -> [ListeningSession] {
+        var merged: [ListeningSession] = []
+        for session in sessions.sorted(by: { $0.start < $1.start }) {
+            if let last = merged.last, session.start - last.end <= gap {
+                merged[merged.count - 1].end = max(last.end, session.end)
+            } else {
+                merged.append(session)
+            }
+        }
+        return Array(merged.suffix(limit))
+    }
+}
+
 /// A lecture listened to on a day, for the calendar.
 struct ListeningEntry: Codable, Identifiable, Hashable {
     /// The topic's list card, so the calendar opens it (a selection's, when
@@ -11,6 +53,8 @@ struct ListeningEntry: Codable, Identifiable, Hashable {
     var seconds: Double
     /// When it was last heard that day (epoch seconds).
     var lastHeard: Double
+    /// When it was heard, for the day view. Nil in entries kept before.
+    var sessions: [ListeningSession]? = nil
 
     var id: String { "\(topic.id)-\(lectureID)" }
 }
@@ -40,12 +84,15 @@ final class ListeningLog: ObservableObject {
     /// Adds `seconds` heard of the lecture at `date`.
     func add(_ seconds: Double, topic: Topic, lecture: Lecture, index: Int, at date: Date) {
         let day = Self.key(date)
+        let now = date.timeIntervalSince1970
         let entry = ListeningEntry(topic: topic, lectureID: lecture.id,
                                    lectureTitle: lecture.displayTitle(at: index),
-                                   seconds: seconds, lastHeard: date.timeIntervalSince1970)
+                                   seconds: seconds, lastHeard: now,
+                                   sessions: [ListeningSession(start: now - seconds, end: now)])
         if var held = pending[day]?[entry.id] {
             held.seconds += seconds
             held.lastHeard = entry.lastHeard
+            held.sessions = ListeningSession.merged((held.sessions ?? []) + (entry.sessions ?? []))
             pending[day]?[entry.id] = held
         } else {
             pending[day, default: [:]][entry.id] = entry
@@ -67,6 +114,7 @@ final class ListeningLog: ObservableObject {
                 if let i = entries.firstIndex(where: { $0.id == entry.id }) {
                     entries[i].seconds += entry.seconds
                     entries[i].lastHeard = entry.lastHeard
+                    entries[i].sessions = ListeningSession.merged((entries[i].sessions ?? []) + (entry.sessions ?? []))
                     entries[i].topic = entry.topic
                 } else {
                     entries.append(entry)

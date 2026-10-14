@@ -246,6 +246,8 @@ class ListeningDay(models.Model):
     seconds = models.FloatField(default=0)
     # Epoch seconds.
     last_heard = models.FloatField(default=0)
+    # When it was heard: [start, end] pairs in epoch seconds, for the day view.
+    sessions = models.JSONField(default=list, blank=True)
     topic = models.JSONField(null=True, blank=True)
     lecture_title = models.CharField(max_length=500, blank=True)
     # Cleared and nothing heard since.

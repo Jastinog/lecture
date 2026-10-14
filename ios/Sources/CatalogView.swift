@@ -129,39 +129,3 @@ struct CatalogView: View {
         }
     }
 }
-
-// MARK: - Browse
-
-/// Route to the list of topic groups.
-struct BrowseRoute: Hashable {}
-
-struct BrowseView: View {
-    @ObservedObject private var groups = GroupStore.shared
-
-    var body: some View {
-        List {
-            Section {
-                ForEach(groups.items) { group in
-                    RowLink(value: group) { Text(group.name) }
-                }
-                .plainRow()
-            } header: {
-                PlainSectionHeader(title: String(localized: "Groups"))
-            }
-        }
-        // Plain text on every row, as iOS 6 listed categories.
-        .font(.rowLabel)
-        .lineLimit(1)
-        .listStyle(.plain)
-        .plainBackground()
-        .navigationTitle("Groups")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { NowPlayingToolbarItem() }
-        .overlay {
-            if groups.items.isEmpty {
-                if groups.failed { LoadFailedState { await groups.refresh() } } else { ClassicSpinner() }
-            }
-        }
-        .task { await groups.refresh() }
-    }
-}

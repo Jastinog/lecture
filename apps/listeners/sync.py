@@ -35,6 +35,10 @@ MAX_CARD_BYTES = 16 * 1024
 INT32 = {"min_value": -(2**31), "max_value": 2**31 - 1}
 # The longest a lecture is heard in one sync's increment: a day.
 MAX_SECONDS = 24 * 60 * 60
+# Stretches of listening a lecture keeps a day, the latest.
+MAX_SESSIONS = 100
+# Stretches closer than this, in seconds, are one.
+SESSION_GAP = 120
 
 
 class CardField(serializers.JSONField):
@@ -237,10 +241,30 @@ class ListeningSerializer(serializers.Serializer):
     lecture_id = serializers.IntegerField(**INT32)
     seconds = serializers.FloatField(min_value=0, max_value=MAX_SECONDS, default=0)
     last_heard = serializers.FloatField(min_value=0, default=0)
+    # [start, end] pairs: in a request, those heard since the last sync.
+    sessions = serializers.ListField(
+        child=serializers.ListField(
+            child=serializers.FloatField(min_value=0), min_length=2, max_length=2
+        ),
+        max_length=MAX_SESSIONS,
+        default=list,
+    )
     topic = CardField(allow_null=True, required=False, default=None)
     lecture_title = serializers.CharField(max_length=500, allow_blank=True, default="")
     reset = serializers.BooleanField(default=False, write_only=True)
     deleted = serializers.BooleanField(read_only=True)
+
+
+def merge_sessions(*lists):
+    """The [start, end] stretches of `lists` as one, sorted, those that meet
+    or nearly do joined, the latest `MAX_SESSIONS` kept."""
+    merged = []
+    for start, end in sorted((min(s), max(s)) for spans in lists for s in spans):
+        if merged and start - merged[-1][1] <= SESSION_GAP:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return merged[-MAX_SESSIONS:]
 
 
 def listening_key(record):
@@ -259,6 +283,7 @@ def apply_listening(listener, records):
             incoming[key] = dict(new)
         else:
             held["seconds"] += new["seconds"]
+            held["sessions"] = merge_sessions(held["sessions"], new["sessions"])
             if new["last_heard"] >= held["last_heard"]:
                 held.update(
                     last_heard=new["last_heard"],
@@ -281,10 +306,10 @@ def apply_listening(listener, records):
         row = kept.get(key) or ListeningDay(
             listener=listener, day=key[0], topic_id=key[1], lecture_id=key[2]
         )
-        row.seconds = (
-            new["seconds"]
-            if new["reset"] or row.deleted
-            else row.seconds + new["seconds"]
+        start_over = new["reset"] or row.deleted
+        row.seconds = new["seconds"] if start_over else row.seconds + new["seconds"]
+        row.sessions = merge_sessions(
+            [] if start_over else row.sessions, new["sessions"]
         )
         if new["last_heard"] >= row.last_heard or new["reset"]:
             row.last_heard = new["last_heard"]
@@ -301,6 +326,7 @@ def apply_listening(listener, records):
         update_fields=[
             "seconds",
             "last_heard",
+            "sessions",
             "topic",
             "lecture_title",
             "deleted",

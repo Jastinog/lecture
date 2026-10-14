@@ -78,6 +78,7 @@ final class SyncEngine {
             if var held = state.outbox.listening[new.key] {
                 held.seconds += new.seconds
                 held.lastHeard = new.lastHeard
+                held.sessions = ListeningSession.merged(held.sessions + new.sessions)
                 held.topic = new.topic
                 held.lectureTitle = new.lectureTitle
                 state.outbox.listening[new.key] = held
@@ -93,6 +94,7 @@ final class SyncEngine {
         for (day, entry) in entries {
             var reset = ListeningRecord(day: day, entry)
             reset.seconds = 0
+            reset.sessions = []
             reset.reset = true
             state.outbox.listening[reset.key] = reset
         }
@@ -206,8 +208,11 @@ final class SyncEngine {
         for record in sent.listening {
             guard var held = state.outbox.listening[record.key] else { continue }
             held.seconds -= record.seconds
-            // The server has started the day over already.
+            // The server has started the day over already, and joins the
+            // stretches it has; the last one may have grown since.
             held.reset = nil
+            let sentUntil = record.sessions.map(\.end).max() ?? 0
+            held.sessions = held.sessions.filter { $0.end > sentUntil }
             state.outbox.listening[record.key] = held.seconds > 0.01 ? held : nil
         }
     }
@@ -304,11 +309,13 @@ final class SyncEngine {
             var total = record
             if unsent?.reset == true {
                 total.seconds = 0
+                total.sessions = []
             } else if record.deleted == true, unsent == nil {
                 days.append(.init(day: record.day, topicID: record.topicID, lectureID: record.lectureID, entry: nil))
                 continue
             }
             total.seconds += unsent?.seconds ?? 0
+            total.sessions = ListeningSession.merged(total.sessions + (unsent?.sessions ?? []))
             if let unsent, unsent.lastHeard > total.lastHeard { total.lastHeard = unsent.lastHeard }
             guard let entry = total.entry else { continue }
             days.append(.init(day: record.day, topicID: record.topicID, lectureID: record.lectureID,

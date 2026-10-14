@@ -204,6 +204,7 @@ class SyncAPITests(TestCase):
             "lecture_id": 7,
             "seconds": seconds,
             "last_heard": last_heard,
+            "sessions": [],
             "topic": CARD,
             "lecture_title": "Lecture 3",
             **fields,
@@ -263,3 +264,21 @@ class SyncAPITests(TestCase):
             # Keys held still update.
             self.sync(self.phone, progress=[progress(0, 300, time=5)])
             self.assertEqual(Progress.objects.get(topic_id=0).time, 5)
+
+    def test_listening_sessions_join_across_devices(self):
+        self.sync(
+            self.phone, listening=[self.listening(60, 160, sessions=[[100, 160]])]
+        )
+        self.sync(
+            self.pad,
+            listening=[
+                self.listening(60, 1060, sessions=[[1000, 1060]]),
+                self.listening(30, 220, sessions=[[190, 220]]),
+            ],
+        )
+        # 160 and 190 are close enough to be one stretch.
+        self.assertEqual(
+            ListeningDay.objects.get().sessions, [[100, 220], [1000, 1060]]
+        )
+        self.sync(self.phone, listening=[self.listening(0, reset=True)])
+        self.assertEqual(ListeningDay.objects.get().sessions, [])

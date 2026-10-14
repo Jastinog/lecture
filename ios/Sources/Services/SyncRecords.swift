@@ -258,6 +258,8 @@ struct ListeningRecord: SyncRecord {
     var lectureID: Int
     var seconds: Double
     var lastHeard: Double
+    /// Sent, the stretches heard since the last sync; received, all of them.
+    var sessions: [ListeningSession] = []
     var topic = Card(nil)
     var lectureTitle = ""
     /// Sent only.
@@ -267,7 +269,7 @@ struct ListeningRecord: SyncRecord {
 
     enum CodingKeys: String, CodingKey {
         case day, topicID = "topic_id", lectureID = "lecture_id", seconds
-        case lastHeard = "last_heard", topic, lectureTitle = "lecture_title", reset, deleted
+        case lastHeard = "last_heard", sessions, topic, lectureTitle = "lecture_title", reset, deleted
     }
 
     var key: String { Self.key(day: day, topicID: topicID, lectureID: lectureID) }
@@ -281,6 +283,7 @@ struct ListeningRecord: SyncRecord {
         lectureID = entry.lectureID
         seconds = entry.seconds
         lastHeard = entry.lastHeard
+        sessions = entry.sessions ?? []
         topic = Card(entry.topic)
         lectureTitle = entry.lectureTitle
     }
@@ -289,7 +292,7 @@ struct ListeningRecord: SyncRecord {
     var entry: ListeningEntry? {
         topic.topic.map {
             ListeningEntry(topic: $0, lectureID: lectureID, lectureTitle: lectureTitle,
-                           seconds: seconds, lastHeard: lastHeard)
+                           seconds: seconds, lastHeard: lastHeard, sessions: sessions)
         }
     }
 }
