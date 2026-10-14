@@ -40,16 +40,28 @@ final class BookmarkStore: ObservableObject {
     func add(_ bookmark: Bookmark) {
         items.append(bookmark)
         persist()
+        SyncEngine.shared.record(BookmarkRecord(bookmark, at: bookmark.createdAt), in: \.bookmarks)
     }
 
     func updateNote(id: UUID, _ note: String) {
         guard let i = items.firstIndex(where: { $0.id == id }), items[i].note != note else { return }
         items[i].note = note
         persist()
+        SyncEngine.shared.record(BookmarkRecord(items[i], at: Date().timeIntervalSince1970), in: \.bookmarks)
     }
 
     func remove(id: UUID) {
         items.removeAll { $0.id == id }
+        persist()
+        SyncEngine.shared.remove([id], in: \.bookmarks, as: BookmarkRecord.init(removing:at:))
+    }
+
+    /// Bookmarks made, edited or removed on the listener's other devices; not
+    /// synced back.
+    func apply(saved: [Bookmark], removed: Set<UUID>) {
+        guard !saved.isEmpty || !removed.isEmpty else { return }
+        let replaced = removed.union(saved.map(\.id))
+        items = items.filter { !replaced.contains($0.id) } + saved
         persist()
     }
 

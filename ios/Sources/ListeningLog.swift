@@ -15,7 +15,8 @@ struct ListeningEntry: Codable, Identifiable, Hashable {
     var id: String { "\(topic.id)-\(lectureID)" }
 }
 
-/// What was listened to on each day, kept on the phone only. The player adds
+/// What was listened to on each day, synced across the listener's devices
+/// (`SyncEngine`): each commit sends the time heard since. The player adds
 /// the time as it plays (`add`) and commits it with its progress saves, so
 /// the views showing it redraw every few seconds rather than every tick.
 @MainActor
@@ -59,6 +60,7 @@ final class ListeningLog: ObservableObject {
     /// Moves what was heard since the last commit into `days` and saves.
     func commit() {
         guard !pending.isEmpty else { return }
+        SyncEngine.shared.heard(pending.flatMap { day, heard in heard.values.map { (day, $0) } })
         for (day, heard) in pending {
             var entries = days[day] ?? []
             for entry in heard.values {
@@ -80,8 +82,30 @@ final class ListeningLog: ObservableObject {
     }
 
     func clear() {
+        SyncEngine.shared.listeningCleared(days.flatMap { day, entries in entries.map { (day, $0) } })
         pending = [:]
         days = [:]
+        Store.save(days, version: version, to: file)
+    }
+
+    /// A lecture's total on a day from the listener's other devices; nil
+    /// removes it.
+    struct Change {
+        let day: String
+        let topicID: Int
+        let lectureID: Int
+        let entry: ListeningEntry?
+    }
+
+    /// Totals from the listener's other devices; not synced back.
+    func apply(_ changes: [Change]) {
+        guard !changes.isEmpty else { return }
+        for change in changes {
+            let id = "\(change.topicID)-\(change.lectureID)"
+            var entries = (days[change.day] ?? []).filter { $0.id != id }
+            if let entry = change.entry { entries.append(entry) }
+            days[change.day] = entries.isEmpty ? nil : entries.sorted { $0.lastHeard > $1.lastHeard }
+        }
         Store.save(days, version: version, to: file)
     }
 

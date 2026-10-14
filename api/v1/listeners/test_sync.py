@@ -1,10 +1,20 @@
 import uuid
 
+from unittest import mock
+
 from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.listeners.models import HistoryEntry, Listener, Progress
+from apps.listeners import sync
+from apps.listeners.models import (
+    Bookmark,
+    HistoryEntry,
+    ListeningDay,
+    Listener,
+    Progress,
+    Setting,
+)
 
 CARD = {"id": -4, "title": "Gita 2", "lecturer": {"id": 1, "name": "Prabhupada"}}
 
@@ -110,7 +120,7 @@ class SyncAPITests(TestCase):
         _, token = Listener.register(uuid.uuid4())
         other = APIClient()
         other.credentials(HTTP_AUTHORIZATION=f"Token {token}")
-        self.assertEqual(self.sync(other)["changes"], {"progress": [], "history": []})
+        self.assertFalse(any(self.sync(other)["changes"].values()))
 
     def test_deleting_the_listener_deletes_what_it_synced(self):
         self.sync(
@@ -120,3 +130,136 @@ class SyncAPITests(TestCase):
         )
         self.listener.delete()
         self.assertFalse(Progress.objects.exists() or HistoryEntry.objects.exists())
+
+    def test_every_kind_reaches_the_other_device(self):
+        mark = str(uuid.uuid4())
+        sent = {
+            "bookmarks": [
+                {
+                    "id": mark,
+                    "topic_id": 5,
+                    "lecture_id": 7,
+                    "index": 2,
+                    "time": 61.5,
+                    "chapter_title": "Lecture 3",
+                    "note": "Bhakti ",
+                    "created_at": 90,
+                    "updated_at": 100,
+                }
+            ],
+            "shelf": [
+                {
+                    "topic_id": -4,
+                    "status": "onHold",
+                    "topic": CARD,
+                    "added_at": 90,
+                    "updated_at": 100,
+                }
+            ],
+            "rates": [{"topic_id": 5, "rate": 1.25, "updated_at": 100}],
+            "pins": [
+                {
+                    "lecturer_id": 1,
+                    "name": "Prabhupada",
+                    "photo_url": "https://x.org/p.jpg",
+                    "updated_at": 100,
+                }
+            ],
+            "languages": [{"lecturer_id": 1, "language": "ru", "updated_at": 100}],
+            "settings": [{"name": "default_rate", "value": 1.5, "updated_at": 100}],
+        }
+        self.sync(self.phone, **sent)
+        got = self.sync(self.pad)["changes"]
+        for kind, records in sent.items():
+            self.assertEqual(got[kind], [{"deleted": False, **records[0]}], kind)
+
+    def test_a_setting_must_be_known_and_sensible(self):
+        self.sync(
+            self.phone,
+            settings=[
+                {"name": "default_rate", "value": 9, "updated_at": 1},
+                {"name": "theme", "value": "dark", "updated_at": 1},
+            ],
+        )
+        self.assertFalse(Setting.objects.exists())
+
+    def test_a_bookmark_id_is_the_listeners_own(self):
+        mark = {
+            "id": str(uuid.uuid4()),
+            "topic_id": 5,
+            "note": "mine",
+            "updated_at": 100,
+        }
+        self.sync(self.phone, bookmarks=[mark])
+        _, token = Listener.register(uuid.uuid4())
+        other = APIClient()
+        other.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+        self.sync(other, bookmarks=[{**mark, "note": "theirs", "updated_at": 200}])
+        self.assertEqual(Bookmark.objects.get(listener=self.listener).note, "mine")
+
+    def listening(self, seconds, last_heard=100, **fields):
+        return {
+            "day": "2026-10-15",
+            "topic_id": -4,
+            "lecture_id": 7,
+            "seconds": seconds,
+            "last_heard": last_heard,
+            "topic": CARD,
+            "lecture_title": "Lecture 3",
+            **fields,
+        }
+
+    def test_listening_time_adds_up_across_devices(self):
+        first = self.sync(self.phone, listening=[self.listening(30)])
+        # The sender gets the total back too.
+        self.assertEqual([r["seconds"] for r in first["changes"]["listening"]], [30])
+        got = self.sync(
+            self.pad, listening=[self.listening(20, 200), self.listening(5, 150)]
+        )
+        self.assertEqual(
+            got["changes"]["listening"],
+            [
+                {
+                    **self.listening(55, 200),
+                    "deleted": False,
+                }
+            ],
+        )
+        self.assertEqual(ListeningDay.objects.get().seconds, 55)
+
+    def test_a_reset_starts_the_day_over(self):
+        self.sync(self.phone, listening=[self.listening(30)])
+        cursor = self.sync(self.pad, listening=[self.listening(0, reset=True)])[
+            "cursor"
+        ]
+        self.assertTrue(ListeningDay.objects.get().deleted)
+        # Heard again after the reset, on the same request or a later one.
+        got = self.sync(
+            self.phone,
+            listening=[self.listening(0, reset=True), self.listening(10, 300)],
+        )
+        self.assertEqual(ListeningDay.objects.get().seconds, 10)
+        self.sync(self.pad, since=cursor, listening=[self.listening(4, 400)])
+        self.assertEqual(ListeningDay.objects.get().seconds, 14)
+        self.assertFalse(got["changes"]["listening"][0]["deleted"])
+
+    def test_a_listener_holds_a_bounded_number_of_records(self):
+        with mock.patch.dict(
+            sync.KINDS,
+            progress=sync.Kind(Progress, sync.ProgressSerializer, "topic_id", 3),
+        ):
+            self.sync(
+                self.phone,
+                progress=[progress(n, 100) for n in range(2)]
+                + [{"topic_id": 9, "updated_at": 50, "deleted": True}],
+            )
+            self.sync(
+                self.phone, progress=[progress(n, 200 + n) for n in range(10, 14)]
+            )
+            # The tombstone made room for one, the newest.
+            self.assertEqual(
+                sorted(Progress.objects.values_list("topic_id", flat=True)), [0, 1, 13]
+            )
+            # Keys held still update.
+            self.sync(self.phone, progress=[progress(0, 300, time=5)])
+            self.assertEqual(Progress.objects.get(topic_id=0).time, 5)

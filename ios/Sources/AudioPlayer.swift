@@ -44,7 +44,7 @@ enum ProgressStore {
                           savedAt: Date().timeIntervalSince1970, lectureID: lectureID)
         all[String(topicID)] = entry
         write(all)
-        SyncEngine.shared.progressSaved(topicID: topicID, entry: entry)
+        SyncEngine.shared.record(ProgressRecord(topicID: topicID, entry: entry), in: \.progress)
     }
 
     /// Positions from the listener's other devices (nil removes one); not
@@ -94,13 +94,14 @@ enum ProgressStore {
         guard all.removeValue(forKey: String(topicID)) != nil else { return }
         cache = all
         Store.save(all, version: version, to: file)
-        SyncEngine.shared.progressRemoved(topicIDs: [topicID])
+        SyncEngine.shared.remove([topicID], in: \.progress, as: ProgressRecord.init(removing:at:))
     }
 
     /// Forget every position.
     @MainActor
     static func removeAll() {
-        SyncEngine.shared.progressRemoved(topicIDs: load().keys.compactMap { Int($0) })
+        SyncEngine.shared.remove(load().keys.compactMap { Int($0) }, in: \.progress,
+                                 as: ProgressRecord.init(removing:at:))
         cache = [:]
         Store.save([String: Entry](), version: version, to: file)
     }
@@ -166,7 +167,7 @@ final class RecentsStore: ObservableObject {
         if topChanged || time - lastPersist > 30 {
             lastPersist = time
             persist()
-            SyncEngine.shared.historyRecorded(entry)
+            SyncEngine.shared.record(HistoryRecord(entry), in: \.history)
         }
     }
 
@@ -174,7 +175,7 @@ final class RecentsStore: ObservableObject {
         items.removeAll { $0.id == id }
         ProgressStore.remove(topicID: id)   // forget the resume point too — stay consistent
         persist()
-        SyncEngine.shared.historyRemoved(topicIDs: [id])
+        SyncEngine.shared.remove([id], in: \.history, as: HistoryRecord.init(removing:at:))
     }
 
     /// Topics played or removed on the listener's other devices; not synced
@@ -198,7 +199,7 @@ final class RecentsStore: ObservableObject {
     /// (`ShelfStore`) is intentionally left alone — it's a deliberate user list,
     /// not a byproduct of playback.
     func clear() {
-        SyncEngine.shared.historyRemoved(topicIDs: items.map(\.id))
+        SyncEngine.shared.remove(items.map(\.id), in: \.history, as: HistoryRecord.init(removing:at:))
         ProgressStore.removeAll()
         ListeningLog.shared.clear()
         items = []
@@ -815,6 +816,8 @@ final class AudioPlayer: ObservableObject {
         if let topic {
             rates.set(r, for: topic.id)
             persistTopicRates()
+            SyncEngine.shared.record(RateRecord(topicID: topic.id, updatedAt: Date().timeIntervalSince1970,
+                                                rate: Double(r)), in: \.rates)
         }
         applyRate(r)
     }
@@ -832,6 +835,9 @@ final class AudioPlayer: ObservableObject {
         guard let topic else { return }
         rates.reset(topic.id)
         persistTopicRates()
+        SyncEngine.shared.remove([topic.id], in: \.rates) {
+            RateRecord(topicID: $0, updatedAt: $1, deleted: true)
+        }
         applyRate(defaultRate)
     }
 
@@ -840,10 +846,39 @@ final class AudioPlayer: ObservableObject {
         rates.defaultRate = RateTopic.normalized(r)
         UserDefaults.standard.set(Double(defaultRate), forKey: Self.rateKey)
         if !hasTopicRate { applyRate(defaultRate) }
+        SyncEngine.shared.record(SettingRecord(name: SettingRecord.defaultRate,
+                                               updatedAt: Date().timeIntervalSince1970,
+                                               value: Double(defaultRate)), in: \.settings)
     }
 
     private func persistTopicRates() {
         UserDefaults.standard.set(rates.perTopic, forKey: Self.topicRatesKey)
+    }
+
+    /// Each topic's own speed, by topic id, for a first sync.
+    var topicRates: [Int: Double] {
+        Dictionary(uniqueKeysWithValues: rates.perTopic.compactMap { key, rate in Int(key).map { ($0, rate) } })
+    }
+
+    /// The default speed, when the listener has set one.
+    var storedDefaultRate: Double? {
+        UserDefaults.standard.object(forKey: Self.rateKey) as? Double
+    }
+
+    /// Speeds set on the listener's other devices (nil drops a topic's own);
+    /// not synced back.
+    func applySynced(rates changes: [Int: Double?], defaultRate: Double?) {
+        guard !changes.isEmpty || defaultRate != nil else { return }
+        for (topicID, rate) in changes {
+            if let rate { rates.set(Float(rate), for: topicID) } else { rates.reset(topicID) }
+        }
+        if !changes.isEmpty { persistTopicRates() }
+        if let defaultRate {
+            rates.defaultRate = RateTopic.normalized(Float(defaultRate))
+            UserDefaults.standard.set(Double(rates.defaultRate), forKey: Self.rateKey)
+        }
+        let current = rates.rate(for: topic?.id)
+        if current != rate { applyRate(current) }
     }
 
     /// VoiceOver label for the skip buttons, from the Settings step.

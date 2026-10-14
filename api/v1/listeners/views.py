@@ -10,7 +10,14 @@ from rest_framework.views import APIView
 
 from apps.listeners.authentication import ListenerTokenAuthentication
 from apps.listeners.models import Listener
-from apps.listeners.sync import KINDS, MAX_RECORDS, apply_changes, changes_since
+from apps.listeners.sync import (
+    KINDS,
+    MAX_RECORDS,
+    apply_changes,
+    apply_listening,
+    changes_since,
+    listening_since,
+)
 from apps.listeners.throttling import ListenerRateThrottle
 
 
@@ -63,10 +70,11 @@ class SyncRequestSerializer(serializers.Serializer):
 
 class SyncView(APIView):
     """`POST {"since": cursor, "changes": {kind: [record, …]}}` →
-    `{"cursor", "changes": {kind: [record, …]}}`, kinds as in `KINDS`. Keeps
-    the records sent that are newer than the server's, and answers with every
-    record written since `since` by other devices (all of them for 0). The
-    app sends the cursor it gets back next time."""
+    `{"cursor", "changes": {kind: [record, …]}}`, kinds as in `KINDS` plus
+    "listening". Keeps the records sent that are newer than the server's, and
+    answers with every record written since `since` by other devices (all of
+    them for 0); the calendar adds up the time sent and answers with the
+    totals. The app sends the cursor it gets back next time."""
 
     authentication_classes = [ListenerTokenAuthentication]
     permission_classes = [IsAuthenticated]
@@ -85,9 +93,11 @@ class SyncView(APIView):
                 kind: apply_changes(listener, kind, changes.get(kind, []))
                 for kind in KINDS
             }
+            apply_listening(listener, changes.get("listening", []))
             listener.save(update_fields=["revision"])
             answer = {
                 kind: changes_since(listener, kind, since, exclude=written[kind])
                 for kind in KINDS
             }
+            answer["listening"] = listening_since(listener, since)
         return Response({"cursor": listener.revision, "changes": answer})

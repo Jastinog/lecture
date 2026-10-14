@@ -76,14 +76,26 @@ final class ShelfStore: ObservableObject {
 
     /// Adds the topic (or updates its status) and moves it to the top.
     func setStatus(_ status: ShelfStatus, for topic: Topic) {
+        let now = Date().timeIntervalSince1970
+        let item = ShelfTopic(summary: topic, status: status, addedAt: now)
         items.removeAll { $0.id == topic.id }
-        items.insert(ShelfTopic(summary: topic, status: status,
-                               addedAt: Date().timeIntervalSince1970), at: 0)
+        items.insert(item, at: 0)
         persist()
+        SyncEngine.shared.record(ShelfRecord(item, at: now), in: \.shelf)
     }
 
     func remove(id: Int) {
         items.removeAll { $0.id == id }
+        persist()
+        SyncEngine.shared.remove([id], in: \.shelf, as: ShelfRecord.init(removing:at:))
+    }
+
+    /// Topics shelved, moved or removed on the listener's other devices; not
+    /// synced back.
+    func apply(saved: [ShelfTopic], removed: Set<Int>) {
+        guard !saved.isEmpty || !removed.isEmpty else { return }
+        let replaced = removed.union(saved.map(\.id))
+        items = (items.filter { !replaced.contains($0.id) } + saved).sorted { $0.addedAt > $1.addedAt }
         persist()
     }
 
@@ -101,6 +113,7 @@ final class ShelfStore: ObservableObject {
         guard let next, let i = items.firstIndex(where: { $0.id == id }) else { return }
         items[i].status = next
         persist()
+        SyncEngine.shared.record(ShelfRecord(items[i], at: Date().timeIntervalSince1970), in: \.shelf)
     }
 
     private func persist() { Store.save(items, version: version, to: file) }

@@ -15,6 +15,13 @@ struct PinnedLecturer: Codable, Identifiable, Hashable {
         photoURL = lecturer.photoURL
     }
 
+    init(id: Int, name: String, photoURL: URL?, pinnedAt: Double) {
+        self.id = id
+        self.name = name
+        self.photoURL = photoURL
+        self.pinnedAt = pinnedAt
+    }
+
     var ref: LecturerRef { LecturerRef(id: id, name: name) }
 }
 
@@ -45,10 +52,21 @@ final class PinStore: ObservableObject {
         items.removeAll { $0.id == pin.id }
         items.insert(pin, at: 0)
         persist()
+        SyncEngine.shared.record(PinRecord(pin), in: \.pins)
     }
 
     func unpin(id: Int) {
         items.removeAll { $0.id == id }
+        persist()
+        SyncEngine.shared.remove([id], in: \.pins, as: PinRecord.init(removing:at:))
+    }
+
+    /// Lecturers pinned or unpinned on the listener's other devices; not
+    /// synced back.
+    func apply(saved: [PinnedLecturer], removed: Set<Int>) {
+        guard !saved.isEmpty || !removed.isEmpty else { return }
+        let replaced = removed.union(saved.map(\.id))
+        items = (items.filter { !replaced.contains($0.id) } + saved).sorted { $0.pinnedAt > $1.pinnedAt }
         persist()
     }
 

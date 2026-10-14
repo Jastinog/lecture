@@ -181,6 +181,21 @@ final class LanguageChoiceStore: ObservableObject {
         guard choices[String(lecturerID)] != language else { return }
         choices[String(lecturerID)] = language
         Store.save(choices, version: version, to: file)
+        SyncEngine.shared.record(LanguageRecord(lecturerID: lecturerID, language: language,
+                                                at: Date().timeIntervalSince1970), in: \.languages)
+    }
+
+    /// Every choice, by lecturer id, for a first sync.
+    var all: [Int: String] {
+        Dictionary(uniqueKeysWithValues: choices.compactMap { key, code in Int(key).map { ($0, code) } })
+    }
+
+    /// Choices made on the listener's other devices (nil is every language);
+    /// not synced back.
+    func apply(_ changes: [Int: String?]) {
+        guard !changes.isEmpty else { return }
+        for (lecturerID, language) in changes { choices[String(lecturerID)] = language }
+        Store.save(choices, version: version, to: file)
     }
 }
 
