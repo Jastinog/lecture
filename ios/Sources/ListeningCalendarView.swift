@@ -4,13 +4,20 @@ import SwiftUI
 struct ListeningCalendarRoute: Hashable {}
 
 /// The listening calendar: iOS 6 Calendar's month on top, the days listened
-/// on dotted, and under it what was heard in that month, day by day, the
-/// latest first. A tap on a day scrolls to it.
+/// on dotted, and under it the lectures heard in that month, day by day, the
+/// latest first. A tap on a day scrolls to it; a tap on a lecture plays it.
 struct ListeningCalendarView: View {
     @ObservedObject private var log = ListeningLog.shared
     /// The first day of the month shown.
     @State private var month = CalendarMonth.start(of: Date())
     @State private var selected = Calendar.current.startOfDay(for: Date())
+    @EnvironmentObject private var player: AudioPlayer
+    @EnvironmentObject private var router: NavRouter
+    /// The entry whose topic is loading, to play it.
+    @State private var starting: String?
+    /// The topic being fetched to play an entry; cancelled on leaving the
+    /// screen, so the player doesn't open over wherever the listener went.
+    @State private var playing: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,6 +32,7 @@ struct ListeningCalendarView: View {
         .classicNavigationTitle(String(localized: "Listening Calendar"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { NowPlayingToolbarItem() }
+        .onDisappear { playing?.cancel() }
     }
 
     /// The month's days listened on, the latest first.
@@ -39,7 +47,10 @@ struct ListeningCalendarView: View {
                 ForEach(days, id: \.self) { day in
                     Section {
                         ForEach(log.entries(on: day).indexed, id: \.element.id) { i, entry in
-                            ListeningEntryRow(entry: entry).zebraRow(i)
+                            RowButton(action: { play(entry) }) {
+                                ListeningEntryRow(entry: entry, loading: starting == entry.id)
+                            }
+                            .zebraRow(i)
                         }
                         .plainRow()
                     } header: {
@@ -58,7 +69,7 @@ struct ListeningCalendarView: View {
                 }
             }
             .listStyle(.plain)
-            .plainBackground(emptyRowHeight: RowMetrics.bookRowHeight)
+            .plainBackground()
             .overlay {
                 if days.isEmpty {
                     ClassicEmptyState(String(localized: "No listening this month"))
@@ -67,6 +78,26 @@ struct ListeningCalendarView: View {
             .onChange(of: selected) { _, day in
                 guard days.contains(day) else { return }
                 withAnimation { proxy.scrollTo(day, anchor: .top) }
+            }
+        }
+    }
+
+    /// Plays the lecture in its topic and opens the player.
+    private func play(_ entry: ListeningEntry) {
+        guard starting == nil else { return }
+        starting = entry.id
+        playing = Task {
+            defer { starting = nil }
+            do {
+                let page = try await TopicCache.shared.resolve(entry.topic.id)
+                guard !Task.isCancelled,
+                      let index = page.detail.lectures.firstIndex(where: { $0.id == entry.lectureID }) else { return }
+                player.load(topic: page.detail, summary: page.summary, index: index)
+                router.openPlayer()
+            } catch {
+                guard !error.isCancellation else { return }
+                Alerts.shared.show(String(localized: "Couldn’t Play"),
+                                   message: String(localized: "Check your connection and try again."))
             }
         }
     }
@@ -95,19 +126,35 @@ struct ListeningCalendarView: View {
     }
 }
 
-/// A lecture heard on a day; opens its topic.
+/// A lecture heard on a day: its title, then "Topic · Lecturer", and how
+/// long it was heard and when.
 private struct ListeningEntryRow: View {
     let entry: ListeningEntry
+    let loading: Bool
 
     var body: some View {
-        RowLink(value: entry.topic) {
-            MediaRow(coverURL: entry.topic.coverURL, title: entry.lectureTitle, subtitle: entry.topic.title) {
-                Text(facts)
-                    .font(.rowCaption)
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.lectureTitle)
+                    .font(.rowTitle)
+                    .rowForeground(Palette.text)
+                    .lineLimit(1)
+                Text(verbatim: "\(entry.topic.title) · \(entry.topic.lecturer.name)")
+                    .font(.rowDetail)
                     .rowForeground(Palette.secondaryText)
                     .lineLimit(1)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if loading {
+                ClassicSpinner()
+            } else {
+                Text(facts)
+                    .font(.rowDetail)
+                    .rowForeground(Palette.secondaryText)
+            }
         }
+        .frame(minHeight: 44)
+        .padding(.vertical, 4)
     }
 
     /// "34 min · 21:05": how long, and when it was last heard.
