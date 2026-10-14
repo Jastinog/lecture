@@ -385,6 +385,23 @@ def sync_topics_languages(topic_ids):
         topic.sync_languages()
 
 
+class TopicPlays(models.Model):
+    """How many times a topic's lectures were started on a day, for "Trending".
+    Anonymous: the app reports only the lecture, never who played it."""
+
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="plays")
+    day = models.DateField()
+    count = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.topic} - {self.day}: {self.count}"
+
+    class Meta:
+        verbose_name_plural = "topic plays"
+        constraints = [models.UniqueConstraint(fields=["topic", "day"], name="topic_plays_per_day")]
+        indexes = [models.Index(fields=["day"])]
+
+
 # Files go with their rows, once the delete is committed: a rolled-back delete
 # keeps its file. Each upload gets a name of its own, so no other row shares it.
 FILE_FIELDS = {Lecture: "audio_file", Lecturer: "photo", Topic: "cover", Selection: "cover"}

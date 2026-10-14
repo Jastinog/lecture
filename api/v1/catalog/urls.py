@@ -25,4 +25,6 @@ urlpatterns = [
     ),
     path("selections/<int:pk>/", views.SelectionDetailView.as_view(), name="catalog_selection"),
     path("search/", views.SearchView.as_view(), name="catalog_search"),
+    path("home/", views.HomeView.as_view(), name="catalog_home"),
+    path("plays/", views.PlayView.as_view(), name="catalog_plays"),
 ]

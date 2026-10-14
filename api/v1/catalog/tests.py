@@ -1,6 +1,10 @@
+from datetime import timedelta
+
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.lecture.models import (
@@ -11,6 +15,7 @@ from apps.lecture.models import (
     SelectionLecture,
     Topic,
     TopicGroup,
+    TopicPlays,
 )
 
 LOCAL_STORAGE = {
@@ -395,3 +400,97 @@ class SelectionAPITests(TestCase):
         self.gita.lecturer = self.other
         with self.assertRaises(ValidationError):
             self.gita.full_clean()
+
+
+@override_settings(STORAGES=LOCAL_STORAGE, MEDIA_URL="/media/")
+class HomeAPITests(TestCase):
+    """The home page's rows, and the anonymous play count behind "Trending"."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.en = Language.objects.create(code="en", name="English", native_name="English")
+        cls.ru = Language.objects.create(code="ru", name="Russian", native_name="Русский")
+        group = TopicGroup.objects.create(code="lectures", name="Lectures", order=1)
+        cls.sp = Lecturer.objects.create(code="sp", name="Prabhupada", level=1, order=1)
+        cls.rs = Lecturer.objects.create(code="rs", name="Radhanath Swami", level=2, order=2)
+        cls.topics, cls.lectures = [], []
+        for order in range(1, 8):
+            topic = Topic.objects.create(
+                lecturer=cls.rs if order == 6 else cls.sp, code=f"t{order}", title=f"Topic {order}", group=group, order=order
+            )
+            cls.topics.append(topic)
+            cls.lectures.append(
+                Lecture.objects.create(
+                    topic=topic, title="Part 1", language=cls.ru if order == 7 else cls.en,
+                    order=1, duration=600, audio_file=ContentFile(b"mp3", name="part.mp3"),
+                )
+            )
+        for title, lecturer, lecture in [
+            ("Gita", cls.sp, cls.lectures[0]),
+            ("Bhagavatam", cls.rs, cls.lectures[5]),
+            ("Empty", cls.sp, None),
+            ("Russian", cls.sp, cls.lectures[6]),
+        ]:
+            selection = Selection.objects.create(lecturer=lecturer, title=title)
+            if lecture:
+                SelectionLecture.objects.create(selection=selection, lecture=lecture)
+
+    def setUp(self):
+        self.client = APIClient()
+        cache.clear()
+
+    def home(self, **params):
+        response = self.client.get("/api/v1/home/", params)
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def play(self, lecture):
+        return self.client.post("/api/v1/plays/", {"lecture": lecture.pk}, format="json")
+
+    def test_new_topics_are_the_five_newest(self):
+        titles = [t["title"] for t in self.home()["new"]]
+        self.assertEqual(titles, ["Topic 7", "Topic 6", "Topic 5", "Topic 4", "Topic 3"])
+
+    def test_trending_ranks_recent_plays(self):
+        self.assertEqual(self.home()["trending"], [])
+        for _ in range(3):
+            self.assertEqual(self.play(self.lectures[1]).status_code, 204)
+        self.play(self.lectures[0])
+        # Long ago: no longer trending.
+        TopicPlays.objects.create(
+            topic=self.topics[2], day=timezone.localdate() - timedelta(days=60), count=50
+        )
+        trending = self.home()["trending"]
+        self.assertEqual([t["title"] for t in trending], ["Topic 2", "Topic 1"])
+        # The plays don't multiply the card's own counts.
+        self.assertEqual(trending[0]["lectures_count"], 1)
+        self.assertEqual(trending[0]["duration"], 600)
+        self.assertEqual(TopicPlays.objects.get(topic=self.topics[1]).count, 3)
+
+    def test_play_of_a_missing_lecture(self):
+        self.assertEqual(self.client.post("/api/v1/plays/", {"lecture": 0}, format="json").status_code, 400)
+        self.assertEqual(self.client.get("/api/v1/plays/").status_code, 405)
+
+    def test_selections_with_lectures_name_their_lecturer(self):
+        selections = self.home()["selections"]
+        self.assertEqual([s["title"] for s in selections], ["Russian", "Bhagavatam", "Gita"])
+        self.assertEqual(selections[1]["lecturer"], {"id": self.rs.pk, "name": "Radhanath Swami"})
+
+    def test_lecture_of_the_day_holds_all_day(self):
+        pick = self.home()["lecture_of_the_day"]
+        self.assertEqual(pick, self.home()["lecture_of_the_day"])
+        self.assertEqual(pick["index"], 0)
+        self.assertEqual(pick["lecture"]["title"], "Part 1")
+        self.assertEqual(pick["topic"]["lectures_count"], 1)
+        self.assertEqual(self.home(lang="ru")["lecture_of_the_day"]["topic"]["title"], "Topic 7")
+
+    def test_no_lecture_of_the_day_without_a_long_one(self):
+        Lecture.objects.update(duration=60)
+        self.assertIsNone(self.home()["lecture_of_the_day"])
+
+    def test_language_narrows_every_row(self):
+        home = self.home(lang="en")
+        self.assertNotIn("Topic 7", [t["title"] for t in home["new"]])
+        self.assertEqual([s["title"] for s in home["selections"]], ["Bhagavatam", "Gita"])
+        self.play(self.lectures[6])
+        self.assertEqual(self.home(lang="en")["trending"], [])

@@ -1,28 +1,42 @@
-"""Public, read-only catalog for the iOS app: groups, lecturers, topics with
-their lectures, and search. Listening data stays on the device, so nothing
-here needs a user.
+"""Public catalog for the iOS app: groups, lecturers, topics with their
+lectures, the home page, and search. Listening data stays on the device, so
+nothing here needs a user; the one write is an anonymous play count, which
+ranks "Trending".
 
 Every list takes `?lang=en,ru`: only lectures in those languages count, and
 topics and lecturers with none of them drop out. A topic's own `languages`
 always lists all of them, so the app can offer the others."""
 
+import hashlib
 from dataclasses import dataclass, field
+from datetime import timedelta
 from itertools import groupby
 from operator import itemgetter
 
-from django.db.models import Count, Max, Min, Q, Sum
+from django.db.models import Count, F, Max, Min, OuterRef, Q, Subquery, Sum
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
-from rest_framework import generics
+from django.utils import timezone
+from rest_framework import generics, serializers, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from apps.lecture.models import Lecture, Lecturer, Selection, SelectionLecture, Topic, TopicGroup
+from apps.lecture.models import (
+    Lecture,
+    Lecturer,
+    Selection,
+    SelectionLecture,
+    Topic,
+    TopicGroup,
+    TopicPlays,
+)
 
 from .serializers import (
     GroupSerializer,
     LectureSerializer,
+    LecturerRefSerializer,
     LecturerSerializer,
     SelectionSerializer,
     TopicRefSerializer,
@@ -33,6 +47,12 @@ SEARCH_LIMIT = 30
 # Longer queries are cut: no title is that long, and each one is a table scan.
 QUERY_LIMIT = 100
 RELATED_LIMIT = 10
+# Cards in each of the home page's rows.
+HOME_LIMIT = 5
+# The days whose plays rank "Trending".
+TRENDING_DAYS = 14
+# The lecture of the day is a whole talk, not a snippet: ten minutes at least.
+LECTURE_OF_THE_DAY_MIN_SECONDS = 600
 # The order lectures play in within a topic, whatever their language; search
 # reports positions in it.
 LECTURE_ORDER = ["order", "id"]
@@ -99,6 +119,16 @@ def language_counts(lectures):
         .annotate(count=Count("id"))
         .order_by("language__name")
     ]
+
+
+def lecture_hit(lecture, index, topic, context):
+    """A lecture with its position in its topic and the topic's card, as
+    search and the lecture of the day send it."""
+    return {
+        "lecture": LectureSerializer(lecture, context=context).data,
+        "index": index,
+        "topic": TopicSerializer(topic, context=context).data,
+    }
 
 
 def page_details(lecturer_id, all_lectures, lectures, context):
@@ -416,12 +446,112 @@ class SearchView(APIView):
                 "lecturers": LecturerSerializer(lecturers, many=True, context=context).data,
                 "topics": TopicSerializer(topics, many=True, context=context).data,
                 "lectures": [
-                    {
-                        "lecture": LectureSerializer(hit, context=context).data,
-                        "index": positions[hit.pk],
-                        "topic": TopicSerializer(hit_topics[hit.topic_id], context=context).data,
-                    }
+                    lecture_hit(hit, positions[hit.pk], hit_topics[hit.topic_id], context)
                     for hit in hits
                 ],
             }
         )
+
+
+class HomeView(APIView):
+    """The home page: the lecture of the day, then rows of five cards: the
+    topics most played lately, the newest topics, and the newest selections
+    of every lecturer, each naming its lecturer. `?lang=` narrows them all
+    like the lists."""
+
+    def get(self, request):
+        languages = requested_languages(request)
+        context = {"request": request}
+        topics = topics_with_lectures_in(languages)
+        since = timezone.localdate() - timedelta(days=TRENDING_DAYS - 1)
+        # A subquery: joined in, the plays would multiply the lecture counts.
+        recent_plays = (
+            TopicPlays.objects.filter(topic=OuterRef("pk"), day__gte=since)
+            .values("topic")
+            .annotate(total=Sum("count"))
+            .values("total")
+        )
+        trending = (
+            topics.annotate(recent_plays=Subquery(recent_plays))
+            .filter(recent_plays__gt=0)
+            .order_by("-recent_plays", "-id")[:HOME_LIMIT]
+        )
+        newest = topics.order_by("-created_at", "-id")[:HOME_LIMIT]
+        return Response(
+            {
+                "trending": TopicSerializer(trending, many=True, context=context).data,
+                "new": TopicSerializer(newest, many=True, context=context).data,
+                "selections": self.selections(languages, context),
+                "lecture_of_the_day": self.lecture_of_the_day(languages, context),
+            }
+        )
+
+    @staticmethod
+    def lecture_of_the_day(languages, context):
+        """A lecture picked by the date, the same for everyone all day (in the
+        server's time zone), with its position as the topic page lists it
+        under the same `?lang=`; None while there's none long enough."""
+        in_languages = lectures_in(languages)
+        candidates = (
+            Lecture.objects.filter(in_languages, duration__gte=LECTURE_OF_THE_DAY_MIN_SECONDS)
+            .exclude(audio_file="")
+            .order_by("id")
+        )
+        count = candidates.count()
+        if not count:
+            return None
+        seed = hashlib.sha256(timezone.localdate().isoformat().encode()).digest()
+        lecture = candidates.select_related("language")[int.from_bytes(seed[:8]) % count]
+        order = list(
+            Lecture.objects.filter(in_languages, topic_id=lecture.topic_id)
+            .order_by(*LECTURE_ORDER)
+            .values_list("id", flat=True)
+        )
+        topic = topics_queryset(languages).get(pk=lecture.topic_id)
+        return lecture_hit(lecture, order.index(lecture.pk), topic, context)
+
+    @staticmethod
+    def selections(languages, context):
+        """The newest top-level selections with lectures (in `languages`),
+        each lecturer's tree built once."""
+        trees, cards = {}, []
+        newest = (
+            Selection.objects.filter(parent=None)
+            .select_related("lecturer")
+            .order_by("-created_at", "-id")
+        )
+        for selection in newest.iterator():
+            if selection.lecturer_id not in trees:
+                trees[selection.lecturer_id] = SelectionTree(selection.lecturer_id, languages)
+            for card in trees[selection.lecturer_id].cards([selection], languages, context):
+                if not card["lectures_count"]:
+                    continue
+                card["lecturer"] = LecturerRefSerializer(selection.lecturer).data
+                cards.append(card)
+            if len(cards) == HOME_LIMIT:
+                break
+        return cards
+
+
+class PlayThrottle(AnonRateThrottle):
+    scope = "plays"
+
+
+class PlaySerializer(serializers.Serializer):
+    lecture = serializers.PrimaryKeyRelatedField(queryset=Lecture.objects.all())
+
+
+class PlayView(APIView):
+    """`POST {"lecture": id}`: a lecture was started. Counts towards its
+    topic's plays today; nothing about the listener is kept."""
+
+    throttle_classes = [PlayThrottle]
+
+    def post(self, request):
+        data = PlaySerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        plays, _ = TopicPlays.objects.get_or_create(
+            topic_id=data.validated_data["lecture"].topic_id, day=timezone.localdate()
+        )
+        TopicPlays.objects.filter(pk=plays.pk).update(count=F("count") + 1)
+        return Response(status=status.HTTP_204_NO_CONTENT)

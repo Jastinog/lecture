@@ -109,6 +109,10 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (),
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "UNAUTHENTICATED_USER": None,
+    # Only the anonymous play count is throttled; the catalog is read-only.
+    "DEFAULT_THROTTLE_RATES": {"plays": "120/hour"},
+    # nginx adds the client to X-Forwarded-For: throttle by that, not by nginx.
+    "NUM_PROXIES": env.int("NUM_PROXIES", default=1),
 }
 
 LOGGING = {
