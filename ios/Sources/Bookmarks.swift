@@ -14,7 +14,7 @@ struct Bookmark: Codable, Identifiable, Hashable {
     var lectureID: Int? = nil
 
     /// "Lecture 3 · 12:30".
-    var positionLabel: String { "Lecture \(index + 1) · \(formatTime(time))" }
+    var positionLabel: String { String(localized: "Lecture \(index + 1) · \(formatTime(time))") }
 
     /// Where the chapter is in `lectures`; nil when a language filter left it out.
     func index(in lectures: [Lecture]) -> Int? { lectures.index(of: lectureID, saved: index) }
@@ -93,8 +93,8 @@ struct BookmarksView: View {
         }
         .overlay {
             if marks.isEmpty {
-                ClassicEmptyState("No Bookmarks",
-                                  message: "Tap “Bookmark” in the player to save a moment",
+                ClassicEmptyState(String(localized: "No Bookmarks"),
+                                  message: String(localized: "Tap “Bookmark” in the player to save a moment"),
                                   onPinstripe: true)
             }
         }
@@ -170,7 +170,7 @@ struct BookmarkEditView: View {
                         .focused($focused)
                         .padding(.vertical, 11)
                 }
-                ConfirmingButton(confirm: "Delete Bookmark") {
+                ConfirmingButton(confirm: String(localized: "Delete Bookmark")) {
                     store.remove(id: id)
                     dismiss()
                 } label: {

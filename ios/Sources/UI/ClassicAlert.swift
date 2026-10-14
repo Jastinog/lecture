@@ -27,7 +27,7 @@ final class Alerts: ObservableObject {
     @Published private(set) var current: Alert?
 
     func show(_ title: String, message: String? = nil,
-              _ buttons: [AlertButton] = [AlertButton(title: "OK", isDefault: true)]) {
+              _ buttons: [AlertButton] = [AlertButton(title: String(localized: "OK"), isDefault: true)]) {
         withAnimation(.easeOut(duration: 0.2)) {
             current = Alert(title: title, message: message, buttons: buttons)
         }
@@ -72,10 +72,10 @@ private struct AlertPanel: View {
     var body: some View {
         VStack(spacing: 0) {
             Text(alert.title)
-                .font(.helvetica(18, weight: .bold))
+                .font(.helvetica(18, weight: .bold, relativeTo: .headline))
             if let message = alert.message {
                 Text(message)
-                    .font(.helvetica(16))
+                    .font(.app(.callout))
                     .padding(.top, 8)
             }
             HStack(spacing: 10) {

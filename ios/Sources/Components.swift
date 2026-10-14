@@ -485,7 +485,7 @@ struct TopicRow: View {
     /// Group, size and length on one grey line, as the store listed them.
     private var factsLine: String? {
         let parts = [omits.contains(.group) ? nil : topic.group?.name,
-                     topic.lecturesCount > 0 ? formatCount(topic.lecturesCount, "lecture", "lectures") : nil,
+                     topic.lecturesCount > 0 ? String(localized: "\(topic.lecturesCount) lectures") : nil,
                      topic.duration > 0 ? formatDuration(topic.duration) : nil].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
@@ -516,7 +516,7 @@ struct LanguagePicker: View {
 
     var body: some View {
         ClassicSegmentedControl(
-            options: [(nil, "All")] + languages.map { (Optional($0.code), $0.name) },
+            options: [(nil, String(localized: "All"))] + languages.map { (Optional($0.code), $0.name) },
             selection: $selection, skin: .blue)
     }
 }

@@ -17,6 +17,9 @@ struct LectureApp: App {
             RootView()
                 .tint(Palette.accent)
                 .font(.app(.body))
+                // Text grows with the reader's size up to the largest standard
+                // one; past it the classic rows and bars would no longer hold.
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 // Light, dark or the phone's, set on the window so UIKit's
                 // bars follow along with the views.
                 .onAppear { ThemeStore.shared.apply() }
@@ -32,7 +35,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                      completionHandler: @escaping () -> Void) {
         // Delegate methods run on the main thread.
         MainActor.assumeIsolated {
-            DownloadManager.shared.handleBackgroundEvents(completionHandler: completionHandler)
+            DownloadManager.shared.handleBackgroundEvents(session: identifier, completionHandler: completionHandler)
         }
     }
 }
@@ -45,11 +48,11 @@ enum SidebarTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .home:      return "Home"
-        case .lecturers: return "Lecturers"
-        case .downloads: return "Downloads"
-        case .history:   return "History"
-        case .settings:  return "Settings"
+        case .home:      return String(localized: "Home")
+        case .lecturers: return String(localized: "Lecturers")
+        case .downloads: return String(localized: "Downloads")
+        case .history:   return String(localized: "History")
+        case .settings:  return String(localized: "Settings")
         }
     }
 
@@ -94,9 +97,9 @@ struct RootView: View {
             // A lecture that won't play says so wherever the listener is.
             .onChange(of: player.playbackError) { _, error in
                 guard let error else { return }
-                Alerts.shared.show("Can’t Play", message: error, [
-                    AlertButton(title: "OK") { player.playbackError = nil },
-                    AlertButton(title: "Try Again", isDefault: true) { player.play() },
+                Alerts.shared.show(String(localized: "Can’t Play"), message: error, [
+                    AlertButton(title: String(localized: "OK")) { player.playbackError = nil },
+                    AlertButton(title: String(localized: "Try Again"), isDefault: true) { player.play() },
                 ])
             }
     }

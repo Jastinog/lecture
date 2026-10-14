@@ -77,7 +77,7 @@ extension View {
 
 private struct ClassicBackButton: ViewModifier {
     @Environment(\.dismiss) private var dismiss
-    @State private var title = "Back"
+    @State private var title = String(localized: "Back")
 
     func body(content: Content) -> some View {
         content
@@ -87,7 +87,7 @@ private struct ClassicBackButton: ViewModifier {
                     BackBarButton(title: title) { dismiss() }
                 }
             }
-            .background(PreviousTitleReader { title = $0.isEmpty ? "Back" : $0 })
+            .background(PreviousTitleReader { title = $0.isEmpty ? String(localized: "Back") : $0 })
     }
 }
 
@@ -424,7 +424,7 @@ struct GroupHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.helvetica(17, weight: .bold))
+            .font(.app(.body, weight: .bold))
             .embossed()
             .textCase(nil)
     }
@@ -437,7 +437,7 @@ struct GroupFooter: View {
 
     var body: some View {
         Text(text)
-            .font(.helvetica(15))
+            .font(.app(.subheadline))
             .embossed()
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
@@ -1098,9 +1098,10 @@ struct ClassicSpinner: View {
 // MARK: - Switch
 
 /// iOS 6's UISwitch, assembled from UIKit's own parts the way UIKit drew it: the
-/// blue "ON" track and the white "OFF" track meet under the thumb, and both, with
-/// the inset shadow, are clipped to the pill mask; the thumb sits on top. (The
-/// I/O glyphs in UIKit's artwork were for other locales; English said ON/OFF.)
+/// blue "on" track and the white "off" track meet under the thumb, and both, with
+/// the inset shadow, are clipped to the pill mask; the thumb sits on top. The
+/// tracks wear UIKit's I and O glyphs, which it showed outside English, so no
+/// language's words have to fit.
 struct ClassicToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack {
@@ -1127,11 +1128,10 @@ struct ClassicSwitch: View {
         let x = isOn ? side : 0
         ZStack(alignment: .leading) {
             ZStack(alignment: .leading) {
-                track("SwitchTrackOn", label: Text("ON").engraved(), from: .leading,
+                track("SwitchTrackOn", label: Image.classic("SwitchOnLabel"), from: .leading,
                       length: x + thumb / 2)
                 // The track is white in both themes.
-                track("SwitchTrackOff", label: Text("OFF").embossed(Palette.rgb(0x858585))
-                          .environment(\.colorScheme, .light),
+                track("SwitchTrackOff", label: Image.classic("SwitchOffLabel"),
                       from: .trailing, length: width - x - thumb / 2)
                     .frame(width: width, alignment: .trailing)
                 Image.classic("SwitchShadow").resizable()
@@ -1162,7 +1162,7 @@ struct ClassicSwitch: View {
 
     /// One side's track, `length` long from its edge to the thumb's centre and
     /// tucked a little further under the thumb so its rounded end never shows.
-    /// The label is centred in the side it shows in when the switch is on it.
+    /// The glyph is centred in the side it shows in when the switch is on it.
     private func track(_ image: String, label: some View, from edge: HorizontalEdge,
                        length: CGFloat) -> some View {
         let cap: CGFloat = 5, tuck = cap + 1
@@ -1171,7 +1171,6 @@ struct ClassicSwitch: View {
             .frame(width: length + tuck)
             .overlay(alignment: edge == .leading ? .trailing : .leading) {
                 label
-                    .font(.helvetica(16, weight: .bold))
                     .frame(width: width - thumb)
                     .padding(inner, thumb / 2 + tuck)
             }
@@ -1204,10 +1203,10 @@ struct ClassicEmptyState<Actions: View>: View {
         let color = color ?? (onPinstripe ? Palette.embossed : Palette.secondaryText)
         VStack(spacing: 10) {
             Text(title)
-                .font(.helvetica(20, weight: .bold))
+                .font(.app(.title3, weight: .bold))
             if let message {
                 Text(message)
-                    .font(.helvetica(15))
+                    .font(.app(.subheadline))
             }
             actions
                 .padding(.top, 6)
@@ -1221,7 +1220,9 @@ struct ClassicEmptyState<Actions: View>: View {
 
 extension ClassicEmptyState where Actions == EmptyView {
     /// A search or filter that matched nothing.
-    static var noResults: Self { Self("No Results", message: "Try a different search") }
+    static var noResults: Self {
+        Self(String(localized: "No Results"), message: String(localized: "Try a different search"))
+    }
 }
 
 /// A page that couldn't load, with a button to try again.
@@ -1229,7 +1230,7 @@ struct LoadFailedState: View {
     let retry: () async -> Void
 
     var body: some View {
-        ClassicEmptyState("Couldn’t Load", message: "Check your connection") {
+        ClassicEmptyState(String(localized: "Couldn’t Load"), message: String(localized: "Check your connection")) {
             Button("Try Again") { Task { await retry() } }.buttonStyle(.classicWhite)
         }
     }

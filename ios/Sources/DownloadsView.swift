@@ -10,7 +10,7 @@ struct DownloadsView: View {
         let matching = dl.library.filter { searchMatches(query, $0.title, $0.lecturer) }
         List {
             if !dl.library.isEmpty {
-                TableSearchBar(text: $query, prompt: "Search Downloads")
+                TableSearchBar(text: $query, prompt: String(localized: "Search Downloads"))
             }
             ForEach(matching) { topic in
                 DownloadRow(topic: topic)
@@ -24,7 +24,7 @@ struct DownloadsView: View {
         .plainBackground(emptyRowHeight: RowMetrics.bookRowHeight)
         .overlay {
             if dl.library.isEmpty {
-                ClassicEmptyState("No Downloads", message: "Topics you download will appear here")
+                ClassicEmptyState(String(localized: "No Downloads"), message: String(localized: "Topics you download will appear here"))
             } else if matching.isEmpty {
                 ClassicEmptyState.noResults
             }
@@ -32,7 +32,7 @@ struct DownloadsView: View {
         .navigationTitle("Downloads")
         .toolbar {
             ClassicToolbarItem(.trailing) {
-                ConfirmingButton(confirm: "Delete Finished Topics") { dl.deleteFinished() } label: {
+                ConfirmingButton(confirm: String(localized: "Delete Finished Topics")) { dl.deleteFinished() } label: {
                     Text("Clean Up")
                 }
                 .buttonStyle(.classicBar)
@@ -65,8 +65,9 @@ private struct DownloadRow: View {
     }
 
     private var detail: String {
-        let total = formatCount(topic.lectures.count, "lecture", "lectures")
-        let lectures = dl.isFullyDownloaded(topic) ? total : "\(dl.downloadedCount(topic.id)) of \(total)"
+        let count = topic.lectures.count
+        let lectures = dl.isFullyDownloaded(topic) ? String(localized: "\(count) lectures")
+            : String(localized: "\(dl.downloadedCount(topic.id)) of \(count) lectures")
         guard let size = dl.topicSizes[topic.id], size > 0 else { return lectures }
         return "\(lectures) · \(formatBytes(size))"
     }

@@ -177,14 +177,14 @@ enum SleepMode: Equatable, Identifiable {
     }
     var title: String {
         switch self {
-        case .off: return "Off"
-        case .minutes(let m): return "\(m) min"
-        case .endOfChapter: return "End of Lecture"
+        case .off: return String(localized: "Off")
+        case .minutes(let m): return String(localized: "\(m) min")
+        case .endOfChapter: return String(localized: "End of Lecture")
         }
     }
     /// Spelled-out form for the sleep-timer screen ("15 Minutes").
     var longTitle: String {
-        if case .minutes(let m) = self { return "\(m) Minutes" }
+        if case .minutes(let m) = self { return String(localized: "\(m) Minutes") }
         return title
     }
 }
@@ -327,6 +327,16 @@ final class AudioPlayer: ObservableObject {
     private static let skipBackKey = "lecture.skipBack"
     private static let skipForwardKey = "lecture.skipForward"
     private static let smartRewindKey = "lecture.smartRewind"
+    /// The loaded topic, so it's back in the player (and on the lock screen)
+    /// after a relaunch.
+    private static let sessionFile = "now-playing.json"
+    private static let sessionVersion = 1
+
+    private struct SavedSession: Codable {
+        var topic: TopicDetail
+        var summary: Topic?
+        var wholeDuration: Double?
+    }
 
     /// Skip steps offered in Settings; each has a matching SF Symbol
     /// (`gobackward.N` / `goforward.N`).
@@ -351,6 +361,30 @@ final class AudioPlayer: ObservableObject {
         if let v = defaults.object(forKey: Self.smartRewindKey) as? Bool { smartRewind = v }
         configureSession()
         configureRemoteCommands()
+        restoreSession()
+    }
+
+    /// Brings back the topic loaded when the app last quit, paused where it was
+    /// left. Nothing loads until play: the player is built then.
+    private func restoreSession() {
+        guard let saved = Store.load(SavedSession.self, from: Self.sessionFile),
+              !saved.topic.lectures.isEmpty else { return }
+        let topic = saved.topic
+        let (start, resume) = adopt(topic, summary: saved.summary, wholeDuration: saved.wholeDuration)
+        currentIndex = start.index
+        currentTime = start.time
+        duration = topic.lectures[start.index].duration
+        // Left at the very end: play starts the topic over.
+        topicEnded = start.index == topic.lectures.count - 1 && duration > 0
+            && (resume?.time ?? 0) >= duration - 1
+        updateNowPlaying()
+        loadArtwork()
+    }
+
+    private func saveSession() {
+        guard let topic else { return }
+        Store.save(SavedSession(topic: topic, summary: loadedSummary, wholeDuration: wholeDuration),
+                   version: Self.sessionVersion, to: Self.sessionFile)
     }
 
     /// Holds exactly these lectures of the topic — not the topic narrowed to
@@ -387,19 +421,26 @@ final class AudioPlayer: ObservableObject {
         guard !topic.lectures.isEmpty else { return }
         // Keep the outgoing topic's spot before its state is replaced.
         if self.topic != nil { persistProgress() }
+        let start = adopt(topic, summary: summary, wholeDuration: whole.map(\.totalDuration), index: index).start
+        saveSession()
+        play(index: start.index, at: start.time)
+    }
+
+    /// Makes `topic` the loaded one, at its own remembered speed (or the
+    /// default), and works out where it starts: the requested chapter, or where
+    /// the topic was left (rewinding a little after a break).
+    private func adopt(_ topic: TopicDetail, summary: Topic?, wholeDuration: Double?, index: Int? = nil)
+        -> (start: (index: Int, time: Double), resume: ProgressStore.Entry?) {
         self.topic = topic
-        self.loadedSummary = summary
-        wholeDuration = whole.map(\.totalDuration)
-        // Each topic plays at its own remembered speed (or the default).
+        loadedSummary = summary
+        self.wholeDuration = wholeDuration
         rate = rates.rate(for: topic.id)
-        // Resume where the topic was left (rewinding a little after a break), or
-        // start the requested chapter.
         let resume = ProgressStore.entry(topicID: topic.id)
         let start = PlaybackMath.startPosition(
             requested: index, savedIndex: resume?.index(in: topic.lectures), savedTime: resume?.time,
             savedAt: resume?.savedAt, now: Date().timeIntervalSince1970,
             smartRewind: smartRewind, chapterCount: topic.lectures.count)
-        play(index: start.index, at: start.time)
+        return (start, resume)
     }
 
     /// Loads chapter `index` and positions it at `time`. `autoplay: false` keeps
@@ -425,7 +466,7 @@ final class AudioPlayer: ObservableObject {
                 pendingResumeTime = nil
                 duration = lecture.duration
                 currentTime = max(0, time)
-                playbackError = "Unsafe audio address"
+                playbackError = String(localized: "Unsafe audio address")
                 stopInPlace(droppingItem: true)
                 return
             }
@@ -502,7 +543,11 @@ final class AudioPlayer: ObservableObject {
     func togglePlayPause() { isPlaying ? pause() : play() }
 
     func play() {
-        guard let player else { return }
+        guard let player else {
+            // A topic brought back from the last launch: load it now.
+            if topic != nil { topicEnded ? play(index: 0) : play(index: currentIndex, at: currentTime) }
+            return
+        }
         // A failed item can't be resumed — reload the chapter where it stopped.
         if playbackError != nil || player.currentItem?.status == .failed {
             play(index: currentIndex, at: currentTime)
@@ -561,6 +606,7 @@ final class AudioPlayer: ObservableObject {
         topicEnded = false
         nowPlayingTopicID = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        Store.remove(Self.sessionFile)
         // Let the app that was playing before carry on.
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
@@ -596,7 +642,7 @@ final class AudioPlayer: ObservableObject {
             try? await Task.sleep(for: .seconds(30))
             guard let self, generation == self.seekGeneration,
                   self.pendingResumeTime != nil, self.isPlaying else { return }
-            self.fail("The lecture is taking too long to load")
+            self.fail(String(localized: "The lecture is taking too long to load"))
         }
     }
 
@@ -658,11 +704,13 @@ final class AudioPlayer: ObservableObject {
     /// tolerance lets AVPlayer land seconds away from the target on MP3 streams,
     /// which made rewinding feel random.
     func seek(to time: Double) {
-        guard let player else { return }
+        guard topic != nil else { return }
         let t = max(0, duration > 0 ? min(time, duration) : time)
         currentTime = t
         if duration <= 0 || t < duration { topicEnded = false }
         updateNowPlayingElapsed()
+        // Not loaded yet (brought back from the last launch): play starts here.
+        guard let player else { persistProgress(); return }
         // Item not ready yet: retarget the pending start instead of issuing a seek
         // AVPlayer would drop (and that the start seek would then override).
         if pendingResumeTime != nil {
@@ -745,7 +793,7 @@ final class AudioPlayer: ObservableObject {
 
     /// VoiceOver label for the skip buttons, from the Settings step.
     func skipLabel(forward: Bool) -> String {
-        forward ? "Forward \(Int(skipForward)) seconds" : "Back \(Int(skipBack)) seconds"
+        forward ? String(localized: "Forward \(Int(skipForward)) seconds") : String(localized: "Back \(Int(skipBack)) seconds")
     }
     func skip(forward: Bool) { skip(forward ? skipForward : -skipBack) }
 
@@ -1015,7 +1063,7 @@ final class AudioPlayer: ObservableObject {
         player?.pause()
         isPlaying = false
         isBuffering = false
-        playbackError = message ?? "Couldn’t play the lecture"
+        playbackError = message ?? String(localized: "Couldn’t play the lecture")
         updateNowPlaying()
         persistProgress()
     }

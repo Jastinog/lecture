@@ -157,48 +157,30 @@ struct SearchHistoryList: Equatable {
 }
 
 /// "1.2 GB" / "350 MB" / "5.7 MB" for storage labels, decimal units as Files
-/// counts them, with an English point whatever the phone's region.
+/// counts them, in the app's language.
 func formatBytes(_ bytes: Int64) -> String {
-    let value = Double(max(bytes, 0))
-    for (size, unit) in [(1e9, "GB"), (1e6, "MB")] where value >= size {
-        let n = value / size
-        return "\(decimalFormatter(n < 100 ? 1 : 0).string(from: NSNumber(value: n)) ?? "\(n)") \(unit)"
-    }
-    return "\(Int((value / 1e3).rounded())) KB"
+    byteFormatter.string(fromByteCount: max(bytes, 0))
 }
 
-private func decimalFormatter(_ fractionDigits: Int) -> NumberFormatter {
-    let f = NumberFormatter()
-    f.locale = Locale(identifier: "en_US")
-    f.numberStyle = .decimal
-    f.maximumFractionDigits = fractionDigits
-    return f
-}
+/// KB and up, digits always: "0 KB" for a topic not measured yet, never "Zero KB".
+private let byteFormatter: ByteCountFormatter = {
+    let formatter = ByteCountFormatter()
+    formatter.countStyle = .file
+    formatter.allowedUnits = [.useKB, .useMB, .useGB]
+    formatter.allowsNonnumericFormatting = false
+    return formatter
+}()
 
 /// "34%".
 func formatPercent(_ fraction: Double) -> String { "\(Int((fraction * 100).rounded()))%" }
 
-/// "1,486", grouped the English way whatever the phone's region.
-func formatNumber(_ n: Int) -> String { numberFormatter.string(from: NSNumber(value: n)) ?? "\(n)" }
-
-private let numberFormatter: NumberFormatter = {
-    let f = NumberFormatter()
-    f.locale = Locale(identifier: "en_US")
-    f.numberStyle = .decimal
-    return f
-}()
-
-/// "1 topic" / "1,486 topics".
-func formatCount(_ n: Int, _ singular: String, _ plural: String) -> String {
-    "\(formatNumber(n)) \(n == 1 ? singular : plural)"
-}
 
 /// Human-readable length for remaining-time labels: "6 h 20 min", "45 min",
 /// "under a minute".
 func formatDuration(_ seconds: Double) -> String {
-    guard seconds.isFinite, seconds >= 60 else { return "under a minute" }
+    guard seconds.isFinite, seconds >= 60 else { return String(localized: "under a minute") }
     let total = Int(seconds) / 60
     let h = total / 60, m = total % 60
-    if h == 0 { return "\(m) min" }
-    return m == 0 ? "\(h) h" : "\(h) h \(m) min"
+    if h == 0 { return String(localized: "\(m) min") }
+    return m == 0 ? String(localized: "\(h) h") : String(localized: "\(h) h \(m) min")
 }

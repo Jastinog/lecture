@@ -62,7 +62,7 @@ final class CatalogViewModel: TopicPager {
     init(group: TopicGroup? = nil, api: LibraryProviding = API.library) {
         self.group = group
         self.api = api
-        super.init(errorMessage: "Couldn’t load the catalog")
+        super.init(errorMessage: String(localized: "Couldn’t load the catalog"))
     }
 
     override func fetchPage(_ page: Int) async throws -> CatalogPage {
@@ -83,12 +83,16 @@ struct CatalogView: View {
         _vm = StateObject(wrappedValue: CatalogViewModel(group: group)); scoped = true
     }
 
+    private var title: String {
+        scoped ? (vm.group?.name ?? String(localized: "Topics")) : String(localized: "Home")
+    }
+
     var body: some View {
         List {
             if !scoped {
                 // The search bar heads the table and scrolls away with it.
                 // The languages ride under the field, as a UISearchBar scope bar.
-                SearchBarLink(prompt: "Topic, lecture or lecturer", accessory: { EmptyView() },
+                SearchBarLink(prompt: String(localized: "Topic, lecture or lecturer"), accessory: { EmptyView() },
                               scope: { CatalogLanguagePicker() })
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
@@ -120,17 +124,17 @@ struct CatalogView: View {
                 }
                 .plainRow()
             } header: {
-                if !scoped { PlainSectionHeader(title: "New Topics") }
+                if !scoped { PlainSectionHeader(title: String(localized: "New Topics")) }
             }
         }
         .listStyle(.plain)
         .plainBackground(emptyRowHeight: RowMetrics.bookRowHeight)
         .topicRowsOmit(scoped ? .group : [])
-        .navigationTitle(scoped ? (vm.group?.name ?? "Topics") : "Home")
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                ClassicTitle(scoped ? (vm.group?.name ?? "Topics") : "Home")
+                ClassicTitle(title)
             }
             if scoped {
                 NowPlayingToolbarItem()
@@ -168,7 +172,7 @@ struct BrowseView: View {
                 }
                 .plainRow()
             } header: {
-                PlainSectionHeader(title: "Groups")
+                PlainSectionHeader(title: String(localized: "Groups"))
             }
         }
         // Plain text on every row, as iOS 6 listed categories.

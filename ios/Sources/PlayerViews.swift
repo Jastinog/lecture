@@ -101,7 +101,7 @@ struct NowPlayingView: View {
     /// The artwork turned over to the chapter list.
     @State private var showingChapters = false
     /// The previous screen's title, for the back button.
-    @State private var backTitle = "Back"
+    @State private var backTitle = String(localized: "Back")
     @EnvironmentObject private var router: NavRouter
     /// The stack depth the player sits at; popping below it brings the tab bar back.
     @State private var depth = 0
@@ -111,7 +111,7 @@ struct NowPlayingView: View {
             .toolbar(.hidden, for: .navigationBar)
             // The bar is hidden; this names the back button of the screens it pushes.
             .navigationTitle("Player")
-            .background(PreviousTitleReader { backTitle = $0.isEmpty ? "Back" : $0 })
+            .background(PreviousTitleReader { backTitle = $0.isEmpty ? String(localized: "Back") : $0 })
             .onChange(of: player.topic?.id) { showingChapters = false }
             .onAppear {
                 depth = router.path.count
@@ -134,7 +134,7 @@ struct NowPlayingView: View {
                 artwork
                 TapeDeck(clock: player.clock, before: beforeChapter, total: bookDuration,
                          after: afterChapter, rate: player.rate, isPlaying: player.isPlaying,
-                         label: "Lecture \(player.currentIndex + 1)", skip: player.skip,
+                         label: String(localized: "Lecture \(player.currentIndex + 1)"), skip: player.skip,
                          step: player.skip(forward:))
                     .frame(height: min(160, max(110, geo.size.height * 0.19)))
                 controls
@@ -165,7 +165,7 @@ struct NowPlayingView: View {
     private var chapterLine: String {
         let count = player.topic?.lectures.count ?? 0
         let title = player.currentLecture?.displayTitle(at: player.currentIndex) ?? ""
-        return count > 1 ? "\(title)\n\(player.currentIndex + 1) of \(count)" : title
+        return count > 1 ? "\(title)\n\(String(localized: "\(player.currentIndex + 1) of \(count)"))" : title
     }
 
     // MARK: Header
@@ -237,8 +237,8 @@ struct NowPlayingView: View {
     }
 
     private var statusText: String {
-        if player.isBuffering { return "Loading…" }
-        return player.isPlaying ? "Now Playing" : "Paused"
+        if player.isBuffering { return String(localized: "Loading…") }
+        return player.isPlaying ? String(localized: "Now Playing") : String(localized: "Paused")
     }
 
     // MARK: Artwork
@@ -303,12 +303,13 @@ struct NowPlayingView: View {
         HStack {
             skipButton(forward: false)
             Spacer(minLength: 0)
-            glyphButton("TransportPrev", height: 23, label: "Previous Lecture", action: player.previous)
+            glyphButton("TransportPrev", height: 23, label: String(localized: "Previous Lecture"), action: player.previous)
             Spacer(minLength: 0)
             glyphButton(player.isPlaying ? "TransportPause" : "TransportPlay", height: 27,
-                        label: player.isPlaying ? "Pause" : "Play", action: player.togglePlayPause)
+                        label: player.isPlaying ? String(localized: "Pause") : String(localized: "Play"),
+                        action: player.togglePlayPause)
             Spacer(minLength: 0)
-            glyphButton("TransportNext", height: 23, label: "Next Lecture", action: player.next)
+            glyphButton("TransportNext", height: 23, label: String(localized: "Next Lecture"), action: player.next)
                 .disabled(player.currentIndex + 1 >= (player.topic?.lectures.count ?? 0))
             Spacer(minLength: 0)
             skipButton(forward: true)
@@ -1199,8 +1200,8 @@ private struct TopicLeftLabel: View {
 
     var body: some View {
         let left = PlaybackMath.bookRemaining(chapterLeft: clock.remaining, after: after, rate: rate)
-        let speed = rate == 1 ? "" : " at \(AudioPlayer.rateLabel(rate))"
-        Text("\(formatDuration(left)) left in the topic\(speed)")
+        Text(rate == 1 ? "\(formatDuration(left)) left in the topic"
+                       : "\(formatDuration(left)) left in the topic at \(AudioPlayer.rateLabel(rate))")
             .font(.helvetica(11, weight: .bold))
             .embossed(Palette.rgb(0x5A5A5A))
             // Engraved in the tape deck's metal, which stays light.
@@ -1226,10 +1227,10 @@ private struct SleepTimerLabel: View {
 
     private var label: String {
         switch mode {
-        case .off: return "Timer"
+        case .off: return String(localized: "Timer")
         case .minutes where clock.sleepRemaining != nil:
             return formatTime(clock.sleepRemaining ?? 0)
-        case .endOfChapter: return "Lecture"
+        case .endOfChapter: return String(localized: "Lecture", comment: "The sleep timer key, set to the end of the lecture")
         default: return mode.title
         }
     }
@@ -1292,15 +1293,15 @@ private struct SleepRemainingFooter: View {
 
     private var text: String {
         if case .minutes = mode, let r = clock.sleepRemaining {
-            return "Pausing in \(formatTime(r)). The sound fades out at the end.\(Self.shakeHint)"
+            return String(localized: "Pausing in \(formatTime(r)). The sound fades out at the end.") + Self.shakeHint
         } else if mode == .endOfChapter {
-            return "Playback fades out at the end of this lecture."
+            return String(localized: "Playback fades out at the end of this lecture.")
         }
-        return "The sound fades out before it pauses.\(Self.shakeHint)"
+        return String(localized: "The sound fades out before it pauses.") + Self.shakeHint
     }
 
     private static var shakeHint: String {
-        " Shake the phone to add 10 minutes, or within 2 minutes of the pause to resume."
+        " " + String(localized: "Shake the phone to add 10 minutes, or within 2 minutes of the pause to resume.")
     }
 }
 
@@ -1318,7 +1319,7 @@ private struct PlayerListSide: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ClassicSegmentedControl(options: [(.chapters, "Lectures"), (.bookmarks, bookmarksTitle)],
+            ClassicSegmentedControl(options: [(.chapters, String(localized: "Lectures")), (.bookmarks, bookmarksTitle)],
                                     selection: $side, skin: .black)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
@@ -1337,7 +1338,7 @@ private struct PlayerListSide: View {
 
     private var bookmarksTitle: String {
         let count = player.topic.map { store.bookmarks(for: $0.id).count } ?? 0
-        return count == 0 ? "Bookmarks" : "Bookmarks (\(count))"
+        return count == 0 ? String(localized: "Bookmarks") : String(localized: "Bookmarks (\(count))")
     }
 }
 
@@ -1358,21 +1359,7 @@ struct LecturesListView: View {
                         onDone()
                     }) {
                         HStack(spacing: 10) {
-                            Group {
-                                if current {
-                                    Image.classic("SpeakerIconBlack")
-                                        .renderingMode(.template)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(height: 13)
-                                        .rowForeground(Palette.selection)
-                                } else {
-                                    Text("\(index + 1)")
-                                        .font(.rowDetail)
-                                        .rowForeground(Palette.secondaryText)
-                                }
-                            }
-                            .frame(width: 26, alignment: .trailing)
+                            LectureNumber(index: index, isCurrent: current)
                             Text(lecture.displayTitle(at: index))
                                 .font(.rowTitle)
                                 .rowForeground(current ? Palette.selection : Palette.text)
@@ -1403,7 +1390,7 @@ struct SpeedView: View {
 
     var body: some View {
         GroupedList {
-            GroupedSection(footer: "Each topic remembers its speed. Fine-tune it with − and + in the player.") {
+            GroupedSection(footer: String(localized: "Each topic remembers its speed. Fine-tune it with − and + in the player.")) {
                 ForEach(AudioPlayer.ratePresets, id: \.self) { r in
                     CheckmarkRow(title: AudioPlayer.rateLabel(r), isSelected: r == player.rate) {
                         player.setRate(r)

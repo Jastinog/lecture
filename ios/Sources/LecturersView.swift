@@ -51,7 +51,7 @@ final class LecturersViewModel: PagedLoader {
         await load(reset: true, { try await API.library.lecturers(language: language) }) { result in
             switch result {
             case .success(let lecturers): items = lecturers
-            case .failure: error = "Couldn’t load the lecturers"
+            case .failure: error = String(localized: "Couldn’t load the lecturers")
             }
         }
     }
@@ -79,13 +79,13 @@ struct LecturersView: View {
                 Section {
                     ForEach(pins.items) { pin in
                         RowLink(value: pin.ref) { PersonRow(name: pin.name, photo: pin.photoURL) }
-                            .classicSwipeButton("Unpin", id: "pin\(pin.id)", tint: .blue) {
+                            .classicSwipeButton(String(localized: "Unpin"), id: "pin\(pin.id)", tint: .blue) {
                                 pins.unpin(id: pin.id)
                             }
                     }
                     .plainRow()
                 } header: {
-                    PlainSectionHeader(title: "Pinned")
+                    PlainSectionHeader(title: String(localized: "Pinned"))
                 }
             }
 
@@ -101,7 +101,7 @@ struct LecturersView: View {
                     Section {
                         ForEach(lecturers) { lecturer in
                             RowLink(value: lecturer) { LecturerRow(lecturer: lecturer) }
-                                .classicSwipeButton(pins.isPinned(lecturer.id) ? "Unpin" : "Pin",
+                                .classicSwipeButton(pins.isPinned(lecturer.id) ? String(localized: "Unpin") : String(localized: "Pin"),
                                                     id: lecturer.id, tint: .blue) {
                                     pins.toggle(lecturer)
                                 }
@@ -169,8 +169,8 @@ struct LecturerRow: View {
 extension Lecturer {
     /// "12 topics · 290 lectures", grey text with no badges, as iOS 6 put facts.
     var facts: String? {
-        let parts = [topicsCount > 0 ? formatCount(topicsCount, "topic", "topics") : nil,
-                     lecturesCount > 0 ? formatCount(lecturesCount, "lecture", "lectures") : nil].compactMap { $0 }
+        let parts = [topicsCount > 0 ? String(localized: "\(topicsCount) topics") : nil,
+                     lecturesCount > 0 ? String(localized: "\(lecturesCount) lectures") : nil].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -227,15 +227,16 @@ struct LecturerView: View {
 
     /// The lecturer's topics by group, in the catalog's group order.
     private var sections: [(group: String, topics: [Topic])] {
-        let byGroup = Dictionary(grouping: topics) { $0.group?.name ?? "Other" }
+        let other = String(localized: "Other", comment: "Topics outside any group")
+        let byGroup = Dictionary(grouping: topics) { $0.group?.name ?? other }
         let known = GroupStore.shared.items.map(\.name)
         // Groups not (yet) known locally keep the order the topics came in.
         var unknown: [String] = []
         for topic in topics {
-            let name = topic.group?.name ?? "Other"
+            let name = topic.group?.name ?? other
             if !known.contains(name), !unknown.contains(name) { unknown.append(name) }
         }
-        let order = known + unknown.filter { $0 != "Other" } + ["Other"]
+        let order = known + unknown.filter { $0 != other } + [other]
         return order.compactMap { name in byGroup[name].map { (name, $0) } }
     }
 
@@ -255,7 +256,7 @@ struct LecturerView: View {
                         .listRowSeparator(.hidden)
                         .plainRow()
                 } header: {
-                    PlainSectionHeader(title: "Biography")
+                    PlainSectionHeader(title: String(localized: "Biography"))
                 }
             }
 
@@ -266,7 +267,7 @@ struct LecturerView: View {
             if loading && topics.isEmpty {
                 HStack { Spacer(); ClassicSpinner(); Spacer() }.plainRow()
             } else if failed && topics.isEmpty {
-                ErrorRetryRow(message: "Couldn’t load the topics") {
+                ErrorRetryRow(message: String(localized: "Couldn’t load the topics")) {
                     Task { await loadTopics(language) }
                 }.plainRow()
             }
@@ -276,7 +277,7 @@ struct LecturerView: View {
                     ForEach(selections) { SelectionRow(selection: $0) }
                         .plainRow()
                 } header: {
-                    PlainSectionHeader(title: "Selections")
+                    PlainSectionHeader(title: String(localized: "Selections"))
                 }
             }
 
@@ -348,7 +349,7 @@ private struct LecturerHeader: View {
                 PersonPhoto(url: lecturer?.photoURL, size: 80)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(lecturer?.name ?? fallbackName)
-                        .font(.helvetica(20, weight: .bold))
+                        .font(.app(.title3, weight: .bold))
                         .embossed(Palette.embossedStrong)
                         .lineLimit(3)
                     if let level = lecturer?.level {
@@ -360,9 +361,9 @@ private struct LecturerHeader: View {
 
             if let lecturer {
                 HStack(spacing: 0) {
-                    stat(lecturer.topicsCount, "topic", "topics")
+                    stat(String(localized: "\(lecturer.topicsCount)\ntopics"))
                     Rectangle().fill(Palette.groupedBorder).frame(width: 1)
-                    stat(lecturer.lecturesCount, "lecture", "lectures")
+                    stat(String(localized: "\(lecturer.lecturesCount)\nlectures"))
                 }
                 .frame(height: 54)
                 .groupedPanel()
@@ -380,10 +381,13 @@ private struct LecturerHeader: View {
     }
 
     /// One even column: the count in bold over its name in grey.
-    private func stat(_ value: Int, _ singular: String, _ plural: String) -> some View {
-        VStack(spacing: 2) {
-            Text(formatNumber(value)).font(.groupedLabel).foregroundStyle(Palette.text)
-            Text(value == 1 ? singular : plural).font(.rowCaption).foregroundStyle(Palette.secondaryText)
+    /// "12\ntopics": the number over its noun, which agrees with it — one
+    /// string, so the translation can decline the noun.
+    private func stat(_ text: String) -> some View {
+        let lines = text.split(separator: "\n", maxSplits: 1).map(String.init)
+        return VStack(spacing: 2) {
+            Text(lines.first ?? "").font(.groupedLabel).foregroundStyle(Palette.text)
+            Text(lines.dropFirst().first ?? "").font(.rowCaption).foregroundStyle(Palette.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)

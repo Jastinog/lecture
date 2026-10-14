@@ -8,7 +8,7 @@ struct HistoryView: View {
     var body: some View {
         List {
             if !recents.items.isEmpty {
-                TableSearchBar(text: $query, prompt: "Search History")
+                TableSearchBar(text: $query, prompt: String(localized: "Search History"))
             }
             ForEach(days, id: \.title) { day in
                 Section {
@@ -28,7 +28,7 @@ struct HistoryView: View {
         .plainBackground(emptyRowHeight: RowMetrics.bookRowHeight)
         .overlay {
             if recents.items.isEmpty {
-                ClassicEmptyState("No History", message: "Topics you listen to will appear here")
+                ClassicEmptyState(String(localized: "No History"), message: String(localized: "Topics you listen to will appear here"))
             } else if days.isEmpty {
                 ClassicEmptyState.noResults
             }
@@ -36,7 +36,7 @@ struct HistoryView: View {
         .navigationTitle("History")
         .toolbar {
             ClassicToolbarItem(.trailing) {
-                ConfirmingButton(confirm: "Clear History") { recents.clear() } label: {
+                ConfirmingButton(confirm: String(localized: "Clear History")) { recents.clear() } label: {
                     Text("Clear")
                 }
                 .buttonStyle(.classicBar)
@@ -52,12 +52,14 @@ struct HistoryView: View {
     private var days: [(title: String, items: [RecentTopic])] {
         let calendar = Calendar.current
         let matching = recents.items.filter { searchMatches(query, $0.title, $0.summary.lecturer.name) }
+        let today = String(localized: "Today"), yesterday = String(localized: "Yesterday")
+        let earlier = String(localized: "Earlier")
         let day = { (item: RecentTopic) in
             let date = Date(timeIntervalSince1970: item.updatedAt)
-            return calendar.isDateInToday(date) ? "Today" : calendar.isDateInYesterday(date) ? "Yesterday" : "Earlier"
+            return calendar.isDateInToday(date) ? today : calendar.isDateInYesterday(date) ? yesterday : earlier
         }
         // Newest first already, so each heading's topics stay in order.
-        return ["Today", "Yesterday", "Earlier"].compactMap { title in
+        return [today, yesterday, earlier].compactMap { title in
             let items = matching.filter { day($0) == title }
             return items.isEmpty ? nil : (title, items)
         }
@@ -145,7 +147,7 @@ struct ContinueListeningCard: View {
                 .listRowSeparator(.hidden)
                 .plainRow()
             } header: {
-                PlainSectionHeader(title: "Continue")
+                PlainSectionHeader(title: String(localized: "Continue"))
             }
             .onDisappear { resuming?.cancel() }
         }
@@ -159,7 +161,7 @@ struct ContinueListeningCard: View {
         let lectures = TopicCache.shared.get(item.id)?.detail.lectures
             ?? DownloadManager.shared.savedTopics[item.id]?.lectures
         let index = lectures.flatMap { entry.index(in: $0) } ?? entry.index
-        return "Lecture \(index + 1) · \(percent)"
+        return String(localized: "Lecture \(index + 1) · \(percent)")
     }
 
     /// Resumes the topic without opening its page. A downloaded copy starts
@@ -180,7 +182,7 @@ struct ContinueListeningCard: View {
                 player.load(topic: detail, summary: summary)
                 router.openPlayer()
             } catch {
-                if !error.isCancellation { self.error = "Couldn’t load the topic. Check your connection." }
+                if !error.isCancellation { self.error = String(localized: "Couldn’t load the topic. Check your connection.") }
             }
         }
     }

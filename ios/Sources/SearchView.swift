@@ -36,7 +36,7 @@ final class SearchViewModel: ObservableObject {
         } catch {
             // Typing on cancels the old request; the newer one owns the spinner.
             if Task.isCancelled || error.isCancellation { return }
-            self.error = "Couldn’t search"
+            self.error = String(localized: "Couldn’t search")
         }
         isLoading = false
     }
@@ -89,7 +89,7 @@ struct SearchView: View {
                     }
                     .plainRow()
                 } header: {
-                    PlainSectionHeader(title: "Lecturers")
+                    PlainSectionHeader(title: String(localized: "Lecturers"))
                 }
             }
 
@@ -98,7 +98,7 @@ struct SearchView: View {
                     ForEach(result.topics) { TopicRow(topic: $0) }
                         .plainRow()
                 } header: {
-                    PlainSectionHeader(title: "Topics")
+                    PlainSectionHeader(title: String(localized: "Topics"))
                 }
             }
 
@@ -109,7 +109,7 @@ struct SearchView: View {
                     }
                     .plainRow()
                 } header: {
-                    PlainSectionHeader(title: "Lectures")
+                    PlainSectionHeader(title: String(localized: "Lectures"))
                 }
             }
         }
@@ -126,7 +126,7 @@ struct SearchView: View {
         .navigationTitle("Search")
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .top, spacing: 0) {
-            ClassicSearchBar(text: $vm.query, prompt: "Topics, lectures, lecturers",
+            ClassicSearchBar(text: $vm.query, prompt: String(localized: "Topics, lectures, lecturers"),
                              onSubmit: { history.record(vm.query) }, autofocus: vm.query.isEmpty,
                              onCancel: { dismiss() }) {
                 CatalogLanguagePicker()
@@ -158,8 +158,8 @@ struct SearchView: View {
                 router.openPlayer()
             } catch {
                 guard !error.isCancellation else { return }
-                Alerts.shared.show("Couldn’t Play", message: "Check your connection and try again.",
-                                   [AlertButton(title: "OK", isDefault: true)])
+                Alerts.shared.show(String(localized: "Couldn’t Play"),
+                                   message: String(localized: "Check your connection and try again."))
             }
         }
     }
@@ -177,9 +177,9 @@ struct SearchView: View {
             }
             .plainRow()
         } header: {
-            PlainSectionHeader(title: "Recent")
+            PlainSectionHeader(title: String(localized: "Recent"))
                 .overlay(alignment: .trailing) {
-                    SectionHeaderButton(title: "Clear") { history.clear() }
+                    SectionHeaderButton(title: String(localized: "Clear")) { history.clear() }
                 }
         }
     }
@@ -188,13 +188,14 @@ struct SearchView: View {
         if vm.isLoading {
             ClassicSpinner()
         } else if let error = vm.error {
-            ClassicEmptyState("Search Failed", message: error) {
+            ClassicEmptyState(String(localized: "Search Failed"), message: error) {
                 Button("Try Again") { vm.search() }
                     .buttonStyle(.classicWhite)
             }
         } else if !vm.hasQuery {
             if history.list.items.isEmpty {
-                ClassicEmptyState("Search Lectures", message: "Type at least \(SearchQuery.minLength) characters")
+                ClassicEmptyState(String(localized: "Search Lectures"),
+                                  message: String(localized: "Type at least \(SearchQuery.minLength) characters"))
             }
         } else {
             ClassicEmptyState.noResults
@@ -214,7 +215,7 @@ private struct LectureHitRow: View {
                     .font(.rowTitle)
                     .rowForeground(Palette.text)
                     .lineLimit(1)
-                Text("\(hit.topic.title) · \(hit.topic.lecturer.name)")
+                Text(verbatim: "\(hit.topic.title) · \(hit.topic.lecturer.name)")
                     .font(.rowDetail)
                     .rowForeground(Palette.secondaryText)
                     .lineLimit(1)

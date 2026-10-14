@@ -69,7 +69,7 @@ struct TopicView: View {
                 .listRowSeparator(.hidden)
                 .plainRow()
 
-                ClassicSegmentedControl(options: TopicTab.allCases.map { ($0, $0.rawValue) },
+                ClassicSegmentedControl(options: TopicTab.allCases.map { ($0, $0.title) },
                                         selection: $tab, skin: .blue)
                     .padding(.bottom, 10)
                     .listRowSeparator(.hidden)
@@ -101,14 +101,14 @@ struct TopicView: View {
                     .listRowSeparator(.hidden)
                     .plainRow()
             } header: {
-                PlainSectionHeader(title: "Description")
+                PlainSectionHeader(title: String(localized: "Description"))
             }
         }
 
         Section {
             Group {
                 RowLink(value: page.lecturer ?? Lecturer(id: page.summary.lecturer.id, name: page.summary.lecturer.name)) {
-                    FieldRow(label: "lecturer", value: page.summary.lecturer.name)
+                    FieldRow(label: String(localized: "lecturer", comment: "Topic information label"), value: page.summary.lecturer.name)
                 }
                 ForEach(information(page), id: \.label) { field in
                     FieldRow(label: field.label, value: field.value, lines: 6)
@@ -116,7 +116,7 @@ struct TopicView: View {
             }
             .plainRow()
         } header: {
-            PlainSectionHeader(title: "Information")
+            PlainSectionHeader(title: String(localized: "Information"))
         }
 
         if !page.related.isEmpty {
@@ -134,7 +134,7 @@ struct TopicView: View {
                 .listRowInsets(EdgeInsets())
                 .listRowSeparator(.hidden)
             } header: {
-                PlainSectionHeader(title: "More from \(page.summary.lecturer.name)")
+                PlainSectionHeader(title: String(localized: "More from \(page.summary.lecturer.name)"))
             }
         }
     }
@@ -143,14 +143,14 @@ struct TopicView: View {
     private func information(_ page: TopicPage) -> [(label: String, value: String)] {
         let topic = page.detail
         var fields: [(String, String?)] = []
-        fields.append(("group", page.summary.group?.name))
+        fields.append((String(localized: "group", comment: "Topic information label"), page.summary.group?.name))
         if !topic.lectures.isEmpty {
-            fields.append(("lectures", formatNumber(topic.lectures.count)))
-            fields.append(("length", formatDuration(topic.totalDuration)))
+            fields.append((String(localized: "lectures", comment: "Topic information label"), topic.lectures.count.formatted()))
+            fields.append((String(localized: "length", comment: "Topic information label"), formatDuration(topic.totalDuration)))
         }
-        fields.append(("language", page.languages.isEmpty ? nil : page.languages.map(\.name).joined(separator: ", ")))
-        fields.append(("years", page.years.map { $0.lowerBound == $0.upperBound ? "\($0.lowerBound)" : "\($0.lowerBound)–\($0.upperBound)" }))
-        fields.append(("added", page.addedDate.map { $0.formatted(.dateTime.day().month(.abbreviated).year()) }))
+        fields.append((String(localized: "language", comment: "Topic information label"), page.languages.isEmpty ? nil : page.languages.map(\.name).joined(separator: ", ")))
+        fields.append((String(localized: "years", comment: "Topic information label"), page.years.map { $0.lowerBound == $0.upperBound ? "\($0.lowerBound)" : "\($0.lowerBound)–\($0.upperBound)" }))
+        fields.append((String(localized: "added", comment: "Topic information label"), page.addedDate.map { $0.formatted(.dateTime.day().month(.abbreviated).year()) }))
         return fields.compactMap { label, value in value.map { (label, $0) } }
     }
 
@@ -210,7 +210,7 @@ struct TopicView: View {
             }
             .plainRow()
         } header: {
-            PlainSectionHeader(title: "Lectures — \(topic.lectures.count)")
+            PlainSectionHeader(title: String(localized: "Lectures — \(topic.lectures.count)"))
         }
     }
 
@@ -224,12 +224,12 @@ struct TopicView: View {
     private func progressLine(_ topic: TopicDetail) -> String? {
         if player.topic?.id == topic.id, let current = player.currentLecture,
            let index = topic.lectures.firstIndex(where: { $0.id == current.id }) {
-            return "Lecture \(index + 1)"
+            return String(localized: "Lecture \(index + 1)")
         }
-        if ProgressStore.isFinished(topicID: topic.id) { return "Finished" }
+        if ProgressStore.isFinished(topicID: topic.id) { return String(localized: "Finished") }
         guard let entry = ProgressStore.entry(topicID: topic.id), entry.index > 0 || entry.time > 1,
               let index = entry.index(in: topic.lectures) else { return nil }
-        return "Lecture \(index + 1) · \(formatTime(entry.time))"
+        return String(localized: "Lecture \(index + 1) · \(formatTime(entry.time))")
     }
 
     /// The main call to action, worded for where the listener is: "Listen",
@@ -241,7 +241,7 @@ struct TopicView: View {
         let finished = !loaded && ProgressStore.isFinished(topicID: topic.id)
         let started = entry.map { $0.index > 0 || $0.time > 1 } ?? false
 
-        let title = loaded ? (player.isPlaying ? "Pause" : "Resume")
+        let title: LocalizedStringKey = loaded ? (player.isPlaying ? "Pause" : "Resume")
             : finished ? "Start Over" : started ? "Resume" : "Listen"
 
         return Button {
@@ -308,7 +308,7 @@ private struct TopicPageHead<Buttons: View>: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(topic.title)
-                        .font(.helvetica(18, weight: .bold))
+                        .font(.helvetica(18, weight: .bold, relativeTo: .headline))
                         .foregroundStyle(Palette.text)
                         .lineLimit(4)
                         .fixedSize(horizontal: false, vertical: true)
@@ -341,7 +341,7 @@ private struct TopicPageHead<Buttons: View>: View {
         let topic = page.detail
         var lines: [String] = []
         if !topic.lectures.isEmpty {
-            lines.append("\(formatCount(topic.lectures.count, "lecture", "lectures")) · \(formatTime(topic.totalDuration))")
+            lines.append("\(String(localized: "\(topic.lectures.count) lectures")) · \(formatTime(topic.totalDuration))")
         }
         if let progress { lines.append(progress) }
         return lines
@@ -349,8 +349,15 @@ private struct TopicPageHead<Buttons: View>: View {
 }
 
 /// What the page shows under its head.
-enum TopicTab: String, CaseIterable {
-    case lectures = "Lectures", details = "Details"
+enum TopicTab: CaseIterable {
+    case lectures, details
+
+    var title: String {
+        switch self {
+        case .lectures: return String(localized: "Lectures")
+        case .details: return String(localized: "Details")
+        }
+    }
 }
 
 enum TopicPageMetrics {
@@ -409,12 +416,12 @@ private struct TopicDownloadButton: View {
         Group {
             if dl.isFullyDownloaded(topic) {
                 Button("Downloaded") {
-                    ActionSheets.shared.show("This topic is downloaded to your phone.",
-                                             [.destructive("Delete Download") { dl.deleteTopic(topic.id) }])
+                    ActionSheets.shared.show(String(localized: "This topic is downloaded to your phone."),
+                                             [.destructive(String(localized: "Delete Download")) { dl.deleteTopic(topic.id) }])
                 }
             } else if dl.isTopicDownloading(topic) {
                 Button("\(dl.downloadedCount(topic.id)) of \(topic.lectures.count)") {
-                    ActionSheets.shared.show(nil, [SheetAction(title: "Stop Download") { dl.cancelTopic(topic) }])
+                    ActionSheets.shared.show(nil, [SheetAction(title: String(localized: "Stop Download")) { dl.cancelTopic(topic) }])
                 }
             } else {
                 Button("Download") { dl.downloadTopic(topic) }
@@ -433,7 +440,7 @@ private struct TopicShelfButton: View {
     @ObservedObject private var shelf = ShelfStore.shared
 
     var body: some View {
-        Button(shelf.status(topic.id)?.shortTitle ?? "Add to Shelf") { ShelfActions.show(for: topic) }
+        Button(shelf.status(topic.id)?.shortTitle ?? String(localized: "Add to Shelf")) { ShelfActions.show(for: topic) }
             .lineLimit(1)
             .buttonStyle(.classicWhite)
     }
@@ -466,11 +473,13 @@ struct TopicDescription: View {
     let text: String
     @State private var expanded = false
     @State private var truncated = false
+    /// A line of the text, spacing included, at the reader's text size.
+    @ScaledMetric(relativeTo: .subheadline) private var lineHeight: CGFloat = 21
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(text)
-                .font(.helvetica(15))
+                .font(.app(.subheadline))
                 .foregroundStyle(Palette.bodyText)
                 .lineSpacing(2)
                 .lineLimit(expanded ? nil : 6)
@@ -478,17 +487,17 @@ struct TopicDescription: View {
                 // "More" has anything to open.
                 .background {
                     Text(text)
-                        .font(.helvetica(15))
+                        .font(.app(.subheadline))
                         .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .hidden()
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { full in
-                            truncated = full > 6 * 21
+                            truncated = full > 6 * lineHeight
                         }
                 }
             if truncated && !expanded {
                 Button("More") { withAnimation(.easeOut(duration: 0.25)) { expanded = true } }
-                    .font(.helvetica(15, weight: .bold))
+                    .font(.app(.subheadline, weight: .bold))
                     .foregroundStyle(Palette.accent)
                     .buttonStyle(.plain)
             }
@@ -502,12 +511,36 @@ enum LecturePlayed {
     case fixed(Double)
 }
 
+/// A lecture's number in a list, or the blue speaker on the one that's
+/// playing; the column widens with the text size, so "100" never truncates.
+struct LectureNumber: View {
+    let index: Int
+    let isCurrent: Bool
+    @ScaledMetric(relativeTo: .footnote) private var width: CGFloat = 26
+
+    var body: some View {
+        Group {
+            if isCurrent {
+                Image.classic("SpeakerIconBlack")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 13)
+                    .rowForeground(Palette.selection)
+            } else {
+                Text("\(index + 1)")
+                    .font(.rowDetail)
+                    .rowForeground(Palette.secondaryText)
+            }
+        }
+        .frame(width: width, alignment: .trailing)
+    }
+}
+
 /// A lecture as Music listed a track: the number (the blue speaker on the one
 /// that's playing), the title, the length, and the cloud while it isn't on the
 /// phone. The row plays the lecture.
 private struct LectureRow: View {
-    static let numberWidth: CGFloat = 26
-
     let index: Int
     let lecture: Lecture
     let isCurrent: Bool
@@ -529,21 +562,7 @@ private struct LectureRow: View {
         HStack(spacing: 6) {
             RowButton(action: onPlay) {
                 HStack(spacing: 10) {
-                    Group {
-                        if isCurrent {
-                            Image.classic("SpeakerIconBlack")
-                                .renderingMode(.template)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 13)
-                                .rowForeground(Palette.selection)
-                        } else {
-                            Text("\(index + 1)")
-                                .font(.rowDetail)
-                                .rowForeground(Palette.secondaryText)
-                        }
-                    }
-                    .frame(width: Self.numberWidth, alignment: .trailing)
+                    LectureNumber(index: index, isCurrent: isCurrent)
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(lecture.displayTitle(at: index))

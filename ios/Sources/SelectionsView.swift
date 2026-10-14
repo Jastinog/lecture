@@ -24,9 +24,9 @@ struct SelectionRow: View {
 
     /// "17 selections · 692 lectures", or "143 lectures · 52 h 10 min".
     private var facts: String {
-        let lectures = formatCount(selection.lecturesCount, "lecture", "lectures")
+        let lectures = String(localized: "\(selection.lecturesCount) lectures")
         if selection.holdsSelections {
-            return "\(formatCount(selection.childrenCount, "selection", "selections")) · \(lectures)"
+            return "\(String(localized: "\(selection.childrenCount) selections")) · \(lectures)"
         }
         return selection.duration > 0 ? "\(lectures) · \(formatDuration(selection.duration))" : lectures
     }
@@ -60,7 +60,7 @@ struct SelectionFolderView: View {
         .overlay {
             if let children {
                 if children.isEmpty {
-                    ClassicEmptyState("Nothing Here", message: "No lectures in this language yet")
+                    ClassicEmptyState(String(localized: "Nothing Here"), message: String(localized: "No lectures in this language yet"))
                 }
             } else if loading {
                 ClassicSpinner()

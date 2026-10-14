@@ -19,7 +19,7 @@ extension View {
     /// Gives a list row iOS 6's swipe button (and, in edit mode, the red minus).
     /// `id` tells the rows apart, so only one shows its button. The list needs
     /// `classicSwipeList()`.
-    func classicSwipeButton(_ title: String = "Delete", id: some Hashable, tint: RowSwipeTint = .red,
+    func classicSwipeButton(_ title: String = String(localized: "Delete"), id: some Hashable, tint: RowSwipeTint = .red,
                             action: @escaping () -> Void) -> some View {
         modifier(ClassicSwipeRow(id: AnyHashable(id), title: title, tint: tint, action: action))
     }

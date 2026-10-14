@@ -21,17 +21,17 @@ enum LecturerLevel: Int, Codable, CaseIterable, Identifiable {
     var id: Int { rawValue }
     var title: String {
         switch self {
-        case .founder: return "Founder-Acharya"
-        case .disciple: return "Direct Disciple"
-        case .grandDisciple: return "Grand Disciple"
+        case .founder: return String(localized: "Founder-Acharya")
+        case .disciple: return String(localized: "Direct Disciple")
+        case .grandDisciple: return String(localized: "Grand Disciple")
         }
     }
     /// The directory's section heading for the level.
     var sectionTitle: String {
         switch self {
-        case .founder: return "Founder-Acharya"
-        case .disciple: return "Disciples"
-        case .grandDisciple: return "Grand Disciples"
+        case .founder: return String(localized: "Founder-Acharya")
+        case .disciple: return String(localized: "Disciples")
+        case .grandDisciple: return String(localized: "Grand Disciples")
         }
     }
 }
@@ -129,7 +129,7 @@ struct Lecture: Identifiable, Hashable, Codable {
 
     /// The title to show for the lecture at `index`; untitled ones read "Lecture N".
     func displayTitle(at index: Int) -> String {
-        title.trimmingCharacters(in: .whitespaces).isEmpty ? "Lecture \(index + 1)" : title
+        title.trimmingCharacters(in: .whitespaces).isEmpty ? String(localized: "Lecture \(index + 1)") : title
     }
 }
 

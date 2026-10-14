@@ -21,6 +21,7 @@
 		3FC4C3729B015A4F7071A0E7 /* TopicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC8B4E5A4388E24C44506CD7 /* TopicView.swift */; };
 		445A04DD8791A6056B6D98EB /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F94E465EADEE5CA4A29BFEE /* Typography.swift */; };
 		4463FF2B6B4BD8A45FDA3E7D /* Grouped.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D8B75069B8BFF3F6BBD314 /* Grouped.swift */; };
+		51B7E3E92D2E301F19EFE54C /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 64D903BC64254B81293A2964 /* InfoPlist.xcstrings */; };
 		5481615AAA792CEC05F8B4E0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 15C381127C0039FB2D79831A /* Assets.xcassets */; };
 		5A443779B17C308363BAEDF9 /* Bookmarks.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1D06817AB69D89A1962D45 /* Bookmarks.swift */; };
 		72CAFD7E646D0D080AF0ABBC /* Transitions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C7448A5F900F0F76A106255 /* Transitions.swift */; };
@@ -28,6 +29,7 @@
 		8242CDA19CF7948F1464F5AF /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C3533AF886C47660B43CA2 /* Theme.swift */; };
 		93E281682ECF18D21F766639 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742CF1C4F4AD3343F0EAFC21 /* Persistence.swift */; };
 		97863B54539F30BEAD1B5FCB /* SwipeRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = D081BFAD756848BAE0FAC20E /* SwipeRows.swift */; };
+		9C902C684E3F5AF276A8E543 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 4EEEE7FEE468EE66D6E16A57 /* Localizable.xcstrings */; };
 		A2DEBE9E234B6D0EE33BD312 /* SelectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4383331DE843ADF7967D485 /* SelectionsView.swift */; };
 		A5A3C069A4D1707905F4E05A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06303A36682078BBBC0D5577 /* HistoryView.swift */; };
 		B8ED2BD10925245EC8ADC634 /* LecturersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9D59FA609459A1BC27331E4 /* LecturersView.swift */; };
@@ -54,8 +56,10 @@
 		46170F2FBD542B54D62DFC21 /* LectureApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureApp.swift; sourceTree = "<group>"; };
 		4A07D5BB0371FD82033A1ACA /* AudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayer.swift; sourceTree = "<group>"; };
 		4E2E004E15D1646233F87D7B /* Lecture.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lecture.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4EEEE7FEE468EE66D6E16A57 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		59CD63E7B6A462FA2AD83CE0 /* ActionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionSheet.swift; sourceTree = "<group>"; };
 		5F94E465EADEE5CA4A29BFEE /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
+		64D903BC64254B81293A2964 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		6E41D9C59E681E2F0E82443B /* PlaybackMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackMath.swift; sourceTree = "<group>"; };
 		73EFCF604B5DEECFA3E46ADF /* CatalogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogView.swift; sourceTree = "<group>"; };
 		742CF1C4F4AD3343F0EAFC21 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
@@ -141,8 +145,10 @@
 				2B544D87B647654BA319F63C /* DownloadsView.swift */,
 				06303A36682078BBBC0D5577 /* HistoryView.swift */,
 				80FBDAEACD0174A5681F5C0D /* Info.plist */,
+				64D903BC64254B81293A2964 /* InfoPlist.xcstrings */,
 				46170F2FBD542B54D62DFC21 /* LectureApp.swift */,
 				F9D59FA609459A1BC27331E4 /* LecturersView.swift */,
+				4EEEE7FEE468EE66D6E16A57 /* Localizable.xcstrings */,
 				3FBD2996CAC81A89B0D35A79 /* Models.swift */,
 				A17802F1D4CA09A39F0E3871 /* Pins.swift */,
 				DDA9EB5E8783ED1284F751A6 /* PlayerViews.swift */,
@@ -201,6 +207,8 @@
 			knownRegions = (
 				Base,
 				en,
+				ru,
+				uk,
 			);
 			mainGroup = 5D3D24DE82FBD45B5023AC67;
 			minimizedProjectReferenceProxies = 1;
@@ -220,6 +228,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				5481615AAA792CEC05F8B4E0 /* Assets.xcassets in Resources */,
+				51B7E3E92D2E301F19EFE54C /* InfoPlist.xcstrings in Resources */,
+				9C902C684E3F5AF276A8E543 /* Localizable.xcstrings in Resources */,
 				CF88E62CFE4F9318625E4376 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -280,8 +290,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.personal.lecture;
 				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -360,8 +372,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.personal.lecture;
 				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;

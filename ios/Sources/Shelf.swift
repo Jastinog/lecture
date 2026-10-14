@@ -11,15 +11,15 @@ enum ShelfStatus: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .want: return "Want to Listen"
-        case .listening: return "Listening"
-        case .finished: return "Finished"
-        case .onHold: return "On Hold"
+        case .want: return String(localized: "Want to Listen")
+        case .listening: return String(localized: "Listening")
+        case .finished: return String(localized: "Finished")
+        case .onHold: return String(localized: "On Hold")
         }
     }
 
     /// Fits a button or a segment: "Want to Listen" shortens to "Want".
-    var shortTitle: String { self == .want ? "Want" : title }
+    var shortTitle: String { self == .want ? String(localized: "Want", comment: "Short for Want to Listen") : title }
 }
 
 /// A topic on the shelf, persisted locally (UserDefaults). Newest first.
@@ -120,7 +120,7 @@ enum ShelfActions {
         let moves = ShelfStatus.allCases.filter { $0 != current }.map { status in
             SheetAction(title: status.title) { shelf.setStatus(status, for: topic) }
         }
-        let remove: [SheetAction] = current == nil ? [] : [.destructive("Remove from Shelf") { shelf.remove(id: topic.id) }]
+        let remove: [SheetAction] = current == nil ? [] : [.destructive(String(localized: "Remove from Shelf")) { shelf.remove(id: topic.id) }]
         ActionSheets.shared.show(topic.title, moves + remove)
     }
 }
@@ -132,7 +132,7 @@ enum ShelfFilter: String, CaseIterable, Identifiable {
     /// The status this filter selects, or nil for "all". The non-`all` cases share
     /// their raw values with `ShelfStatus`, so the mapping is a plain lookup.
     var status: ShelfStatus? { ShelfStatus(rawValue: rawValue) }
-    var title: String { status?.title ?? "All" }
+    var title: String { status?.title ?? String(localized: "All") }
     /// Fits a segment of the shelf's filter bar.
     var shortTitle: String { status?.shortTitle ?? title }
 }
@@ -290,10 +290,10 @@ struct ShelfView: View {
     /// The empty shelf or filter, pressed into the list's white or, in a brown
     /// that shows on wood, into the maple.
     private func emptyState(color: Color? = nil) -> some View {
-        ClassicEmptyState(filter == .all ? "Your Shelf Is Empty" : "Nothing Here",
+        ClassicEmptyState(filter == .all ? String(localized: "Your Shelf Is Empty") : String(localized: "Nothing Here"),
                           message: filter == .all
-                              ? "Topics you add to your shelf will appear here"
-                              : "No topics marked “\(filter.title)”",
+                              ? String(localized: "Topics you add to your shelf will appear here")
+                              : String(localized: "No topics marked “\(filter.title)”"),
                           color: color)
     }
 }
@@ -392,15 +392,15 @@ private struct ShelfTopicView: View {
 
     /// A diagonal corner sash for the statuses worth flagging at a glance.
     @ViewBuilder private var sash: some View {
-        if let style = ribbonStyle {
+        if let gloss = ribbonGloss {
             ZStack(alignment: .topTrailing) {
                 Color.clear
-                Text(style.title)
+                Text(item.status.title)
                     .font(.helvetica(8, weight: .bold))
                     .engraved()
                     .frame(width: 86)
                     .padding(.vertical, 2)
-                    .background(style.gloss)
+                    .background(gloss)
                     .shadow(color: .black.opacity(0.5), radius: 1, y: 1)
                     .rotationEffect(.degrees(45))
                     .offset(x: 24, y: 14)
@@ -409,14 +409,14 @@ private struct ShelfTopicView: View {
         }
     }
 
-    private var ribbonStyle: (title: String, gloss: LinearGradient)? {
+    private var ribbonGloss: LinearGradient? {
         func g(_ a: UInt32, _ b: UInt32) -> LinearGradient {
             LinearGradient(colors: [Palette.rgb(a), Palette.rgb(b)], startPoint: .top, endPoint: .bottom)
         }
         switch item.status {
-        case .listening: return ("Listening", g(0x4F9BF3, 0x1D64CF))
-        case .finished: return ("Finished", g(0x7CC35B, 0x3F8F25))
-        case .onHold: return ("On Hold", g(0x9A9A9A, 0x5E5E5E))
+        case .listening: return g(0x4F9BF3, 0x1D64CF)
+        case .finished: return g(0x7CC35B, 0x3F8F25)
+        case .onHold: return g(0x9A9A9A, 0x5E5E5E)
         case .want: return nil
         }
     }

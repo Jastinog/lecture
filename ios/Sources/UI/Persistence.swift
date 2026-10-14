@@ -97,6 +97,12 @@ enum Store {
         writes.async { try? data.write(to: url, options: .atomic) }
     }
 
+    /// Deletes the file, after any save still on its way.
+    static func remove(_ name: String) {
+        let url = fileURL(name)
+        writes.async { try? FileManager.default.removeItem(at: url) }
+    }
+
     private static let writes = DispatchQueue(label: "Store.writes", qos: .utility)
 
     /// One-time migration of a legacy UserDefaults JSON blob into a versioned file.
