@@ -325,6 +325,9 @@ enum RowMetrics {
     static var bookRowHeight: CGFloat { CoverAspect.height(forWidth: coverWidth) + 16 }
     /// Side margins of a plain-list row, which runs the full width (`plainRow`).
     static let margin: CGFloat = 10
+    /// A track list's number column at the default text size; it grows with
+    /// Dynamic Type (`LectureNumber`, `TrackRowBackground`).
+    static let trackNumberWidth: CGFloat = 34
     /// A person's photo in the author and performer lists.
     static let avatarSize: CGFloat = 50
     /// How far a reply steps in under the review it answers.

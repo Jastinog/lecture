@@ -1250,6 +1250,52 @@ extension EnvironmentValues {
     }
 }
 
+private struct TrackIndexKey: EnvironmentKey {
+    static let defaultValue: Int? = nil
+}
+
+extension EnvironmentValues {
+    /// The row's place in a track list (see `trackRow`), nil elsewhere.
+    var trackIndex: Int? {
+        get { self[TrackIndexKey.self] }
+        set { self[TrackIndexKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// A row of a track list, ruled as Music listed an album's songs: greys
+    /// alternating row by row, a line between rows and one after the number
+    /// column (`LectureNumber`). `index` is the row's place in the list. For
+    /// `RowLink` and `RowButton` rows, which paint the background.
+    func trackRow(_ index: Int) -> some View {
+        environment(\.trackIndex, index)
+            .listRowSeparator(.hidden)
+    }
+}
+
+/// A track-list row's ground: its grey, a light line along the top and a dark
+/// one along the bottom, and the same pair down the side of the number column.
+struct TrackRowBackground: View {
+    let index: Int
+    @ScaledMetric(relativeTo: .callout) private var numberWidth = RowMetrics.trackNumberWidth
+    @Environment(\.displayScale) private var scale
+
+    var body: some View {
+        let line = 1 / scale
+        (index.isMultiple(of: 2) ? Palette.trackRow : Palette.trackRowAlternate)
+            .overlay(alignment: .top) { Palette.trackRuleHighlight.frame(height: line) }
+            .overlay(alignment: .bottom) { Palette.trackRule.frame(height: line) }
+            .overlay(alignment: .leading) {
+                HStack(spacing: 0) {
+                    Palette.trackRule.frame(width: line)
+                    Palette.trackRuleHighlight.frame(width: line)
+                }
+                // Halfway across the gap between the number and the title.
+                .padding(.leading, RowMetrics.margin + numberWidth + 5)
+            }
+    }
+}
+
 /// A UITableViewCell's selection in SwiftUI: while the row is pressed or
 /// `selected`, its text turns white (see `rowForeground`) and a disclosure arrow,
 /// if any, turns white too. The blue itself is the row's background, set by
@@ -1290,10 +1336,37 @@ private struct RowDisclosure: View {
     }
 }
 
-/// UIKit's blue selection gradient as a row background, or the plain cell.
-private func rowBackground(_ on: Bool) -> some View {
+/// UIKit's blue selection gradient as a row background, else the plain cell
+/// or, in a track list, the ruled grey.
+private func rowBackground(_ on: Bool, track: Int?) -> some View {
     Group {
-        if on { Image.classic("Selection").resizable() } else { Palette.cell }
+        if on {
+            Image.classic("Selection").resizable()
+        } else if let track {
+            TrackRowBackground(index: track)
+        } else {
+            Palette.cell
+        }
+    }
+}
+
+extension View {
+    /// The row background for a row whose `RowButton` shares a stack with other
+    /// controls: a list reads the background only off the row itself, so it's
+    /// set here, blue while the button is pressed.
+    func nestedRowBackground() -> some View {
+        modifier(NestedRowBackground())
+    }
+}
+
+private struct NestedRowBackground: ViewModifier {
+    @Environment(\.trackIndex) private var track
+    @State private var on = false
+
+    func body(content: Content) -> some View {
+        content
+            .onPreferenceChange(RowSelectedKey.self) { on = $0 }
+            .listRowBackground(rowBackground(on, track: track))
     }
 }
 
@@ -1307,6 +1380,7 @@ struct RowLink<Label: View>: View {
 
     @EnvironmentObject private var router: NavRouter
     @State private var pressed = false
+    @Environment(\.trackIndex) private var track
     /// Set when a long press fires, so letting go doesn't also open the row.
     @State private var longPressed = false
     /// Held after the push; cleared once the stack is back at `depth`.
@@ -1349,7 +1423,7 @@ struct RowLink<Label: View>: View {
             longPress?()
         }, isEnabled: longPress != nil)
         .onChange(of: pressed) { _, isPressed in if isPressed { longPressed = false } }
-        .listRowBackground(rowBackground(selected || pressed))
+        .listRowBackground(rowBackground(selected || pressed, track: track))
         .preference(key: RowSelectedKey.self, value: selected || pressed)
         .onChange(of: router.path.count) { _, count in
             if selected && count <= depth {
@@ -1365,6 +1439,7 @@ struct RowButton<Label: View>: View {
     let action: () -> Void
     @ViewBuilder var label: Label
     @State private var pressed = false
+    @Environment(\.trackIndex) private var track
 
     init(disclosure: Bool = false, action: @escaping () -> Void, @ViewBuilder label: () -> Label) {
         self.disclosure = disclosure
@@ -1375,7 +1450,7 @@ struct RowButton<Label: View>: View {
     var body: some View {
         Button(action: action) { label }
             .buttonStyle(ClassicRowStyle(disclosure: disclosure, pressed: $pressed))
-            .listRowBackground(rowBackground(pressed))
+            .listRowBackground(rowBackground(pressed, track: track))
             .preference(key: RowSelectedKey.self, value: pressed)
     }
 }

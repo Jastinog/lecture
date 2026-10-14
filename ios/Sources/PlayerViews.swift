@@ -1372,6 +1372,7 @@ struct LecturesListView: View {
                         .frame(minHeight: 44)
                     }
                     .id(index)
+                    .trackRow(index)
                     .plainRow()
                 }
             }

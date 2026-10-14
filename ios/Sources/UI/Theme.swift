@@ -25,6 +25,12 @@ enum Palette {
     /// A plain table's cells and backdrop. Black in the dark theme, which is
     /// also what `List` gives the rows it isn't told to colour.
     static let cell = rgb(0xFFFFFF, dark: 0x000000)
+    /// A track list's rows, in Music's alternating greys, and its ruling: a
+    /// dark line with a light one beside it, between rows and after the number.
+    static let trackRow = rgb(0xDFDFDF, dark: 0x1A1A1A)
+    static let trackRowAlternate = rgb(0xEAEAEA, dark: 0x232323)
+    static let trackRule = rgb(0xC4C4C4, dark: 0x000000)
+    static let trackRuleHighlight = rgb(0xF8F8F8, dark: 0x303030)
     /// A grouped table's panel, dark grey on the linen.
     static let panel = rgb(0xFFFFFF, dark: 0x2A2A2A)
 

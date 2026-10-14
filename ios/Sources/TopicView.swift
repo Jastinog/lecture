@@ -207,6 +207,7 @@ struct TopicView: View {
                     onDownload: { dl.downloadLecture(topic: whole, lecture: lecture) },
                     onStopDownload: { dl.cancelLecture(topicID: topic.id, lectureID: lecture.id) }
                 )
+                .trackRow(index)
             }
             .plainRow()
         } header: {
@@ -511,12 +512,13 @@ enum LecturePlayed {
     case fixed(Double)
 }
 
-/// A lecture's number in a list, or the blue speaker on the one that's
-/// playing; the column widens with the text size, so "100" never truncates.
+/// A lecture's number in a track list, or the blue speaker on the one that's
+/// playing, centred in a column that widens with the text size so "100" never
+/// truncates. `TrackRowBackground` rules the column off.
 struct LectureNumber: View {
     let index: Int
     let isCurrent: Bool
-    @ScaledMetric(relativeTo: .footnote) private var width: CGFloat = 26
+    @ScaledMetric(relativeTo: .callout) private var width = RowMetrics.trackNumberWidth
 
     var body: some View {
         Group {
@@ -529,11 +531,11 @@ struct LectureNumber: View {
                     .rowForeground(Palette.selection)
             } else {
                 Text("\(index + 1)")
-                    .font(.rowDetail)
+                    .font(.rowTitle)
                     .rowForeground(Palette.secondaryText)
             }
         }
-        .frame(width: width, alignment: .trailing)
+        .frame(width: width)
     }
 }
 
@@ -597,6 +599,7 @@ private struct LectureRow: View {
             LectureDownloadIndicator(topicID: topicID, lectureID: lecture.id, downloaded: downloaded,
                                      live: live, onDownload: onDownload, onStop: onStopDownload)
         }
+        .nestedRowBackground()
     }
 }
 
