@@ -82,10 +82,27 @@ struct RemoteLibrary: LibraryProviding {
         return SearchResult(
             lecturers: found.lecturers.map(\.model),
             topics: found.topics.map(\.model),
-            lectures: found.lectures.compactMap { hit in
-                hit.lecture.model.map { LectureHit(lecture: $0, index: hit.index, topic: hit.topic.model) }
-            }
+            lectures: found.lectures.compactMap(\.model)
         )
+    }
+
+    func home(language: String?) async throws -> HomeFeed {
+        let dto = try await get(HomeDTO.self, "home/", query: lang(language))
+        return HomeFeed(trending: dto.trending.map(\.model), newTopics: dto.new.map(\.model),
+                        selections: dto.selections.compactMap { card in
+                            card.lecturer.map { card.model(lecturer: $0.model, within: nil) }
+                        },
+                        lectureOfTheDay: dto.lectureOfTheDay?.model)
+    }
+
+    func reportPlay(lectureID: Int) async throws {
+        var request = try request("plays/")
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["lecture": lectureID])
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw APIError.noData }
+        guard (200..<300).contains(http.statusCode) else { throw APIError.http(status: http.statusCode) }
     }
 
     // MARK: Transport
@@ -96,8 +113,8 @@ struct RemoteLibrary: LibraryProviding {
         return decoder
     }()
 
-    private func get<T: Decodable>(_ type: T.Type, _ path: String,
-                                   query: [URLQueryItem] = []) async throws -> T {
+    /// A request for `api/v1/<path>`, asking for JSON.
+    private func request(_ path: String, query: [URLQueryItem] = []) throws -> URLRequest {
         let base = baseURL.absoluteString.hasSuffix("/") ? baseURL.absoluteString : baseURL.absoluteString + "/"
         guard var components = URLComponents(string: base + "api/v1/" + path) else { throw APIError.badURL }
         if !query.isEmpty {
@@ -110,7 +127,12 @@ struct RemoteLibrary: LibraryProviding {
 
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        let (data, http) = try await fetch(request)
+        return request
+    }
+
+    private func get<T: Decodable>(_ type: T.Type, _ path: String,
+                                   query: [URLQueryItem] = []) async throws -> T {
+        let (data, http) = try await fetch(request(path, query: query))
         switch http.statusCode {
         case 200..<300: break
         case 404: throw APIError.notFound
@@ -292,6 +314,8 @@ private struct PathDTO: Decodable {
 /// A selection's card (`lecturers/<id>/selections/`, a page's `children`).
 private struct SelectionDTO: Decodable {
     let id: Int
+    /// Only on home's cards, which come from every lecturer.
+    let lecturer: LecturerRefDTO?
     let title: String
     let coverUrl: URL?
     let about: String?
@@ -316,13 +340,28 @@ private struct SelectionChildrenDTO: Decodable {
     let children: [SelectionDTO]
 }
 
-private struct SearchDTO: Decodable {
-    struct Hit: Decodable {
-        let lecture: LectureDTO
-        let index: Int
-        let topic: TopicDTO
+/// `GET home/`.
+private struct HomeDTO: Decodable {
+    let trending: [TopicDTO]
+    let new: [TopicDTO]
+    let selections: [SelectionDTO]
+    let lectureOfTheDay: LectureHitDTO?
+}
+
+/// A lecture with its place in its topic (search, the lecture of the day).
+private struct LectureHitDTO: Decodable {
+    let lecture: LectureDTO
+    let index: Int
+    let topic: TopicDTO
+
+    /// Nil for a lecture without a file.
+    var model: LectureHit? {
+        lecture.model.map { LectureHit(lecture: $0, index: index, topic: topic.model) }
     }
+}
+
+private struct SearchDTO: Decodable {
     let lecturers: [LecturerDTO]
     let topics: [TopicDTO]
-    let lectures: [Hit]
+    let lectures: [LectureHitDTO]
 }

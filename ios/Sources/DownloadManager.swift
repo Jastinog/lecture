@@ -407,6 +407,22 @@ final class DownloadManager: NSObject, ObservableObject {
         AudioPlayer.shared.downloadsRemoved(topicID: topicID)
     }
 
+    /// Remove one lecture from downloads; the topic goes too once nothing of
+    /// it is left on the phone or coming in. Playing from the file, it carries
+    /// on from the stream.
+    func deleteLecture(topicID: Int, lectureID: Int) {
+        cancelLecture(topicID: topicID, lectureID: lectureID)
+        try? FileManager.default.removeItem(at: DownloadPaths.lectureFile(topicID, lectureID))
+        downloaded[topicID]?.remove(lectureID)
+        if downloaded[topicID]?.isEmpty == true { downloaded[topicID] = nil }
+        if downloaded[topicID] == nil, let topic = savedTopics[topicID], !live.isDownloading(topic) {
+            deleteTopic(topicID)
+            return
+        }
+        scheduleSizeRefresh(topicID)
+        AudioPlayer.shared.downloadsRemoved(topicID: topicID, lectureID: lectureID)
+    }
+
     // MARK: - Internals
 
     private func enqueue(topic: TopicDetail, lecture: Lecture) {

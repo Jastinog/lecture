@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A topic list paged by the server's own page count: the catalog home and a
+/// A topic list paged by the server's own page count: every new topic and a
 /// group's list. Subclasses override `fetchPage`.
 @MainActor
 class TopicPager: PagedLoader {
@@ -50,8 +50,8 @@ class TopicPager: PagedLoader {
 
 @MainActor
 final class CatalogViewModel: TopicPager {
-    /// The home feed, held globally so its topics and scroll survive a rebuild.
-    static let home = CatalogViewModel()
+    /// Every new topic, held globally so its topics survive a rebuild.
+    static let newTopics = CatalogViewModel()
 
     let group: TopicGroup?
     /// The catalog language the list was loaded in; "Show More" keeps it.
@@ -71,33 +71,19 @@ final class CatalogViewModel: TopicPager {
     }
 }
 
+/// Every new topic, newest first (from Home), or a group's topics (from Groups).
 struct CatalogView: View {
     @StateObject private var vm: CatalogViewModel
     @ObservedObject private var languages = CatalogLanguageStore.shared
 
-    /// Scoped to a group (pushed from Browse) vs. the home feed.
-    private let scoped: Bool
+    init() { _vm = StateObject(wrappedValue: .newTopics) }
+    init(group: TopicGroup) { _vm = StateObject(wrappedValue: CatalogViewModel(group: group)) }
 
-    init() { _vm = StateObject(wrappedValue: .home); scoped = false }
-    init(group: TopicGroup) {
-        _vm = StateObject(wrappedValue: CatalogViewModel(group: group)); scoped = true
-    }
-
-    private var title: String {
-        scoped ? (vm.group?.name ?? String(localized: "Topics")) : String(localized: "Home")
-    }
+    private var title: String { vm.group?.name ?? String(localized: "New Topics") }
 
     var body: some View {
         List {
-            if !scoped {
-                // The search bar heads the table and scrolls away with it.
-                // The languages ride under the field, as a UISearchBar scope bar.
-                SearchBarLink(prompt: String(localized: "Topic, lecture or lecturer"), accessory: { EmptyView() },
-                              scope: { CatalogLanguagePicker() })
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                ContinueListeningCard()
-            } else if languages.items.count > 1 {
+            if languages.items.count > 1 {
                 Section {
                     CatalogLanguagePicker()
                         .padding(.vertical, 10)
@@ -123,30 +109,18 @@ struct CatalogView: View {
                                  loadMore: vm.loadMore)
                 }
                 .plainRow()
-            } header: {
-                if !scoped { PlainSectionHeader(title: String(localized: "New Topics")) }
             }
         }
         .listStyle(.plain)
         .plainBackground(emptyRowHeight: RowMetrics.bookRowHeight)
-        .topicRowsOmit(scoped ? .group : [])
+        .topicRowsOmit(vm.group == nil ? [] : .group)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 ClassicTitle(title)
             }
-            if scoped {
-                NowPlayingToolbarItem()
-            } else {
-                // iOS 6 bars held one button a side: "Browse" opens the groups,
-                // "Now Playing" the player.
-                ClassicToolbarItem(.leading) {
-                    NavigationLink("Groups", value: BrowseRoute())
-                        .buttonStyle(.classicBar)
-                }
-                NowPlayingToolbarItem()
-            }
+            NowPlayingToolbarItem()
         }
         .classicRefreshable { await vm.refresh() }
         // Loads at first, and again whenever the catalog language changes.

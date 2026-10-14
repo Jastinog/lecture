@@ -132,9 +132,8 @@ struct NowPlayingView: View {
                 PlayerScrubber(clock: player.clock, chapterKey: chapterKey,
                                chapterLine: chapterLine, seek: player.seek)
                 artwork
-                TapeDeck(clock: player.clock, before: beforeChapter, total: bookDuration,
-                         after: afterChapter, rate: player.rate, isPlaying: player.isPlaying,
-                         label: String(localized: "Lecture \(player.currentIndex + 1)"), skip: player.skip,
+                TapeDeck(clock: player.clock, rate: player.rate, isPlaying: player.isPlaying,
+                         label: String(localized: "Lecture \(player.currentIndex + 1)"), seek: player.seek,
                          step: player.skip(forward:))
                     .frame(height: min(160, max(110, geo.size.height * 0.19)))
                 controls
@@ -146,20 +145,6 @@ struct NowPlayingView: View {
     /// Identifies the playing chapter, so the scrubber drops a half-finished drag
     /// when the chapter changes under it.
     private var chapterKey: String { "\(player.topic?.id ?? 0)-\(player.currentIndex)" }
-
-    private var durations: [Double] { player.topic?.lectures.map(\.duration) ?? [] }
-
-    /// Total length of the chapters after the current one (for "left in topic").
-    private var afterChapter: Double {
-        PlaybackMath.after(index: player.currentIndex, durations: durations)
-    }
-
-    /// Total length of the chapters before the current one (for the tape spools).
-    private var beforeChapter: Double {
-        durations.prefix(player.currentIndex).reduce(0, +)
-    }
-
-    private var bookDuration: Double { durations.reduce(0, +) }
 
     /// "7 of 32" under the chapter title.
     private var chapterLine: String {
@@ -520,21 +505,17 @@ private struct PlayerScrubber: View {
 }
 
 /// The reel-to-reel deck on brushed aluminium, after Podcasts' tape deck. The
-/// left reel holds what's left of the topic and the right one what's been heard,
-/// so tape visibly moves across as the topic plays; both reels turn while
-/// playing. A paper label names the chapter and the plate above says how long
-/// the topic has left.
+/// tape is the playing lecture alone: the left reel holds what's left of it and
+/// the right one what's been heard, so tape visibly moves across as it plays;
+/// both reels turn while playing. A paper label names the lecture and the plate
+/// above says how long it has left.
 private struct TapeDeck: View {
     @ObservedObject var clock: PlaybackClock
-    /// Seconds of the chapters before / after the current one, and in total.
-    let before: Double
-    let total: Double
-    let after: Double
     let rate: Float
     let isPlaying: Bool
     let label: String
-    /// Moves playback by a signed number of seconds, across chapters.
-    let skip: (Double) -> Void
+    /// Moves playback to a time in the lecture.
+    let seek: (Double) -> Void
     /// Moves playback by the user's skip step, forward or back.
     let step: (Bool) -> Void
 
@@ -545,7 +526,7 @@ private struct TapeDeck: View {
     @State private var winding: (grip: Double, wound: Double)?
     @State private var ticker = UISelectionFeedbackGenerator()
 
-    /// Seconds of the topic one full turn of a reel winds by hand.
+    /// Seconds of the lecture one full turn of a reel winds by hand.
     private static let secondsPerTurn = 60.0
 
     var body: some View {
@@ -556,7 +537,7 @@ private struct TapeDeck: View {
             ZStack {
                 // Layers, each redrawn only as often as it changes: the fixtures,
                 // heads and cover never (the heads only slide), the tape and its
-                // packs as the topic advances, and the reels every frame while playing.
+                // packs as the lecture advances, and the reels every frame while playing.
                 DeckLayer(part: .fixtures, size: geo.size).equatable()
                 // The three heads rest on the tape while it plays and draw back
                 // under their cover when it stops — and while a reel is wound by
@@ -626,14 +607,14 @@ private struct TapeDeck: View {
         }
         .background(BrushedMetalBackground())
         .overlay(alignment: .top) {
-            TopicLeftLabel(clock: clock, after: after, rate: rate)
+            LectureLeftLabel(clock: clock, rate: rate)
                 .padding(.top, 7)
         }
         .overlay(alignment: .top) { Rectangle().fill(.white).frame(height: 1) }
         .overlay(alignment: .bottom) { Rectangle().fill(Palette.rgb(0x6A6A6A)).frame(height: 1) }
         .clipped()
         .accessibilityElement()
-        .accessibilityLabel("\(formatPercent(progress)) of the topic played")
+        .accessibilityLabel("\(formatPercent(progress)) of the lecture played")
         .accessibilityHint("Turn a reel to wind back or on.")
         .accessibilityAdjustableAction { direction in
             step(direction == .increment)
@@ -643,7 +624,7 @@ private struct TapeDeck: View {
     /// Turning a reel by hand. The reel follows the finger round its centre and
     /// the other reel takes up the same length of tape; each turn winds
     /// `secondsPerTurn`, ticking every five seconds, and letting go moves
-    /// playback by what was wound.
+    /// playback by what was wound, within the lecture.
     private func windGesture(radius: Double, mine: Double, other: Double, isLeft: Bool) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
@@ -665,7 +646,9 @@ private struct TapeDeck: View {
                 winding = (a, now)
             }
             .onEnded { _ in
-                if let wound = winding?.wound, abs(wound) >= 1 { skip(wound) }
+                if let wound = winding?.wound, abs(wound) >= 1 {
+                    seek(min(max(clock.currentTime + wound, 0), clock.duration))
+                }
                 winding = nil
             }
     }
@@ -675,11 +658,8 @@ private struct TapeDeck: View {
         (seconds < 0 ? "−" : "+") + formatTime(abs(seconds))
     }
 
-    /// How much of the whole topic has played.
-    private var progress: Double {
-        guard total > 0 else { return 0 }
-        return min(max((before + clock.currentTime) / total, 0), 1)
-    }
+    /// How much of the lecture has played.
+    private var progress: Double { clock.fraction }
 }
 
 /// The reels' angles, integrated from the tape's speed: each frame turns a reel
@@ -1193,15 +1173,14 @@ private struct ReelGeometry {
 
 /// "6 h 20 min left in the topic" embossed on the deck plate, in real time at the
 /// current speed.
-private struct TopicLeftLabel: View {
+private struct LectureLeftLabel: View {
     @ObservedObject var clock: PlaybackClock
-    let after: Double
     let rate: Float
 
     var body: some View {
-        let left = PlaybackMath.bookRemaining(chapterLeft: clock.remaining, after: after, rate: rate)
-        Text(rate == 1 ? "\(formatDuration(left)) left in the topic"
-                       : "\(formatDuration(left)) left in the topic at \(AudioPlayer.rateLabel(rate))")
+        let left = PlaybackMath.remaining(clock.remaining, rate: rate)
+        Text(rate == 1 ? "\(formatDuration(left)) left in the lecture"
+                       : "\(formatDuration(left)) left in the lecture at \(AudioPlayer.rateLabel(rate))")
             .font(.helvetica(11, weight: .bold))
             .embossed(Palette.rgb(0x5A5A5A))
             // Engraved in the tape deck's metal, which stays light.

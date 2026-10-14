@@ -4,6 +4,9 @@ import SwiftUI
 /// selections, a list of lectures opens as a topic.
 struct SelectionRow: View {
     let selection: Selection
+    /// Names the lecturer rather than the description, where the list mixes
+    /// lecturers (Home).
+    var showsLecturer = false
 
     var body: some View {
         if selection.holdsSelections {
@@ -14,7 +17,8 @@ struct SelectionRow: View {
     }
 
     private var label: some View {
-        MediaRow(coverURL: selection.coverURL, title: selection.title, subtitle: selection.about) {
+        MediaRow(coverURL: selection.coverURL, title: selection.title,
+                 subtitle: showsLecturer ? selection.lecturer.name : selection.about) {
             Text(facts)
                 .font(.rowCaption)
                 .rowForeground(Palette.secondaryText)

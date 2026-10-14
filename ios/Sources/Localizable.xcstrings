@@ -1,50 +1,50 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "%@ left in the topic": {
+    "%@ left in the lecture": {
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "До конца темы %@"
+            "value": "До конца лекции %@"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "До кінця теми %@"
+            "value": "До кінця лекції %@"
           }
         }
       }
     },
-    "%@ left in the topic at %@": {
+    "%@ left in the lecture at %@": {
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "До конца темы %1$@ на скорости %2$@"
+            "value": "До конца лекции %1$@ на скорости %2$@"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "До кінця теми %1$@ на швидкості %2$@"
+            "value": "До кінця лекції %1$@ на швидкості %2$@"
           }
         }
       }
     },
-    "%@ of the topic played": {
+    "%@ of the lecture played": {
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Прослушано %@ темы"
+            "value": "Прослушано %@ лекции"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Прослухано %@ теми"
+            "value": "Прослухано %@ лекції"
           }
         }
       }
@@ -304,6 +304,170 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld хвилини"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld days": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld day"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld days"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld дня"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld дней"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld день"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld дня"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld дні"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld днів"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld день"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld дня"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld days in a row": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld day in a row"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld days in a row"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld дня подряд"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld дней подряд"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld день подряд"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld дня подряд"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld дні поспіль"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld днів поспіль"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld день поспіль"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld дня поспіль"
                 }
               }
             }
@@ -1019,6 +1183,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Усі"
+          }
+        }
+      }
+    },
+    "All New Topics": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все новые темы"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Усі нові теми"
           }
         }
       }
@@ -1841,6 +2021,22 @@
         }
       }
     },
+    "Downloading…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загружается…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантажується…"
+          }
+        }
+      }
+    },
     "Downloads": {
       "localizations": {
         "ru": {
@@ -2244,6 +2440,22 @@
         }
       }
     },
+    "Lecture of the Day": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лекция дня"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лекція дня"
+          }
+        }
+      }
+    },
     "Lecturers": {
       "localizations": {
         "ru": {
@@ -2304,6 +2516,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Лекції завантажуються лише через Wi‑Fi."
+          }
+        }
+      }
+    },
+    "Lectures you download will appear here": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здесь появятся скачанные лекции"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тут з’являться завантажені лекції"
           }
         }
       }
@@ -2388,6 +2616,22 @@
         }
       }
     },
+    "Listened": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слушали"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слухали"
+          }
+        }
+      }
+    },
     "Listening": {
       "localizations": {
         "ru": {
@@ -2400,6 +2644,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Слухаю"
+          }
+        }
+      }
+    },
+    "Listening Calendar": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Календарь прослушивания"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Календар прослуховування"
           }
         }
       }
@@ -2500,6 +2760,22 @@
         }
       }
     },
+    "Next Month": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следующий месяц"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наступний місяць"
+          }
+        }
+      }
+    },
     "No Bookmarks": {
       "localizations": {
         "ru": {
@@ -2580,6 +2856,22 @@
         }
       }
     },
+    "No listening this month": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом месяце ничего не слушали"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цього місяця нічого не слухали"
+          }
+        }
+      }
+    },
     "No topics marked “%@”": {
       "localizations": {
         "ru": {
@@ -2624,6 +2916,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тут порожньо"
+          }
+        }
+      }
+    },
+    "Nothing listened to on this day": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этот день ничего не слушали"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цього дня нічого не слухали"
+          }
+        }
+      }
+    },
+    "Nothing listened to this week yet": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этой неделе ещё ничего не слушали"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цього тижня ще нічого не слухали"
           }
         }
       }
@@ -2869,6 +3193,22 @@
         }
       }
     },
+    "Play “%@”": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слушать «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слухати «%@»"
+          }
+        }
+      }
+    },
     "Playback": {
       "localizations": {
         "ru": {
@@ -2961,6 +3301,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Попередня лекція"
+          }
+        }
+      }
+    },
+    "Previous Month": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предыдущий месяц"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Попередній місяць"
           }
         }
       }
@@ -3233,6 +3589,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показати ще"
+          }
+        }
+      }
+    },
+    "Shows today": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывает сегодня"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показує сьогодні"
           }
         }
       }
@@ -3541,6 +3913,22 @@
         }
       }
     },
+    "This week %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За неделю %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За тиждень %@"
+          }
+        }
+      }
+    },
     "Timer": {
       "localizations": {
         "ru": {
@@ -3621,22 +4009,6 @@
         }
       }
     },
-    "Topics you download will appear here": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Здесь появятся скачанные темы"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Тут з’являться завантажені теми"
-          }
-        }
-      }
-    },
     "Topics you listen to will appear here": {
       "localizations": {
         "ru": {
@@ -3665,6 +4037,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Теми, лекції, лектори"
+          }
+        }
+      }
+    },
+    "Trending": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сейчас слушают"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зараз слухають"
           }
         }
       }

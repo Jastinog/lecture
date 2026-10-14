@@ -111,7 +111,7 @@ struct RootView: View {
     func rootStack(for tab: SidebarTab) -> some View {
         RoutedStack(router: tab.router) {
             switch tab {
-            case .home:      CatalogView().libraryDestinations()
+            case .home:      HomeView().libraryDestinations()
             case .lecturers: LecturersView().libraryDestinations()
             case .downloads: DownloadsView()
             case .history:   HistoryView()

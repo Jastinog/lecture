@@ -642,7 +642,7 @@ private struct LectureDownloadIndicator: View {
 }
 
 /// The part of a circle swept clockwise from twelve o'clock.
-private struct PieSlice: Shape {
+struct PieSlice: Shape {
     var fraction: Double
 
     func path(in rect: CGRect) -> Path {

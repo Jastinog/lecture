@@ -24,6 +24,21 @@ protocol LibraryProviding {
     func selections(in folder: Selection, language: String?) async throws -> [Selection]
     /// With `language`, only what has lectures in it.
     func search(_ query: String, language: String?) async throws -> SearchResult
+    /// Home's rows, narrowed like the lists.
+    func home(language: String?) async throws -> HomeFeed
+    /// Tells the backend a lecture was played, for "Trending". Anonymous.
+    func reportPlay(lectureID: Int) async throws
+}
+
+/// Home's rows from the backend, five cards each.
+struct HomeFeed {
+    /// The topics played most lately, by everyone.
+    var trending: [Topic] = []
+    var newTopics: [Topic] = []
+    /// The newest selections, of every lecturer.
+    var selections: [Selection] = []
+    /// One lecture a day, the same for everyone.
+    var lectureOfTheDay: LectureHit?
 }
 
 /// What a search finds: lecturers by name, topics by title or lecturer, and

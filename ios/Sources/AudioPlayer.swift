@@ -147,11 +147,13 @@ final class RecentsStore: ObservableObject {
         persist()
     }
 
-    /// Clears the history and every listening position, including those of topics
-    /// that dropped off it. The curated shelf (`ShelfStore`) is intentionally left
-    /// alone — it's a deliberate user list, not a byproduct of playback.
+    /// Clears the history, the listening calendar and every listening position,
+    /// including those of topics that dropped off it. The curated shelf
+    /// (`ShelfStore`) is intentionally left alone — it's a deliberate user list,
+    /// not a byproduct of playback.
     func clear() {
         ProgressStore.removeAll()
+        ListeningLog.shared.clear()
         items = []
         persist()
     }
@@ -295,6 +297,8 @@ final class AudioPlayer: ObservableObject {
     private var seekGeneration = 0
     /// Wall-clock time of the last progress save (throttles disk writes).
     private var lastSave: Date = .distantPast
+    /// The last tick heard while playing, for the listening log.
+    private var lastHeard: Date?
     private var sleepTimer: Timer?
     /// Absolute time the sleep timer fires, so the remaining count is derived from
     /// the clock (no drift if a tick is late or skipped).
@@ -536,6 +540,7 @@ final class AudioPlayer: ObservableObject {
                                    at: Date().timeIntervalSince1970)
         // Advance the shelf status for topics already on the shelf (Listening / Finished).
         ShelfStore.shared.applyProgress(id: topic.id, fraction: fraction)
+        ListeningLog.shared.commit()
     }
 
     // MARK: - Controls
@@ -626,10 +631,11 @@ final class AudioPlayer: ObservableObject {
         player = nil
     }
 
-    /// The topic's downloaded files are being deleted: a chapter playing from
-    /// one carries on from the stream (or another downloaded copy), where it was.
-    func downloadsRemoved(topicID: Int) {
-        guard topic?.id == topicID,
+    /// The topic's downloaded files (or `lectureID`'s alone) are being deleted:
+    /// a chapter playing from one carries on from the stream (or another
+    /// downloaded copy), where it was.
+    func downloadsRemoved(topicID: Int, lectureID: Int? = nil) {
+        guard topic?.id == topicID, lectureID == nil || currentLecture?.id == lectureID,
               (player?.currentItem?.asset as? AVURLAsset)?.url.isFileURL == true else { return }
         play(index: currentIndex, at: currentTime, autoplay: isPlaying)
     }
@@ -1023,6 +1029,7 @@ final class AudioPlayer: ObservableObject {
                 // The lock screen runs its own clock from the rate; it's updated
                 // on play, pause, seeks and stalls rather than every tick.
                 self.currentTime = t
+                self.logListening()
                 // "Until end of chapter" fades out over the chapter's last seconds.
                 if self.sleepMode == .endOfChapter, self.duration > 0 {
                     let left = self.duration - t
@@ -1034,6 +1041,19 @@ final class AudioPlayer: ObservableObject {
                 }
             }
         }
+    }
+
+    /// Adds the time since the last tick to the listening log. Ticks come
+    /// every half second while playing; a longer gap was a pause or a stall,
+    /// and counts for nothing.
+    private func logListening() {
+        let now = Date()
+        defer { lastHeard = isPlaying && !isBuffering ? now : nil }
+        guard let lastHeard, isPlaying, !isBuffering, let topic, let lecture = currentLecture else { return }
+        let gap = now.timeIntervalSince(lastHeard)
+        guard gap > 0, gap < 2 else { return }
+        ListeningLog.shared.add(gap, topic: loadedSummary ?? Topic(topic), lecture: lecture,
+                                index: currentIndex, at: now)
     }
 
     private func observeEnd(of item: AVPlayerItem) {

@@ -84,15 +84,9 @@ enum PlaybackMath {
         return min(max((before + time) / total, 0), 1)
     }
 
-    /// Total length of the chapters after `index`.
-    static func after(index: Int, durations: [Double]) -> Double {
-        index + 1 < durations.count ? durations[(index + 1)...].reduce(0, +) : 0
-    }
-
-    /// Real time left in the topic at `rate`: what's left of this chapter plus the
-    /// chapters after it.
-    static func bookRemaining(chapterLeft: Double, after: Double, rate: Float) -> Double {
-        (after + max(chapterLeft, 0)) / Double(max(rate, 0.1))
+    /// Real time `left` seconds of audio take at `rate`.
+    static func remaining(_ left: Double, rate: Float) -> Double {
+        max(left, 0) / Double(max(rate, 0.1))
     }
 }
 
