@@ -387,7 +387,7 @@ def sync_topics_languages(topic_ids):
 
 class TopicPlays(models.Model):
     """How many times a topic's lectures were started on a day, for "Trending".
-    Anonymous: the app reports only the lecture, never who played it."""
+    A listener counts once per lecture and day (`listeners.ListenerPlay`)."""
 
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="plays")
     day = models.DateField()

@@ -38,6 +38,7 @@
 		C05AB8DAB60EB1B3BC797A9A /* Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2588FAFE38DDC6B721F515E6 /* Library.swift */; };
 		CF88E62CFE4F9318625E4376 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CB72ADE053EA3FFC5933E556 /* PrivacyInfo.xcprivacy */; };
 		D2B4CA8F8F2EBD4C483149AF /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96390247652C03F599484CF8 /* SearchView.swift */; };
+		D8AF0853EC7245C1AF1833E3 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11619608DBC2834B525A6BF2 /* Account.swift */; };
 		DF172C9FF5E13E2D1CB9F976 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B544D87B647654BA319F63C /* DownloadsView.swift */; };
 		E3050B28E337144FC9C25F75 /* RemoteLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE0430F7C72F57050E6F304 /* RemoteLibrary.swift */; };
 		E5B2EE1057C22E1B4A4C6128 /* Chrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = E218CCAC223ADB0DFD715D34 /* Chrome.swift */; };
@@ -49,6 +50,7 @@
 /* Begin PBXFileReference section */
 		06303A36682078BBBC0D5577 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		09524EB8B3B823DA32C269D0 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		11619608DBC2834B525A6BF2 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
 		15C381127C0039FB2D79831A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1B37A698B24CE77A4A39D8D7 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
 		1C7448A5F900F0F76A106255 /* Transitions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transitions.swift; sourceTree = "<group>"; };
@@ -133,6 +135,7 @@
 		A3ECA4397889A66A0C4CE813 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				11619608DBC2834B525A6BF2 /* Account.swift */,
 				2588FAFE38DDC6B721F515E6 /* Library.swift */,
 				BAE0430F7C72F57050E6F304 /* RemoteLibrary.swift */,
 			);
@@ -250,6 +253,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D8AF0853EC7245C1AF1833E3 /* Account.swift in Sources */,
 				1FD2BEC2ED7A63DC4581A697 /* ActionSheet.swift in Sources */,
 				09C7D0D2C4CE9AD5DA772A27 /* AudioPlayer.swift in Sources */,
 				5A443779B17C308363BAEDF9 /* Bookmarks.swift in Sources */,

@@ -90,6 +90,7 @@ struct RootView: View {
             .overlay { ActionSheetHost() }
             .overlay { AlertHost() }
             .task {
+                Account.shared.start()
                 async let groups: Void = GroupStore.shared.refresh()
                 async let languages: Void = CatalogLanguageStore.shared.refresh()
                 _ = await (groups, languages)

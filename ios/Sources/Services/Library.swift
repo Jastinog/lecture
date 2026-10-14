@@ -26,8 +26,12 @@ protocol LibraryProviding {
     func search(_ query: String, language: String?) async throws -> SearchResult
     /// Home's rows, narrowed like the lists.
     func home(language: String?) async throws -> HomeFeed
-    /// Tells the backend a lecture was played, for "Trending". Anonymous.
+    /// Tells the backend a lecture was played, for "Trending". The server
+    /// counts each listener once per lecture and day.
     func reportPlay(lectureID: Int) async throws
+    /// Registers this phone's listener id; the token its requests carry from
+    /// then on. `APIError.http(status: 409)` when the id is taken.
+    func register(listener id: UUID, platform: String, appVersion: String) async throws -> String
 }
 
 /// Home's rows from the backend, five cards each.

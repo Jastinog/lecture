@@ -96,13 +96,16 @@ struct RemoteLibrary: LibraryProviding {
     }
 
     func reportPlay(lectureID: Int) async throws {
-        var request = try request("plays/")
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["lecture": lectureID])
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw APIError.noData }
-        guard (200..<300).contains(http.statusCode) else { throw APIError.http(status: http.statusCode) }
+        _ = try await post("plays/", ["lecture": lectureID])
+    }
+
+    func register(listener id: UUID, platform: String, appVersion: String) async throws -> String {
+        let data = try await post("listeners/", ["id": id.uuidString, "platform": platform,
+                                                 "app_version": appVersion])
+        guard let token = try? Self.decoder.decode(TokenDTO.self, from: data).token else {
+            throw APIError.parse
+        }
+        return token
     }
 
     // MARK: Transport
@@ -127,7 +130,27 @@ struct RemoteLibrary: LibraryProviding {
 
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = Account.shared.token {
+            request.setValue("Token \(token)", forHTTPHeaderField: "Authorization")
+        }
         return request
+    }
+
+    /// POSTs `body` as JSON; the response's body. A token the server turned
+    /// down sends the account to register again.
+    private func post(_ path: String, _ body: [String: Any]) async throws -> Data {
+        var request = try request(path)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw APIError.noData }
+        if http.statusCode == 401,
+           let token = request.value(forHTTPHeaderField: "Authorization")?.split(separator: " ").last {
+            await Account.shared.tokenRejected(String(token))
+        }
+        guard (200..<300).contains(http.statusCode) else { throw APIError.http(status: http.statusCode) }
+        return data
     }
 
     private func get<T: Decodable>(_ type: T.Type, _ path: String,
@@ -174,6 +197,11 @@ struct RemoteLibrary: LibraryProviding {
 }
 
 // MARK: - Wire format
+
+/// `POST listeners/`.
+private struct TokenDTO: Decodable {
+    let token: String
+}
 
 private struct GroupDTO: Decodable {
     let code: String

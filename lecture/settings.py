@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "apps.users",
     "apps.lecture",
+    "apps.listeners",
 ]
 
 MIDDLEWARE = [
@@ -103,16 +104,27 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# The API is the public catalog: no accounts, listening data stays on the phone.
+# The catalog is public. Listeners (`apps.listeners`) authenticate with a token
+# only on the views that take one, so a bad token never breaks the catalog.
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
     "DEFAULT_AUTHENTICATION_CLASSES": (),
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "UNAUTHENTICATED_USER": None,
-    # Only the anonymous play count is throttled; the catalog is read-only.
-    "DEFAULT_THROTTLE_RATES": {"plays": "120/hour"},
+    # Plays (per listener, or per address without one) and registrations (per
+    # address) are throttled; the catalog is read-only.
+    "DEFAULT_THROTTLE_RATES": {"plays": "120/hour", "listeners": "10/hour"},
     # nginx adds the client to X-Forwarded-For: throttle by that, not by nginx.
     "NUM_PROXIES": env.int("NUM_PROXIES", default=1),
+}
+
+# In Postgres, so throttles count across every gunicorn worker. The table is
+# made by a migration (`listeners.0002_cache_table`).
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "cache",
+    }
 }
 
 LOGGING = {

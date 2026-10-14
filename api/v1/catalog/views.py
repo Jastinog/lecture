@@ -1,7 +1,7 @@
 """Public catalog for the iOS app: groups, lecturers, topics with their
-lectures, the home page, and search. Listening data stays on the device, so
-nothing here needs a user; the one write is an anonymous play count, which
-ranks "Trending".
+lectures, the home page, and search. None of it needs a listener; the one
+write is the play count, which ranks "Trending" and counts each listener once
+per lecture and day.
 
 Every list takes `?lang=en,ru`: only lectures in those languages count, and
 topics and lecturers with none of them drop out. A topic's own `languages`
@@ -13,6 +13,7 @@ from datetime import timedelta
 from itertools import groupby
 from operator import itemgetter
 
+from django.db import transaction
 from django.db.models import Count, F, Max, Min, OuterRef, Q, Subquery, Sum
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
@@ -20,7 +21,7 @@ from django.utils import timezone
 from rest_framework import generics, serializers, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 from apps.lecture.models import (
@@ -32,6 +33,8 @@ from apps.lecture.models import (
     TopicGroup,
     TopicPlays,
 )
+from apps.listeners.authentication import ListenerTokenAuthentication
+from apps.listeners.models import ListenerPlay
 
 from .serializers import (
     GroupSerializer,
@@ -533,8 +536,14 @@ class HomeView(APIView):
         return cards
 
 
-class PlayThrottle(AnonRateThrottle):
+class PlayThrottle(SimpleRateThrottle):
+    """Per listener, or per address for an app too old to send a token."""
+
     scope = "plays"
+
+    def get_cache_key(self, request, view):
+        ident = request.user.pk if request.user else self.get_ident(request)
+        return self.cache_format % {"scope": self.scope, "ident": ident}
 
 
 class PlaySerializer(serializers.Serializer):
@@ -543,15 +552,23 @@ class PlaySerializer(serializers.Serializer):
 
 class PlayView(APIView):
     """`POST {"lecture": id}`: a lecture was started. Counts towards its
-    topic's plays today; nothing about the listener is kept."""
+    topic's plays today, once per listener, lecture and day. Without a token
+    (apps from before listeners) every play counts."""
 
+    authentication_classes = [ListenerTokenAuthentication]
     throttle_classes = [PlayThrottle]
 
     def post(self, request):
         data = PlaySerializer(data=request.data)
         data.is_valid(raise_exception=True)
-        plays, _ = TopicPlays.objects.get_or_create(
-            topic_id=data.validated_data["lecture"].topic_id, day=timezone.localdate()
-        )
-        TopicPlays.objects.filter(pk=plays.pk).update(count=F("count") + 1)
+        lecture, day = data.validated_data["lecture"], timezone.localdate()
+        with transaction.atomic():
+            if request.user:
+                _, first = ListenerPlay.objects.get_or_create(
+                    listener=request.user, lecture=lecture, day=day
+                )
+                if not first:
+                    return Response(status=status.HTTP_204_NO_CONTENT)
+            plays, _ = TopicPlays.objects.get_or_create(topic_id=lecture.topic_id, day=day)
+            TopicPlays.objects.filter(pk=plays.pk).update(count=F("count") + 1)
         return Response(status=status.HTTP_204_NO_CONTENT)
