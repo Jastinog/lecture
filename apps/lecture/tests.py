@@ -304,6 +304,36 @@ class DescribeNiranjanaFileTests(TestCase):
         self.assertTrue(is_his(ROOT + "2011/NRS_BG_04-14_-_Sunday_Lecture_and_Kirtan_-_2011-03-13.mp3"))
 
 
+class DescribePrabhupadaMusicFileTests(TestCase):
+    """Titles and albums of Srila Prabhupada's bhajans, kirtans and japa."""
+
+    def test_names(self):
+        from apps.lecture.management.commands.import_prabhupada_music import describe
+
+        cases = [
+            ("SP_Bhajans_02_-_Gaura_Pahu_-_Gaura_Pahu_Na_Bhajiya_Goinu.mp3", "Gaura Pahu — Gaura Pahu Na Bhajiya Goinu"),
+            ("SP_Bhajans_04_-_Jiv_Jago_'Soft'_Arunodaya-kirtana_II.mp3", "Jiv Jago “Soft” Arunodaya-kirtana II"),
+            ("SP_Bhajans_04_-_Vande_'ham_-_Hare_Krsna_Kirtana.mp3", "Vande 'ham — Hare Krsna Kirtana"),
+            ("SP_Bhajans_02_-_Namasye_PurusamTvadyam_-_Prayers_by_Queen_Kunti.mp3",
+             "Namasye Purusam Tvadyam — Prayers by Queen Kunti"),
+            ("SP_Bhajans_07_-_Purport_on_Hare_Krishna_Mantra_[Hindi].mp3", "Purport on Hare Krishna Mantra (Hindi)"),
+            ("SP_01_Group_Japa.mp3", "Group Japa"),
+        ]
+        for filename, expected in cases:
+            with self.subTest(filename):
+                self.assertEqual(describe(filename), expected)
+
+    def test_albums(self):
+        from apps.lecture.management.commands.import_prabhupada_music import BHAJANS, album_title
+
+        self.assertEqual(album_title(BHAJANS + "Vol-01/01_-_Krsna_Meditations/"), "Krsna Meditations")
+        self.assertEqual(
+            album_title(BHAJANS + "Vol-02/01_-_The_Vintage_Series_-_Bhajahu%20Re%20Mana/"),
+            "The Vintage Series — Bhajahu Re Mana",
+        )
+        self.assertEqual(album_title(BHAJANS + "Vol-03/04_-_The_Vintage_Series/"), "The Vintage Series, Part 4")
+
+
 @override_settings(STORAGES=LOCAL_STORAGE, MEDIA_URL="/media/")
 class SelectionAdminTests(TestCase):
     """Selections are built in the admin: nested ones and lectures go in as
