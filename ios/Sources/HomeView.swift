@@ -177,8 +177,8 @@ struct HomeView: View {
     }
 }
 
-/// The lecture a topic was left on, under "Continue", with what's left of
-/// it; a tap resumes it where it was left.
+/// The lecture a topic was left on, under "Continue"; a tap resumes it
+/// where it was left.
 private struct ContinueRow: View {
     let item: RecentTopic
     @ObservedObject var starter: LectureStarter
@@ -194,8 +194,7 @@ private struct ContinueRow: View {
         RowButton(action: resume) {
             LectureLine(title: spot.map { $0.lecture.displayTitle(at: $0.index) } ?? fallbackTitle,
                         topic: item.title, lecturer: item.summary.lecturer.name,
-                        caption: spot.map { String(localized: "\(formatDuration($0.left)) left in the lecture") },
-                        progress: spot?.fraction, loading: starter.loading == rowID,
+                        detail: spot.map { formatTime($0.lecture.duration) }, loading: starter.loading == rowID,
                         isCurrent: lectureID.map { player.isCurrent(topicID: item.id, lectureID: $0) } ?? false)
         }
         .task(id: item.id) {
@@ -218,21 +217,10 @@ private struct ContinueRow: View {
             ?? DownloadManager.shared.savedTopics[item.id]?.lectures ?? fetched
     }
 
-    private struct Spot {
-        let lecture: Lecture
-        let index: Int
-        let fraction: Double
-        /// Seconds left in the lecture.
-        let left: Double
-    }
-
-    /// The lecture the topic was left on, and how far into it.
-    private var spot: Spot? {
+    /// The lecture the topic was left on.
+    private var spot: (lecture: Lecture, index: Int)? {
         guard let entry, let lectures, let index = entry.index(in: lectures) else { return nil }
-        let lecture = lectures[index]
-        let time = min(max(entry.time, 0), lecture.duration)
-        return Spot(lecture: lecture, index: index, fraction: lecture.duration > 0 ? time / lecture.duration : 0,
-                    left: lecture.duration - time)
+        return (lectures[index], index)
     }
 
     /// Until the topic's lectures are at hand: the lecture's title as it was
