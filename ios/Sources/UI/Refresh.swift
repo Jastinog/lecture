@@ -13,10 +13,14 @@ extension View {
 private struct ClassicRefresh: ViewModifier {
     let action: @Sendable () async -> Void
 
-    /// How far the list is pulled past its top.
-    @State private var pull: CGFloat = 0
-    /// The top inset of the content (bars, search strip) without our band.
-    @State private var inset: CGFloat = 0
+    /// Where the content's top is: the inset above it (bars, search strip,
+    /// our band) and how far down it's scrolled, both positive downwards.
+    private struct Place: Equatable {
+        var inset: CGFloat = 0
+        var top: CGFloat = 0
+    }
+
+    @State private var place = Place()
     @State private var refreshing = false
     /// Re-armed once the list is back at rest, so one pull refreshes once.
     @State private var armed = true
@@ -26,32 +30,42 @@ private struct ClassicRefresh: ViewModifier {
     /// Height held open above the list while it reloads.
     private let band: CGFloat = 44
 
+    /// The inset without our band: where the spinner's gap begins.
+    private var base: CGFloat { place.inset - (refreshing ? band : 0) }
+    /// How far below that the content's top is: the pull, plus the band while
+    /// it's held open.
+    private var gap: CGFloat { max(0, place.top - base) }
+
     func body(content: Content) -> some View {
         content
-            .contentMargins(.top, refreshing ? band : 0, for: .scrollContent)
-            .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                -(geometry.contentOffset.y + geometry.contentInsets.top)
-            } action: { _, overscroll in
-                pull = max(0, overscroll)
+            // As safe area, not a content margin: the lists set their own
+            // top margin (`plainBackground`), which would win.
+            .safeAreaPadding(.top, refreshing ? band : 0)
+            .onScrollGeometryChange(for: Place.self) { geometry in
+                Place(inset: geometry.contentInsets.top, top: -geometry.contentOffset.y)
+            } action: { _, place in
+                self.place = place
+                let pull = place.top - place.inset
                 if pull < 2 { armed = true }
                 if armed, !refreshing, pull >= trigger { start() }
             }
-            .onScrollGeometryChange(for: CGFloat.self) { $0.contentInsets.top } action: { _, top in
-                inset = top - (refreshing ? band : 0)
-            }
+            // Behind the rows, as it were: shown only in the gap above them, so
+            // the list slides over it.
             .overlay(alignment: .top) {
                 ZStack(alignment: .top) {
-                    if refreshing || pull > 2 {
+                    if refreshing || gap > 2 {
                         ClassicSpinner()
                             .frame(height: band)
-                            .opacity(refreshing ? 1 : min(pull / trigger, 1))
+                            .opacity(refreshing ? 1 : min(gap / trigger, 1))
                             .transition(.opacity)
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: (refreshing ? band : 0) + pull, alignment: .top)
+                .frame(height: gap, alignment: .top)
                 .clipped()
-                .padding(.top, inset)
+                .padding(.top, base)
+                // Measured, as the inset is, from the list's top under the bars.
+                .ignoresSafeArea(.container, edges: .top)
                 .allowsHitTesting(false)
             }
     }
