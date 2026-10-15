@@ -189,7 +189,6 @@ struct TopicView: View {
                 LectureRow(
                     index: index, lecture: lecture,
                     isCurrent: isCurrent(topic, lecture),
-                    listened: reached.map { index < $0 } ?? false,
                     played: index == reached
                         ? (loaded ? .live(player.clock)
                                   : .fixed(lecture.duration > 0 ? (saved?.time ?? 0) / lecture.duration : 0))
@@ -548,8 +547,6 @@ private struct LectureRow: View {
     let index: Int
     let lecture: Lecture
     let isCurrent: Bool
-    /// The listener is past this lecture.
-    let listened: Bool
     /// Progress within this lecture, when it's where the listener is.
     let played: LecturePlayed?
     /// The lecture's language code, on a page listing more than one.
@@ -571,7 +568,7 @@ private struct LectureRow: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(lecture.displayTitle(at: index))
                             .font(.rowTitle)
-                            .rowForeground(listened ? Palette.secondaryText : Palette.text)
+                            .rowForeground(Palette.text)
                             .lineLimit(1)
                         if let event = lecture.event {
                             Text(event)
@@ -595,8 +592,8 @@ private struct LectureRow: View {
                 .padding(.vertical, 5)
                 .frame(minHeight: 44)
             }
-            // What the speaker glyph and the grey title say to the eye.
-            .accessibilityValue(isCurrent ? "Now playing" : listened ? "Played" : "")
+            // What the speaker glyph says to the eye.
+            .accessibilityValue(isCurrent ? "Now playing" : "")
 
             LectureDownloadIndicator(topicID: topicID, lectureID: lecture.id, downloaded: downloaded,
                                      live: live, onDownload: onDownload, onStop: onStopDownload)
