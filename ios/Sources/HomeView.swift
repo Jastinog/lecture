@@ -34,13 +34,16 @@ final class HomeFeedModel: ObservableObject {
 /// Route to every new topic, paged.
 struct NewTopicsRoute: Hashable {}
 
-/// The first tab: search, what's being listened to, the lecture of the day,
-/// then five each of what's trending, the newest topics and the newest
-/// selections. The bar's left button opens the listening calendar.
+/// The first tab: search, the lectures being listened to, the lecture of the
+/// day, then five each of the lectures trending (a tap plays one), the newest
+/// topics and the newest selections. The bar's left button opens the listening calendar.
 struct HomeView: View {
     @ObservedObject private var model = HomeFeedModel.shared
     @ObservedObject private var languages = CatalogLanguageStore.shared
     @ObservedObject private var recents = RecentsStore.shared
+    @EnvironmentObject private var player: AudioPlayer
+    @EnvironmentObject private var router: NavRouter
+    @StateObject private var starter = LectureStarter()
 
     /// Cards in each row.
     private static let limit = 5
@@ -76,8 +79,12 @@ struct HomeView: View {
             if let feed = model.feed {
                 if !feed.trending.isEmpty {
                     Section {
-                        ForEach(feed.trending.indexed, id: \.element.id) { i, topic in
-                            TopicRow(topic: topic).zebraRow(i)
+                        ForEach(feed.trending.indexed, id: \.element.id) { i, hit in
+                            RowButton(action: { starter.play(hit, player: player, router: router) }) {
+                                LectureLine(hit, loading: starter.isLoading(hit),
+                                            isCurrent: player.isCurrent(topicID: hit.topic.id, lectureID: hit.lecture.id))
+                            }
+                            .zebraRow(i)
                         }
                         .plainRow()
                     } header: {
@@ -143,117 +150,104 @@ struct HomeView: View {
             NowPlayingToolbarItem()
         }
         .classicRefreshable { await model.refresh() }
+        .onDisappear { starter.cancel() }
         // Loads at first, and again whenever the catalog language changes.
         .task(id: languages.language) {
             if model.feed == nil || model.language != languages.language { await model.refresh() }
         }
     }
 
-    /// The topics listened to lately and not finished, newest first.
+    /// The topics listened to lately and not finished, newest first: each
+    /// row is the lecture it was left on.
     private var unfinished: [RecentTopic] {
         Array(recents.items.filter { !PlaybackMath.isFinished($0.fraction) }.prefix(Self.limit))
     }
 }
 
-/// A topic being listened to, under "Continue": a tap on the card opens its
-/// page, the play button resumes it where it was left.
+/// The lecture a topic was left on, under "Continue": a tap on the card
+/// opens its topic, the play button resumes it where it was left.
 private struct ContinueRow: View {
     let item: RecentTopic
 
     @EnvironmentObject private var player: AudioPlayer
     @EnvironmentObject private var router: NavRouter
-
-    @State private var starting = false
-    @State private var error: String?
-    /// The topic being fetched to resume; cancelled if the row goes away, so
-    /// the player doesn't open over wherever the listener went meanwhile.
-    @State private var resuming: Task<Void, Never>?
+    @StateObject private var starter = LectureStarter()
+    /// The topic's lectures, fetched when neither the cache nor a download has them.
+    @State private var fetched: [Lecture]?
 
     var body: some View {
-        let summary = item.summary
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 12) {
-                Button { router.push(summary) } label: {
-                    HStack(alignment: .top, spacing: 12) {
-                        CoverImage(url: summary.coverURL,
-                                   width: RowMetrics.coverWidth)
-                            .coverShadow()
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(item.title)
-                                .font(.rowTitle)
-                                .foregroundStyle(Palette.text)
-                                .lineLimit(2)
-                            Text(summary.lecturer.name)
-                                .font(.rowSubtitle)
-                                .foregroundStyle(Palette.detailText)
-                                .lineLimit(1)
-                            Text(detail)
-                                .font(.rowDetail)
+        let spot = self.spot
+        let title = spot.map { $0.lecture.displayTitle(at: $0.index) } ?? fallbackTitle
+        HStack(alignment: .center, spacing: 12) {
+            Button { router.push(item.summary) } label: {
+                MediaRow(coverURL: item.summary.coverURL, title: title, subtitle: item.summary.lecturer.name) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.title)
+                            .font(.rowDetail)
+                            .foregroundStyle(Palette.secondaryText)
+                            .lineLimit(1)
+                        if let spot {
+                            Text("\(formatDuration(spot.left)) left in the lecture")
+                                .font(.rowCaption)
                                 .foregroundStyle(Palette.secondaryText)
-                            ClassicProgressBar(value: item.fraction)
+                                .lineLimit(1)
+                            ClassicProgressBar(value: spot.fraction)
                                 .padding(.top, 5)
                         }
-                        .padding(.top, 1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
 
-                RoundPlayButton(starting: starting, playing: isPlaying, action: resume)
-                    .accessibilityLabel(isPlaying ? "Now Playing" : "Resume “\(item.title)”")
+            RoundPlayButton(starting: starter.loading != nil, playing: isPlaying) {
+                starter.play("\(item.id)", topicID: item.id, lectureID: entry?.lectureID, summary: item.summary,
+                             player: player, router: router)
             }
-            if let error {
-                Text(error).font(.app(.caption)).foregroundStyle(.red)
-            }
+            .accessibilityLabel(isPlaying ? "Now Playing" : "Resume “\(title)”")
         }
-        // The same grid as the topic rows below.
-        .padding(.vertical, 8)
         .plainRow()
-        .onDisappear { resuming?.cancel() }
+        .onDisappear { starter.cancel() }
+        .task(id: item.id) {
+            guard lectures == nil else { return }
+            fetched = try? await TopicCache.shared.resolve(item.id).detail.lectures
+        }
+    }
+
+    private var entry: ProgressStore.Entry? { ProgressStore.entry(topicID: item.id) }
+
+    private var lectures: [Lecture]? {
+        TopicCache.shared.get(item.id)?.detail.lectures
+            ?? DownloadManager.shared.savedTopics[item.id]?.lectures ?? fetched
+    }
+
+    private struct Spot {
+        let lecture: Lecture
+        let index: Int
+        let fraction: Double
+        /// Seconds left in the lecture.
+        let left: Double
+    }
+
+    /// The lecture the topic was left on, and how far into it.
+    private var spot: Spot? {
+        guard let entry, let lectures, let index = entry.index(in: lectures) else { return nil }
+        let lecture = lectures[index]
+        let time = min(max(entry.time, 0), lecture.duration)
+        return Spot(lecture: lecture, index: index, fraction: lecture.duration > 0 ? time / lecture.duration : 0,
+                    left: lecture.duration - time)
+    }
+
+    /// Until the topic's lectures are at hand: the lecture's title as it was
+    /// last heard, or the topic's.
+    private var fallbackTitle: String {
+        let lectureID = entry?.lectureID
+        return ListeningLog.shared.lectures.first { $0.topic.id == item.id && $0.lectureID == lectureID }?
+            .lectureTitle ?? item.title
     }
 
     /// Playing in the player now: the button opens it.
     private var isPlaying: Bool { player.topic?.id == item.id && player.isPlaying }
-
-    /// "Lecture 7 · 34%": the lecture's number in the whole topic, when its
-    /// lectures are at hand (the saved index counts a language-narrowed list).
-    private var detail: String {
-        let percent = formatPercent(item.fraction)
-        guard let entry = ProgressStore.entry(topicID: item.id) else { return percent }
-        let lectures = TopicCache.shared.get(item.id)?.detail.lectures
-            ?? DownloadManager.shared.savedTopics[item.id]?.lectures
-        let index = lectures.flatMap { entry.index(in: $0) } ?? entry.index
-        return String(localized: "Lecture \(index + 1) · \(percent)")
-    }
-
-    /// Resumes the topic without opening its page. A downloaded copy starts
-    /// instantly; otherwise the same lookup the topic page uses.
-    private func resume() {
-        error = nil
-        if isPlaying {
-            router.openPlayer()
-            return
-        }
-        let summary = item.summary
-        if let saved = DownloadManager.shared.savedTopics[item.id] {
-            player.load(topic: saved, summary: summary)
-            router.openPlayer()
-            return
-        }
-        starting = true
-        resuming = Task {
-            defer { starting = false }
-            do {
-                let detail = try await TopicCache.shared.resolve(summary.id).detail
-                guard !Task.isCancelled else { return }
-                player.load(topic: detail, summary: summary)
-                router.openPlayer()
-            } catch {
-                if !error.isCancellation { self.error = String(localized: "Couldn’t load the topic. Check your connection.") }
-            }
-        }
-    }
 }
 
 /// The lecture of the day: a tap on the card opens its topic, the play
@@ -263,48 +257,44 @@ private struct LectureOfTheDayRow: View {
 
     @EnvironmentObject private var player: AudioPlayer
     @EnvironmentObject private var router: NavRouter
-
-    @State private var starting = false
-    @State private var error: String?
-    @State private var playing: Task<Void, Never>?
+    @StateObject private var starter = LectureStarter()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 12) {
-                Button { router.push(hit.topic) } label: {
-                    MediaRow(coverURL: hit.topic.coverURL, title: hit.lecture.displayTitle(at: hit.index),
-                             subtitle: hit.topic.lecturer.name) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(hit.topic.title)
-                                .font(.rowDetail)
+        HStack(alignment: .center, spacing: 12) {
+            Button { router.push(hit.topic) } label: {
+                MediaRow(coverURL: hit.topic.coverURL, title: hit.lecture.displayTitle(at: hit.index),
+                         subtitle: hit.topic.lecturer.name) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(hit.topic.title)
+                            .font(.rowDetail)
+                            .foregroundStyle(Palette.secondaryText)
+                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            Text(facts)
+                                .font(.rowCaption)
                                 .foregroundStyle(Palette.secondaryText)
                                 .lineLimit(1)
-                            HStack(spacing: 4) {
-                                Text(facts)
-                                    .font(.rowCaption)
-                                    .foregroundStyle(Palette.secondaryText)
-                                    .lineLimit(1)
-                                LanguageTag(code: hit.lecture.language)
-                            }
+                            LanguageTag(code: hit.lecture.language)
                         }
                     }
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
 
-                RoundPlayButton(starting: starting, playing: isPlaying, action: play)
-                    .accessibilityLabel(isPlaying ? "Now Playing" : "Play “\(hit.lecture.title)”")
+            RoundPlayButton(starting: starter.loading != nil, playing: isPlaying) {
+                starter.play(hit, player: player, router: router)
             }
-            if let error {
-                Text(error).font(.app(.caption)).foregroundStyle(.red)
-            }
+            .accessibilityLabel(isPlaying ? "Now Playing" : "Play “\(hit.lecture.title)”")
         }
         .plainRow()
-        .onDisappear { playing?.cancel() }
+        .onDisappear { starter.cancel() }
     }
 
     /// Playing in the player now: the button opens it.
-    private var isPlaying: Bool { player.currentLecture?.id == hit.lecture.id && player.isPlaying }
+    private var isPlaying: Bool {
+        player.isCurrent(topicID: hit.topic.id, lectureID: hit.lecture.id) && player.isPlaying
+    }
 
     /// "45 min · 1972 · Bombay".
     private var facts: String {
@@ -312,28 +302,6 @@ private struct LectureOfTheDayRow: View {
             .compactMap { $0 }.joined(separator: " · ")
     }
 
-    /// Plays the lecture in its topic and opens the player.
-    private func play() {
-        error = nil
-        if isPlaying {
-            router.openPlayer()
-            return
-        }
-        starting = true
-        playing = Task {
-            defer { starting = false }
-            do {
-                let page = try await TopicCache.shared.resolve(hit.topic.id)
-                guard !Task.isCancelled else { return }
-                // Found by id: the hit's index counts only its language's lectures.
-                let index = page.detail.lectures.firstIndex { $0.id == hit.lecture.id } ?? hit.index
-                player.load(topic: page.detail, summary: page.summary, index: index)
-                router.openPlayer()
-            } catch {
-                if !error.isCancellation { self.error = String(localized: "Couldn’t load the topic. Check your connection.") }
-            }
-        }
-    }
 }
 
 /// The round blue play button of Home's rows; a spinner while the topic

@@ -188,7 +188,7 @@ struct TopicView: View {
             ForEach(Array(topic.lectures.enumerated()), id: \.element.id) { index, lecture in
                 LectureRow(
                     index: index, lecture: lecture,
-                    isCurrent: isCurrent(topic, lecture),
+                    isCurrent: player.isCurrent(topicID: topic.id, lectureID: lecture.id),
                     played: index == reached
                         ? (loaded ? .live(player.clock)
                                   : .fixed(lecture.duration > 0 ? (saved?.time ?? 0) / lecture.duration : 0))
@@ -198,7 +198,7 @@ struct TopicView: View {
                     topicID: topic.id,
                     live: dl.live,
                     onPlay: {
-                        if isCurrent(topic, lecture) && loaded {
+                        if player.isCurrent(topicID: topic.id, lectureID: lecture.id) && loaded {
                             player.togglePlayPause()
                         } else {
                             player.load(topic: topic, summary: summary, index: index, whole: whole)
@@ -214,10 +214,6 @@ struct TopicView: View {
         } header: {
             PlainSectionHeader(title: String(localized: "Lectures — \(topic.lectures.count)"))
         }
-    }
-
-    private func isCurrent(_ topic: TopicDetail, _ lecture: Lecture) -> Bool {
-        player.topic?.id == topic.id && player.currentLecture?.id == lecture.id
     }
 
     /// Where the listener is, as a grey line in the head: "Lecture 5 · 12:30",
@@ -524,12 +520,7 @@ struct LectureNumber: View {
     var body: some View {
         Group {
             if isCurrent {
-                Image.classic("SpeakerIconBlack")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 13)
-                    .rowForeground(Palette.selection)
+                SpeakerGlyph(height: 13)
             } else {
                 Text("\(index + 1)")
                     .font(.rowTitle)

@@ -450,6 +450,11 @@ final class AudioPlayer: ObservableObject {
         return topic.lectures[currentIndex]
     }
 
+    /// Whether the lecture is the one in the player, playing or paused.
+    func isCurrent(topicID: Int, lectureID: Int) -> Bool {
+        topic?.id == topicID && currentLecture?.id == lectureID
+    }
+
     // MARK: - Loading
 
     /// Loads `topic` and starts playing. With `index`, starts that chapter (resuming
@@ -1318,9 +1323,9 @@ final class AudioPlayer: ObservableObject {
         // Another topic: start afresh, so the previous one's cover doesn't linger.
         var info = nowPlayingTopicID == topic.id ? MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:] : [:]
         nowPlayingTopicID = topic.id
-        info[MPMediaItemPropertyTitle] = "\(topic.title) — \(lecture.displayTitle(at: currentIndex))"
+        info[MPMediaItemPropertyTitle] = lecture.displayTitle(at: currentIndex)
         info[MPMediaItemPropertyArtist] = topic.lecturer
-        info[MPMediaItemPropertyAlbumTitle] = loadedSummary?.group?.name
+        info[MPMediaItemPropertyAlbumTitle] = topic.title
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = lockScreenRate

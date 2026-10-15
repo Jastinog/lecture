@@ -68,11 +68,7 @@ struct SearchView: View {
     @EnvironmentObject private var player: AudioPlayer
     @EnvironmentObject private var router: NavRouter
     @Environment(\.dismiss) private var dismiss
-    /// The lecture hit whose topic is loading, to play it.
-    @State private var starting: Int?
-    /// The topic being fetched to play a hit; cancelled on leaving the screen, so
-    /// the player doesn't open over wherever the listener went meanwhile.
-    @State private var playing: Task<Void, Never>?
+    @StateObject private var starter = LectureStarter()
 
     var body: some View {
         // A failed search shows why, not the previous query's results.
@@ -108,8 +104,11 @@ struct SearchView: View {
             if !result.lectures.isEmpty {
                 Section {
                     ForEach(result.lectures.indexed, id: \.element.id) { i, hit in
-                        RowButton(action: { play(hit) }) { LectureHitRow(hit: hit, loading: starting == hit.id) }
-                            .zebraRow(i)
+                        RowButton(action: { play(hit) }) {
+                            LectureLine(hit, loading: starter.isLoading(hit),
+                                        isCurrent: player.isCurrent(topicID: hit.topic.id, lectureID: hit.lecture.id))
+                        }
+                        .zebraRow(i)
                     }
                     .plainRow()
                 } header: {
@@ -142,30 +141,14 @@ struct SearchView: View {
         // Leaving for a result counts as a successful search.
         .onDisappear {
             if !vm.result.isEmpty { history.record(vm.query) }
-            playing?.cancel()
+            starter.cancel()
         }
     }
 
     /// Plays a found lecture in its topic and opens the player.
     private func play(_ hit: LectureHit) {
-        guard starting == nil else { return }
         history.record(vm.query)
-        starting = hit.id
-        playing = Task {
-            defer { starting = nil }
-            do {
-                let page = try await TopicCache.shared.resolve(hit.topic.id)
-                guard !Task.isCancelled else { return }
-                // Found by id: the hit's index counts only its language's lectures.
-                let index = page.detail.lectures.firstIndex { $0.id == hit.lecture.id } ?? hit.index
-                player.load(topic: page.detail, summary: page.summary, index: index)
-                router.openPlayer()
-            } catch {
-                guard !error.isCancellation else { return }
-                Alerts.shared.show(String(localized: "Couldn’t Play"),
-                                   message: String(localized: "Check your connection and try again."))
-            }
-        }
+        starter.play(hit, player: player, router: router)
     }
 
     private var recentSection: some View {
@@ -205,36 +188,5 @@ struct SearchView: View {
         } else {
             ClassicEmptyState.noResults
         }
-    }
-}
-
-/// A lecture found by title: the title, then "Topic · Lecturer" and its length.
-private struct LectureHitRow: View {
-    let hit: LectureHit
-    let loading: Bool
-
-    var body: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(hit.lecture.title)
-                    .font(.rowTitle)
-                    .rowForeground(Palette.text)
-                    .lineLimit(1)
-                Text(verbatim: "\(hit.topic.title) · \(hit.topic.lecturer.name)")
-                    .font(.rowDetail)
-                    .rowForeground(Palette.secondaryText)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            if loading {
-                ClassicSpinner()
-            } else {
-                Text(formatTime(hit.lecture.duration))
-                    .font(.rowDetail)
-                    .rowForeground(Palette.secondaryText)
-            }
-        }
-        .frame(minHeight: 44)
-        .padding(.vertical, 4)
     }
 }

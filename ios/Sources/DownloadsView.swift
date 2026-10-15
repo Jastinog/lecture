@@ -1,35 +1,32 @@
 import SwiftUI
 
-/// The lectures saved on this phone, under their topics A to Z: each one's
-/// size, a ring while it comes in, a tap to play it, a swipe to delete it.
+/// The lectures saved on this phone, their topics A to Z: each one's size, a
+/// ring while it comes in, a tap to play it, a swipe to delete it.
 struct DownloadsView: View {
     @ObservedObject private var dl = DownloadManager.shared
     @ObservedObject private var live = DownloadManager.shared.live
     @EnvironmentObject private var player: AudioPlayer
     @EnvironmentObject private var router: NavRouter
+    @StateObject private var starter = LectureStarter()
     @State private var query = ""
 
     var body: some View {
-        let sections = self.sections
+        let lectures = self.lectures
         List {
             if !dl.library.isEmpty {
                 TableSearchBar(text: $query, prompt: String(localized: "Search Downloads"))
             }
-            ForEach(sections, id: \.topic.id) { section in
-                Section {
-                    ForEach(section.lectures.indexed, id: \.element.lecture.id) { row, item in
-                        DownloadedLectureRow(topic: section.topic, lecture: item.lecture, index: item.index,
-                                             live: live) { play(item.index, of: section.topic) }
-                            .classicSwipeButton(id: "\(section.topic.id)-\(item.lecture.id)") {
-                                dl.deleteLecture(topicID: section.topic.id, lectureID: item.lecture.id)
-                            }
-                            .trackRow(row)
-                    }
-                    .plainRow()
-                } header: {
-                    PlainSectionHeader(title: section.topic.title)
+            ForEach(lectures.indexed, id: \.element.id) { row, item in
+                DownloadedLectureRow(topic: item.topic, lecture: item.lecture, index: item.index, live: live,
+                                     isCurrent: player.isCurrent(topicID: item.topic.id, lectureID: item.lecture.id)) {
+                    starter.play(item.id, topicID: item.topic.id, lectureID: item.lecture.id, player: player, router: router)
                 }
+                .classicSwipeButton(id: item.id) {
+                    dl.deleteLecture(topicID: item.topic.id, lectureID: item.lecture.id)
+                }
+                .zebraRow(row)
             }
+            .plainRow()
         }
         .classicSwipeList()
         .listStyle(.plain)
@@ -38,7 +35,7 @@ struct DownloadsView: View {
         .overlay {
             if dl.library.isEmpty {
                 ClassicEmptyState(String(localized: "No Downloads"), message: String(localized: "Lectures you download will appear here"))
-            } else if sections.isEmpty {
+            } else if lectures.isEmpty {
                 ClassicEmptyState.noResults
             }
         }
@@ -56,69 +53,44 @@ struct DownloadsView: View {
         .libraryDestinations()
     }
 
-    /// Each saved topic with its lectures on the phone or coming in, in the
-    /// topic's order, narrowed by the search (a match on the topic or its
-    /// lecturer keeps all of them).
-    private var sections: [(topic: TopicDetail, lectures: [(index: Int, lecture: Lecture)])] {
-        dl.library.compactMap { topic in
+    /// The lectures on the phone or coming in, topic by topic in each one's
+    /// order, narrowed by the search (a match on the topic or its lecturer
+    /// keeps all of its lectures).
+    private var lectures: [SavedLecture] {
+        dl.library.flatMap { topic in
             let whole = searchMatches(query, topic.title, topic.lecturer)
-            let lectures = topic.lectures.enumerated()
+            return topic.lectures.enumerated()
                 .filter { dl.isDownloaded(topic.id, $0.element.id) || live.value(topic.id, $0.element.id) != nil }
                 .filter { whole || searchMatches(query, $0.element.displayTitle(at: $0.offset)) }
-                .map { (index: $0.offset, lecture: $0.element) }
-            return lectures.isEmpty ? nil : (topic, lectures)
+                .map { SavedLecture(topic: topic, index: $0.offset, lecture: $0.element) }
         }
-    }
-
-    /// Plays the lecture from its saved topic and opens the player.
-    private func play(_ index: Int, of topic: TopicDetail) {
-        if player.topic?.id == topic.id, player.currentIndex == index, player.isPlaying {
-            router.openPlayer()
-            return
-        }
-        player.load(topic: topic, summary: Topic(topic), index: index)
-        router.openPlayer()
     }
 }
 
-/// A saved lecture as Music listed a track: its number in the topic (the blue
-/// speaker on the one playing), the title, the size and length; while it
-/// downloads, the ring to stop it.
+private struct SavedLecture {
+    let topic: TopicDetail
+    let index: Int
+    let lecture: Lecture
+    var id: String { "\(topic.id)-\(lecture.id)" }
+}
+
+/// A saved lecture: its title, topic and lecturer, its size and length; while
+/// it downloads, the ring to stop it.
 private struct DownloadedLectureRow: View {
     let topic: TopicDetail
     let lecture: Lecture
     let index: Int
     @ObservedObject var live: DownloadProgress
+    let isCurrent: Bool
     let onPlay: () -> Void
-
-    @EnvironmentObject private var player: AudioPlayer
 
     var body: some View {
         HStack(spacing: 6) {
             RowButton(action: onPlay) {
-                HStack(spacing: 10) {
-                    LectureNumber(index: index, isCurrent: isCurrent)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(lecture.displayTitle(at: index))
-                            .font(.rowTitle)
-                            .rowForeground(Palette.text)
-                            .lineLimit(1)
-                        Text(facts)
-                            .font(.rowCaption)
-                            .rowForeground(Palette.secondaryText)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    LanguageTag(code: lecture.language)
-                    Text(formatTime(lecture.duration))
-                        .font(.rowDetail)
-                        .rowForeground(Palette.secondaryText)
-                }
-                .padding(.vertical, 5)
-                .frame(minHeight: 44)
+                LectureLine(title: lecture.displayTitle(at: index), topic: topic.title, lecturer: topic.lecturer,
+                            caption: caption, detail: formatTime(lecture.duration),
+                            isCurrent: isCurrent)
             }
-            .accessibilityValue(isCurrent ? "Now playing" : "")
-
             if let progress = live.value(topic.id, lecture.id) {
                 Button {
                     DownloadManager.shared.cancelLecture(topicID: topic.id, lectureID: lecture.id)
@@ -140,10 +112,8 @@ private struct DownloadedLectureRow: View {
         .nestedRowBackground()
     }
 
-    private var isCurrent: Bool { player.topic?.id == topic.id && player.currentLecture?.id == lecture.id }
-
     /// "34 MB · Bombay", or "Downloading…" while it comes in.
-    private var facts: String {
+    private var caption: String {
         guard live.value(topic.id, lecture.id) == nil else { return String(localized: "Downloading…") }
         let file = DownloadPaths.lectureFile(topic.id, lecture.id)
         let size = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int64) ?? nil

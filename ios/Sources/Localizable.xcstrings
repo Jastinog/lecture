@@ -1685,22 +1685,6 @@
         }
       }
     },
-    "Couldn’t load the topic. Check your connection.": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не удалось загрузить тему. Проверьте подключение."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не вдалося завантажити тему. Перевірте підключення."
-          }
-        }
-      }
-    },
     "Couldn’t load the topics": {
       "localizations": {
         "ru": {
@@ -2568,6 +2552,22 @@
         }
       }
     },
+    "Lectures you listen to will appear here": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здесь появятся лекции, которые вы слушаете"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тут з’являться лекції, які ви слухаєте"
+          }
+        }
+      }
+    },
     "Lectures — %lld": {
       "localizations": {
         "ru": {
@@ -3317,22 +3317,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Наприкінці цієї лекції звук плавно затихне."
-          }
-        }
-      }
-    },
-    "Played": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Прослушано"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Прослухано"
           }
         }
       }
@@ -4117,22 +4101,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тут з’являться теми, які ви поставите на полицю"
-          }
-        }
-      }
-    },
-    "Topics you listen to will appear here": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Здесь появятся темы, которые вы слушаете"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Тут з’являться теми, які ви слухаєте"
           }
         }
       }

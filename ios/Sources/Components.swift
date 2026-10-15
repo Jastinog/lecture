@@ -496,6 +496,151 @@ struct TopicRow: View {
     }
 }
 
+/// A lecture in a list outside its topic (history, downloads, search, the
+/// calendar): its title — the blue speaker before it while it plays — then
+/// "Topic · Lecturer" and an optional grey line, and on the right a detail
+/// (its length, when it was heard), or a spinner while its topic loads.
+struct LectureLine: View {
+    let title: String
+    let topic: String
+    let lecturer: String
+    var caption: String? = nil
+    var detail: String? = nil
+    var loading = false
+    var isCurrent = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 5) {
+                    if isCurrent { SpeakerGlyph(height: 11) }
+                    Text(title)
+                        .font(.rowTitle)
+                        .rowForeground(Palette.text)
+                        .lineLimit(1)
+                }
+                Text(verbatim: "\(topic) · \(lecturer)")
+                    .font(.rowDetail)
+                    .rowForeground(Palette.secondaryText)
+                    .lineLimit(1)
+                if let caption {
+                    Text(caption)
+                        .font(.rowCaption)
+                        .rowForeground(Palette.secondaryText)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if loading {
+                ClassicSpinner()
+            } else if let detail {
+                Text(detail)
+                    .font(.rowDetail)
+                    .rowForeground(Palette.secondaryText)
+            }
+        }
+        .frame(minHeight: 44)
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(isCurrent ? "Now playing" : "")
+    }
+}
+
+extension LectureLine {
+    /// A lecture found (search, "Trending") with its length.
+    init(_ hit: LectureHit, loading: Bool, isCurrent: Bool) {
+        self.init(title: hit.lecture.displayTitle(at: hit.index), topic: hit.topic.title,
+                  lecturer: hit.topic.lecturer.name, detail: formatTime(hit.lecture.duration),
+                  loading: loading, isCurrent: isCurrent)
+    }
+
+    /// A lecture heard (history, the calendar), with `detail` saying when.
+    init(_ entry: ListeningEntry, detail: String, loading: Bool, isCurrent: Bool) {
+        self.init(title: entry.lectureTitle, topic: entry.topic.title, lecturer: entry.topic.lecturer.name,
+                  detail: detail, loading: loading, isCurrent: isCurrent)
+    }
+}
+
+/// The blue speaker marking the lecture in the player.
+struct SpeakerGlyph: View {
+    let height: CGFloat
+
+    var body: some View {
+        Image.classic("SpeakerIconBlack")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(height: height)
+            .rowForeground(Palette.selection)
+    }
+}
+
+/// Plays a lecture picked outside its topic page: loads the topic — a
+/// downloaded copy at once, else its page — finds the lecture in it and opens
+/// the player there, where it was left if it's the one the topic was left on.
+/// Without a lecture, the topic resumes wherever it was left. `loading` names
+/// the row waiting, for its spinner; a screen leaving calls `cancel`, so the
+/// player doesn't open over wherever the listener went meanwhile.
+@MainActor
+final class LectureStarter: ObservableObject {
+    @Published private(set) var loading: String?
+    private var task: Task<Void, Never>?
+
+    func play(_ row: String, topicID: Int, lectureID: Int?, summary: Topic? = nil,
+              player: AudioPlayer, router: NavRouter) {
+        guard loading == nil else { return }
+        if lectureID.map({ player.isCurrent(topicID: topicID, lectureID: $0) }) ?? (player.topic?.id == topicID) {
+            if !player.isPlaying { player.play() }
+            router.openPlayer()
+            return
+        }
+        if let saved = DownloadManager.shared.savedTopics[topicID] {
+            start(saved, summary: summary ?? Topic(saved), lectureID: lectureID, player: player, router: router)
+            return
+        }
+        loading = row
+        task = Task {
+            defer { loading = nil }
+            do {
+                let page = try await TopicCache.shared.resolve(topicID)
+                guard !Task.isCancelled else { return }
+                start(page.detail, summary: summary ?? page.summary, lectureID: lectureID, player: player, router: router)
+            } catch {
+                guard !error.isCancellation else { return }
+                Self.fail()
+            }
+        }
+    }
+
+    func play(_ hit: LectureHit, player: AudioPlayer, router: NavRouter) {
+        play(String(hit.id), topicID: hit.topic.id, lectureID: hit.lecture.id, summary: hit.topic,
+             player: player, router: router)
+    }
+
+    func play(_ entry: ListeningEntry, player: AudioPlayer, router: NavRouter) {
+        play(entry.id, topicID: entry.topic.id, lectureID: entry.lectureID, summary: entry.topic,
+             player: player, router: router)
+    }
+
+    func isLoading(_ hit: LectureHit) -> Bool { loading == String(hit.id) }
+
+    func cancel() { task?.cancel() }
+
+    private func start(_ topic: TopicDetail, summary: Topic, lectureID: Int?,
+                       player: AudioPlayer, router: NavRouter) {
+        let index = lectureID.flatMap { id in topic.lectures.firstIndex { $0.id == id } }
+        // The lecture has left its topic since.
+        if lectureID != nil, index == nil { return Self.fail() }
+        player.load(topic: topic, summary: summary, index: index)
+        router.openPlayer()
+    }
+
+    private static func fail() {
+        Alerts.shared.show(String(localized: "Couldn’t Play"),
+                           message: String(localized: "Check your connection and try again."))
+    }
+}
+
 /// A language as lists mark a lecture or topic with it: "EN" small and grey in
 /// a thin frame, like the store's tags.
 struct LanguageTag: View {

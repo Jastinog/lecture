@@ -88,7 +88,7 @@ struct RemoteLibrary: LibraryProviding {
 
     func home(language: String?) async throws -> HomeFeed {
         let dto = try await get(HomeDTO.self, "home/", query: lang(language))
-        return HomeFeed(trending: dto.trending.map(\.model), newTopics: dto.new.map(\.model),
+        return HomeFeed(trending: (dto.trendingLectures ?? []).compactMap(\.model), newTopics: dto.new.map(\.model),
                         selections: dto.selections.compactMap { card in
                             card.lecturer.map { card.model(lecturer: $0.model, within: nil) }
                         },
@@ -382,13 +382,14 @@ private struct SelectionChildrenDTO: Decodable {
 
 /// `GET home/`.
 private struct HomeDTO: Decodable {
-    let trending: [TopicDTO]
+    /// Nil from a backend from before it.
+    let trendingLectures: [LectureHitDTO]?
     let new: [TopicDTO]
     let selections: [SelectionDTO]
     let lectureOfTheDay: LectureHitDTO?
 }
 
-/// A lecture with its place in its topic (search, the lecture of the day).
+/// A lecture with its place in its topic (search, "Trending", the lecture of the day).
 private struct LectureHitDTO: Decodable {
     let lecture: LectureDTO
     let index: Int

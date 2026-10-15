@@ -57,6 +57,10 @@ struct ListeningEntry: Codable, Identifiable, Hashable {
     var sessions: [ListeningSession]? = nil
 
     var id: String { "\(topic.id)-\(lectureID)" }
+
+    var lastHeardDate: Date { Date(timeIntervalSince1970: lastHeard) }
+    /// "21:05".
+    var lastHeardTime: String { lastHeardDate.formatted(date: .omitted, time: .shortened) }
 }
 
 /// What was listened to on each day, synced across the listener's devices
@@ -75,11 +79,18 @@ final class ListeningLog: ObservableObject {
     static let playThreshold: Double = 30
 
     /// Entries by day ("2026-10-15"), each day's most recent first.
-    @Published private(set) var days: [String: [ListeningEntry]] = [:]
+    @Published private(set) var days: [String: [ListeningEntry]] = [:] {
+        didSet { lectures = Self.latest(in: days) }
+    }
+    /// Every lecture heard, once — the day it was heard last — the latest first.
+    private(set) var lectures: [ListeningEntry] = []
     /// Time heard since the last commit, by day and entry.
     private var pending: [String: [String: ListeningEntry]] = [:]
 
-    private init() { days = Store.load([String: [ListeningEntry]].self, from: file) ?? [:] }
+    private init() {
+        days = Store.load([String: [ListeningEntry]].self, from: file) ?? [:]
+        lectures = Self.latest(in: days)
+    }
 
     /// Adds `seconds` heard of the lecture at `date`.
     func add(_ seconds: Double, topic: Topic, lecture: Lecture, index: Int, at date: Date) {
@@ -155,6 +166,30 @@ final class ListeningLog: ObservableObject {
             days[change.day] = entries.isEmpty ? nil : entries.sorted { $0.lastHeard > $1.lastHeard }
         }
         Store.save(days, version: version, to: file)
+    }
+
+    /// Forgets a lecture heard, every day it was, here and on the listener's
+    /// other devices.
+    func remove(id: String) {
+        let removed = days.flatMap { day, entries in entries.filter { $0.id == id }.map { (day: day, entry: $0) } }
+        guard !removed.isEmpty else { return }
+        SyncEngine.shared.listeningCleared(removed)
+        for (day, _) in removed {
+            pending[day]?[id] = nil
+            let rest = days[day]?.filter { $0.id != id } ?? []
+            days[day] = rest.isEmpty ? nil : rest
+        }
+        Store.save(days, version: version, to: file)
+    }
+
+    private static func latest(in days: [String: [ListeningEntry]]) -> [ListeningEntry] {
+        var latest: [String: ListeningEntry] = [:]
+        for entries in days.values {
+            for entry in entries where entry.seconds > 0 && entry.lastHeard > latest[entry.id]?.lastHeard ?? -1 {
+                latest[entry.id] = entry
+            }
+        }
+        return latest.values.sorted { $0.lastHeard > $1.lastHeard }
     }
 
     func entries(on date: Date) -> [ListeningEntry] { days[Self.key(date)] ?? [] }

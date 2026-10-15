@@ -38,8 +38,8 @@ protocol LibraryProviding {
 
 /// Home's rows from the backend, five cards each.
 struct HomeFeed {
-    /// The topics played most lately, by everyone.
-    var trending: [Topic] = []
+    /// The lectures played most lately, by everyone.
+    var trending: [LectureHit] = []
     var newTopics: [Topic] = []
     /// The newest selections, of every lecturer.
     var selections: [Selection] = []
