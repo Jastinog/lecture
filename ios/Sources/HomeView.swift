@@ -60,8 +60,9 @@ struct HomeView: View {
             if !unfinished.isEmpty {
                 Section {
                     ForEach(unfinished.indexed, id: \.element.id) { i, item in
-                        ContinueRow(item: item).zebraBackground(i)
+                        ContinueRow(item: item, starter: starter).zebraRow(i)
                     }
+                    .plainRow()
                 } header: {
                     PlainSectionHeader(title: String(localized: "Continue"))
                 }
@@ -69,8 +70,14 @@ struct HomeView: View {
 
             if let hit = model.feed?.lectureOfTheDay {
                 Section {
-                    LectureOfTheDayRow(hit: hit)
-                        .zebraBackground(0)
+                    RowButton(action: { starter.play(hit, player: player, router: router) }) {
+                        LectureLine(title: hit.lecture.displayTitle(at: hit.index), topic: hit.topic.title,
+                                    lecturer: hit.topic.lecturer.name, caption: lectureFacts(hit.lecture),
+                                    detail: formatTime(hit.lecture.duration), loading: starter.isLoading(hit),
+                                    isCurrent: player.isCurrent(topicID: hit.topic.id, lectureID: hit.lecture.id))
+                    }
+                    .zebraRow(0)
+                    .plainRow()
                 } header: {
                     PlainSectionHeader(title: String(localized: "Lecture of the Day"))
                 }
@@ -157,6 +164,12 @@ struct HomeView: View {
         }
     }
 
+    /// "1972 · Bombay", or nil when neither is known.
+    private func lectureFacts(_ lecture: Lecture) -> String? {
+        let facts = [lecture.year.map(String.init), lecture.event].compactMap { $0 }
+        return facts.isEmpty ? nil : facts.joined(separator: " · ")
+    }
+
     /// The topics listened to lately and not finished, newest first: each
     /// row is the lecture it was left on.
     private var unfinished: [RecentTopic] {
@@ -164,54 +177,38 @@ struct HomeView: View {
     }
 }
 
-/// The lecture a topic was left on, under "Continue": a tap on the card
-/// opens its topic, the play button resumes it where it was left.
+/// The lecture a topic was left on, under "Continue", with what's left of
+/// it; a tap resumes it where it was left.
 private struct ContinueRow: View {
     let item: RecentTopic
+    @ObservedObject var starter: LectureStarter
 
     @EnvironmentObject private var player: AudioPlayer
     @EnvironmentObject private var router: NavRouter
-    @StateObject private var starter = LectureStarter()
     /// The topic's lectures, fetched when neither the cache nor a download has them.
     @State private var fetched: [Lecture]?
 
     var body: some View {
         let spot = self.spot
-        let title = spot.map { $0.lecture.displayTitle(at: $0.index) } ?? fallbackTitle
-        HStack(alignment: .center, spacing: 12) {
-            Button { router.push(item.summary) } label: {
-                MediaRow(coverURL: item.summary.coverURL, title: title, subtitle: item.summary.lecturer.name) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(item.title)
-                            .font(.rowDetail)
-                            .foregroundStyle(Palette.secondaryText)
-                            .lineLimit(1)
-                        if let spot {
-                            Text("\(formatDuration(spot.left)) left in the lecture")
-                                .font(.rowCaption)
-                                .foregroundStyle(Palette.secondaryText)
-                                .lineLimit(1)
-                            ClassicProgressBar(value: spot.fraction)
-                                .padding(.top, 5)
-                        }
-                    }
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            RoundPlayButton(starting: starter.loading != nil, playing: isPlaying) {
-                starter.play("\(item.id)", topicID: item.id, lectureID: entry?.lectureID, summary: item.summary,
-                             player: player, router: router)
-            }
-            .accessibilityLabel(isPlaying ? "Now Playing" : "Resume “\(title)”")
+        let lectureID = entry?.lectureID
+        RowButton(action: resume) {
+            LectureLine(title: spot.map { $0.lecture.displayTitle(at: $0.index) } ?? fallbackTitle,
+                        topic: item.title, lecturer: item.summary.lecturer.name,
+                        caption: spot.map { String(localized: "\(formatDuration($0.left)) left in the lecture") },
+                        progress: spot?.fraction, loading: starter.loading == rowID,
+                        isCurrent: lectureID.map { player.isCurrent(topicID: item.id, lectureID: $0) } ?? false)
         }
-        .plainRow()
-        .onDisappear { starter.cancel() }
         .task(id: item.id) {
             guard lectures == nil else { return }
             fetched = try? await TopicCache.shared.resolve(item.id).detail.lectures
         }
+    }
+
+    private var rowID: String { "continue-\(item.id)" }
+
+    private func resume() {
+        starter.play(rowID, topicID: item.id, lectureID: entry?.lectureID, summary: item.summary,
+                     player: player, router: router)
     }
 
     private var entry: ProgressStore.Entry? { ProgressStore.entry(topicID: item.id) }
@@ -244,91 +241,5 @@ private struct ContinueRow: View {
         let lectureID = entry?.lectureID
         return ListeningLog.shared.lectures.first { $0.topic.id == item.id && $0.lectureID == lectureID }?
             .lectureTitle ?? item.title
-    }
-
-    /// Playing in the player now: the button opens it.
-    private var isPlaying: Bool { player.topic?.id == item.id && player.isPlaying }
-}
-
-/// The lecture of the day: a tap on the card opens its topic, the play
-/// button plays it there.
-private struct LectureOfTheDayRow: View {
-    let hit: LectureHit
-
-    @EnvironmentObject private var player: AudioPlayer
-    @EnvironmentObject private var router: NavRouter
-    @StateObject private var starter = LectureStarter()
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Button { router.push(hit.topic) } label: {
-                MediaRow(coverURL: hit.topic.coverURL, title: hit.lecture.displayTitle(at: hit.index),
-                         subtitle: hit.topic.lecturer.name) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(hit.topic.title)
-                            .font(.rowDetail)
-                            .foregroundStyle(Palette.secondaryText)
-                            .lineLimit(1)
-                        HStack(spacing: 4) {
-                            Text(facts)
-                                .font(.rowCaption)
-                                .foregroundStyle(Palette.secondaryText)
-                                .lineLimit(1)
-                            LanguageTag(code: hit.lecture.language)
-                        }
-                    }
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            RoundPlayButton(starting: starter.loading != nil, playing: isPlaying) {
-                starter.play(hit, player: player, router: router)
-            }
-            .accessibilityLabel(isPlaying ? "Now Playing" : "Play “\(hit.lecture.title)”")
-        }
-        .plainRow()
-        .onDisappear { starter.cancel() }
-    }
-
-    /// Playing in the player now: the button opens it.
-    private var isPlaying: Bool {
-        player.isCurrent(topicID: hit.topic.id, lectureID: hit.lecture.id) && player.isPlaying
-    }
-
-    /// "45 min · 1972 · Bombay".
-    private var facts: String {
-        [formatDuration(hit.lecture.duration), hit.lecture.year.map(String.init), hit.lecture.event]
-            .compactMap { $0 }.joined(separator: " · ")
-    }
-
-}
-
-/// The round blue play button of Home's rows; a spinner while the topic
-/// loads, a waveform while it's the one playing.
-private struct RoundPlayButton: View {
-    let starting: Bool
-    let playing: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle().fill(Palette.blueButton.gradient)
-                    .overlay { Circle().strokeBorder(Palette.rgb(0x1349A0), lineWidth: 1) }
-                    .shadow(color: .black.opacity(0.3), radius: 1.5, y: 1)
-                if starting {
-                    ClassicSpinner(style: .white)
-                } else {
-                    Image(systemName: playing ? "waveform" : "play.fill")
-                        .font(.title3)
-                        .engraved()
-                        .offset(x: playing ? 0 : 1)
-                }
-            }
-            .frame(width: 44, height: 44)
-        }
-        .buttonStyle(.plain)
-        .disabled(starting)
     }
 }

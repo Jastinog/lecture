@@ -319,8 +319,7 @@ struct OfflineBanner: View {
 
 /// Shared list-row geometry so covers and text columns line up across screens.
 enum RowMetrics {
-    /// Every topic row's cover (catalog, search, history, downloads) and the
-    /// "Continue" card's.
+    /// Every topic row's cover (catalog, search, lecturer pages, Home).
     static let coverWidth: CGFloat = 72
     /// A topic row with nothing taller than its cover: the pitch of the empty
     /// rows drawn under a list of topics.
@@ -496,16 +495,19 @@ struct TopicRow: View {
     }
 }
 
-/// A lecture in a list outside its topic (history, downloads, search, the
-/// calendar): its title — the blue speaker before it while it plays — then
-/// "Topic · Lecturer" and an optional grey line, and on the right a detail
-/// (its length, when it was heard), or a spinner while its topic loads.
+/// A lecture in a list outside its topic (Home, history, downloads, search,
+/// the calendar): its title — the blue speaker before it while it plays —
+/// then "Topic · Lecturer", an optional grey line and progress bar, and on
+/// the right a detail (its length, when it was heard), or a spinner while its
+/// topic loads.
 struct LectureLine: View {
     let title: String
     let topic: String
     let lecturer: String
     var caption: String? = nil
     var detail: String? = nil
+    /// How far into it the listener is, as a bar under the text.
+    var progress: Double? = nil
     var loading = false
     var isCurrent = false
 
@@ -528,6 +530,10 @@ struct LectureLine: View {
                         .font(.rowCaption)
                         .rowForeground(Palette.secondaryText)
                         .lineLimit(1)
+                }
+                if let progress {
+                    ClassicProgressBar(value: progress)
+                        .padding(.top, 3)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
