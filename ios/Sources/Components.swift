@@ -241,7 +241,6 @@ struct RoutedStack<Content: View>: View {
             content().navigationBarTitleDisplayMode(.inline)
         }
         .environmentObject(router)
-        .safeAreaInset(edge: .bottom, spacing: 0) { OfflineBanner() }
     }
 }
 

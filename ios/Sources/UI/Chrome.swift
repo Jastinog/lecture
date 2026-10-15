@@ -461,19 +461,6 @@ struct ValueRow: View {
 
 // MARK: - Tab bar
 
-/// Whether the tab bar is out of the way. Now Playing hides it, as iOS 6 Music's
-/// did (`hidesBottomBarWhenPushed`): it slides off with the screen it was on.
-@MainActor
-final class TabBarVisibility: ObservableObject {
-    static let shared = TabBarVisibility()
-    @Published var hidden = false
-
-    func set(hidden: Bool) {
-        guard hidden != self.hidden else { return }
-        withAnimation(.easeInOut(duration: 0.35)) { self.hidden = hidden }
-    }
-}
-
 /// The silver tab bar of iOS 6 Music on the iPod touch: each item a button
 /// cell of its own between engraved dividers, the selected one pressed in
 /// (darker at the top), grey embossed glyphs and labels — no blue. Tapping

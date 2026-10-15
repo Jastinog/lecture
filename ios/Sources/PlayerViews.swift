@@ -81,6 +81,7 @@ struct PlayerRouteView: View {
         }
         .environmentObject(player)
         .classicBackButton()
+        .background(TabBarHider())
     }
 }
 
@@ -103,8 +104,6 @@ struct NowPlayingView: View {
     /// The previous screen's title, for the back button.
     @State private var backTitle = String(localized: "Back")
     @EnvironmentObject private var router: NavRouter
-    /// The stack depth the player sits at; popping below it brings the tab bar back.
-    @State private var depth = 0
 
     var body: some View {
         main
@@ -112,17 +111,8 @@ struct NowPlayingView: View {
             // The bar is hidden; this names the back button of the screens it pushes.
             .navigationTitle("Player")
             .background(PreviousTitleReader { backTitle = $0.isEmpty ? String(localized: "Back") : $0 })
+            .background(TabBarHider())
             .onChange(of: player.topic?.id) { showingChapters = false }
-            .onAppear {
-                depth = router.path.count
-                TabBarVisibility.shared.set(hidden: true)
-            }
-            .onChange(of: router.path.count) { _, count in
-                if count < depth { TabBarVisibility.shared.set(hidden: false) }
-            }
-            .onDisappear {
-                if router.path.count < depth { TabBarVisibility.shared.set(hidden: false) }
-            }
     }
 
     private var main: some View {

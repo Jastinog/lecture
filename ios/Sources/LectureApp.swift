@@ -81,7 +81,6 @@ enum SidebarTab: String, CaseIterable, Identifiable {
 
 struct RootView: View {
     @StateObject private var player = AudioPlayer.shared
-    @ObservedObject private var tabBar = TabBarVisibility.shared
     @State private var selection: SidebarTab = .home
     @Environment(\.scenePhase) private var scenePhase
 
@@ -142,25 +141,38 @@ extension RootView {
     /// each bar pushes the player. The keyboard slides over the tab bar, as it
     /// did on iOS 6.
     ///
-    /// The bar sits under the stacks rather than in a `safeAreaInset`: the
-    /// UIKit-hosted navigation stacks don't pass such an inset on to their
-    /// lists, which then scrolled their last rows under the bar.
+    /// The bar lies over the stacks, which keep clear of it through their safe
+    /// area (`TabBarTracker.barHeight`), so hiding it never resizes a screen; it slides
+    /// with the screen it belongs to (`TabBarTracker`).
     var content: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                ForEach(SidebarTab.allCases) { tab in
-                    let visible = selection == tab
-                    rootStack(for: tab)
-                        .opacity(visible ? 1 : 0)
-                        .allowsHitTesting(visible)
-                        .accessibilityHidden(!visible)
-                }
+        ZStack(alignment: .bottom) {
+            ForEach(SidebarTab.allCases) { tab in
+                let visible = selection == tab
+                rootStack(for: tab)
+                    .opacity(visible ? 1 : 0)
+                    .allowsHitTesting(visible)
+                    .accessibilityHidden(!visible)
             }
-            if !tabBar.hidden {
-                ClassicTabBar(selection: $selection) { $0.router.popToRoot() }
-                    .transition(.move(edge: .leading))
-            }
+            TabBarOverlay(selection: $selection)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
+    }
+}
+
+/// The tab bar where `TabBarTracker` puts it — the only view redrawn as it
+/// follows a screen frame by frame. The offline strip rides on it, clear of
+/// the player's controls.
+private struct TabBarOverlay: View {
+    @Binding var selection: SidebarTab
+    @ObservedObject private var tracker = TabBarTracker.shared
+
+    var body: some View {
+        if !tracker.hidden {
+            VStack(spacing: 0) {
+                OfflineBanner()
+                ClassicTabBar(selection: $selection) { $0.router.popToRoot() }
+            }
+            .offset(x: tracker.offset)
+        }
     }
 }
