@@ -22,6 +22,10 @@ private struct ClassicRefresh: ViewModifier {
 
     @State private var place = Place()
     @State private var refreshing = false
+    /// The band is open above the list. It opens and closes only once the
+    /// finger is off: changing the inset under a drag throws the list back.
+    @State private var held = false
+    @State private var dragging = false
     /// Re-armed once the list is back at rest, so one pull refreshes once.
     @State private var armed = true
 
@@ -31,7 +35,7 @@ private struct ClassicRefresh: ViewModifier {
     private let band: CGFloat = 44
 
     /// The inset without our band: where the spinner's gap begins.
-    private var base: CGFloat { place.inset - (refreshing ? band : 0) }
+    private var base: CGFloat { place.inset - (held ? band : 0) }
     /// How far below that the content's top is: the pull, plus the band while
     /// it's held open.
     private var gap: CGFloat { max(0, place.top - base) }
@@ -40,7 +44,7 @@ private struct ClassicRefresh: ViewModifier {
         content
             // As safe area, not a content margin: the lists set their own
             // top margin (`plainBackground`), which would win.
-            .safeAreaPadding(.top, refreshing ? band : 0)
+            .safeAreaPadding(.top, held ? band : 0)
             .onScrollGeometryChange(for: Place.self) { geometry in
                 Place(inset: geometry.contentInsets.top, top: -geometry.contentOffset.y)
             } action: { _, place in
@@ -48,6 +52,10 @@ private struct ClassicRefresh: ViewModifier {
                 let pull = place.top - place.inset
                 if pull < 2 { armed = true }
                 if armed, !refreshing, pull >= trigger { start() }
+            }
+            .onScrollPhaseChange { _, phase in
+                dragging = phase == .interacting
+                hold()
             }
             // Behind the rows, as it were: shown only in the gap above them, so
             // the list slides over it.
@@ -72,10 +80,18 @@ private struct ClassicRefresh: ViewModifier {
 
     private func start() {
         armed = false
-        withAnimation(.easeOut(duration: 0.2)) { refreshing = true }
+        refreshing = true
+        hold()
         Task {
             await action()
-            withAnimation(.easeInOut(duration: 0.3)) { refreshing = false }
+            refreshing = false
+            hold()
         }
+    }
+
+    /// Opens or closes the band to match, unless the list is held by a finger.
+    private func hold() {
+        guard !dragging, held != refreshing else { return }
+        withAnimation(.easeInOut(duration: 0.3)) { held = refreshing }
     }
 }
