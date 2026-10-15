@@ -12,7 +12,7 @@ from apps.lecture.models import (
     Lecturer,
     Topic,
     TopicGroup,
-    TopicPlays,
+    LecturePlays,
 )
 from apps.listeners.models import Listener, ListenerPlay, hash_token
 
@@ -53,7 +53,8 @@ class ListenerAPITests(TestCase):
         )
 
     def plays(self):
-        return TopicPlays.objects.get(topic=self.topic).count
+        """The topic's lectures' plays, together."""
+        return sum(LecturePlays.objects.filter(lecture__topic=self.topic).values_list("count", flat=True))
 
     def test_registration_issues_a_token_and_keeps_only_its_hash(self):
         pk = uuid.uuid4()
@@ -111,7 +112,7 @@ class ListenerAPITests(TestCase):
         response = self.play(self.lectures[0], "nope")
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response["WWW-Authenticate"], "Token")
-        self.assertFalse(TopicPlays.objects.exists())
+        self.assertFalse(LecturePlays.objects.exists())
 
     def test_a_bad_token_doesnt_break_the_catalog(self):
         response = self.client.get("/api/v1/groups/", HTTP_AUTHORIZATION="Token nope")

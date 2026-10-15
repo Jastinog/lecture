@@ -17,7 +17,7 @@ from apps.lecture.models import (
     Lecture,
     Selection,
     SelectionLecture,
-    TopicPlays,
+    LecturePlays,
     set_lectures_language,
 )
 
@@ -64,15 +64,15 @@ class LanguageAdmin(admin.ModelAdmin):
     list_editable = ["is_active"]
 
 
-@admin.register(TopicPlays)
-class TopicPlaysAdmin(admin.ModelAdmin):
+@admin.register(LecturePlays)
+class LecturePlaysAdmin(admin.ModelAdmin):
     """What ranks "Trending": read only, the app counts them."""
 
-    list_display = ["day", "topic", "count"]
+    list_display = ["day", "lecture", "count"]
     list_filter = ["day"]
-    search_fields = ["topic__title", "topic__lecturer__name"]
+    search_fields = ["lecture__title", "lecture__topic__title", "lecture__topic__lecturer__name"]
     ordering = ["-day", "-count"]
-    list_select_related = ["topic__lecturer"]
+    list_select_related = ["lecture__topic", "lecture__language"]
 
     def has_add_permission(self, request):
         return False

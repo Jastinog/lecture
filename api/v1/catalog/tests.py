@@ -15,7 +15,7 @@ from apps.lecture.models import (
     SelectionLecture,
     Topic,
     TopicGroup,
-    TopicPlays,
+    LecturePlays,
 )
 
 LOCAL_STORAGE = {
@@ -452,20 +452,27 @@ class HomeAPITests(TestCase):
         self.assertEqual(titles, ["Topic 7", "Topic 6", "Topic 5", "Topic 4", "Topic 3"])
 
     def test_trending_ranks_recent_plays(self):
+        self.assertEqual(self.home()["trending_lectures"], [])
         self.assertEqual(self.home()["trending"], [])
         for _ in range(3):
             self.assertEqual(self.play(self.lectures[1]).status_code, 204)
         self.play(self.lectures[0])
         # Long ago: no longer trending.
-        TopicPlays.objects.create(
-            topic=self.topics[2], day=timezone.localdate() - timedelta(days=60), count=50
+        LecturePlays.objects.create(
+            lecture=self.lectures[2], day=timezone.localdate() - timedelta(days=60), count=50
         )
-        trending = self.home()["trending"]
+        home = self.home()
+        hits = home["trending_lectures"]
+        self.assertEqual([h["topic"]["title"] for h in hits], ["Topic 2", "Topic 1"])
+        self.assertEqual(hits[0]["lecture"]["id"], self.lectures[1].pk)
+        self.assertEqual(hits[0]["index"], 0)
+        # The topics of those lectures, for apps from before; the plays don't
+        # multiply the card's own counts.
+        trending = home["trending"]
         self.assertEqual([t["title"] for t in trending], ["Topic 2", "Topic 1"])
-        # The plays don't multiply the card's own counts.
         self.assertEqual(trending[0]["lectures_count"], 1)
         self.assertEqual(trending[0]["duration"], 600)
-        self.assertEqual(TopicPlays.objects.get(topic=self.topics[1]).count, 3)
+        self.assertEqual(LecturePlays.objects.get(lecture=self.lectures[1]).count, 3)
 
     def test_play_of_a_missing_lecture(self):
         self.assertEqual(self.client.post("/api/v1/plays/", {"lecture": 0}, format="json").status_code, 400)
@@ -494,3 +501,4 @@ class HomeAPITests(TestCase):
         self.assertEqual([s["title"] for s in home["selections"]], ["Bhagavatam", "Gita"])
         self.play(self.lectures[6])
         self.assertEqual(self.home(lang="en")["trending"], [])
+        self.assertEqual(self.home(lang="en")["trending_lectures"], [])

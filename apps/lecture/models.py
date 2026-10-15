@@ -385,20 +385,20 @@ def sync_topics_languages(topic_ids):
         topic.sync_languages()
 
 
-class TopicPlays(models.Model):
-    """How many times a topic's lectures were started on a day, for "Trending".
+class LecturePlays(models.Model):
+    """How many times a lecture was started on a day, for "Trending".
     A listener counts once per lecture and day (`listeners.ListenerPlay`)."""
 
-    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="plays")
+    lecture = models.ForeignKey(Lecture, on_delete=models.CASCADE, related_name="plays")
     day = models.DateField()
     count = models.PositiveIntegerField(default=0)
 
     def __str__(self):
-        return f"{self.topic} - {self.day}: {self.count}"
+        return f"{self.lecture} - {self.day}: {self.count}"
 
     class Meta:
-        verbose_name_plural = "topic plays"
-        constraints = [models.UniqueConstraint(fields=["topic", "day"], name="topic_plays_per_day")]
+        verbose_name_plural = "lecture plays"
+        constraints = [models.UniqueConstraint(fields=["lecture", "day"], name="lecture_plays_per_day")]
         indexes = [models.Index(fields=["day"])]
 
 

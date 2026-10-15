@@ -14,7 +14,7 @@ from itertools import groupby
 from operator import itemgetter
 
 from django.db import transaction
-from django.db.models import Count, F, Max, Min, OuterRef, Q, Subquery, Sum
+from django.db.models import Count, F, Max, Min, Q, Sum
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -31,7 +31,7 @@ from apps.lecture.models import (
     SelectionLecture,
     Topic,
     TopicGroup,
-    TopicPlays,
+    LecturePlays,
 )
 from apps.listeners.authentication import ListenerTokenAuthentication
 from apps.listeners.models import ListenerPlay
@@ -121,6 +121,28 @@ def language_counts(lectures):
         for row in lectures.values("language__code", "language__native_name")
         .annotate(count=Count("id"))
         .order_by("language__name")
+    ]
+
+
+def lecture_hits(lectures, languages, context):
+    """`lectures` as search and "Trending" send them: each with its position
+    as its topic page lists it under the same `languages`, and the topic's
+    card. Every topic's lectures are numbered in one query."""
+    in_languages = lectures_in(languages)
+    topic_ids = {lecture.topic_id for lecture in lectures}
+    topics = {t.pk: t for t in topics_queryset(languages).filter(pk__in=topic_ids)}
+    positions = {}
+    ordered = (
+        Lecture.objects.filter(in_languages, topic_id__in=topic_ids)
+        .order_by("topic_id", *LECTURE_ORDER)
+        .values_list("topic_id", "id")
+    )
+    for _, rows in groupby(ordered, key=itemgetter(0)):
+        for index, (_, lecture_id) in enumerate(rows):
+            positions[lecture_id] = index
+    return [
+        lecture_hit(lecture, positions[lecture.pk], topics[lecture.topic_id], context)
+        for lecture in lectures
     ]
 
 
@@ -429,59 +451,50 @@ class SearchView(APIView):
             .select_related("language")
             .order_by("topic_id", *LECTURE_ORDER)[:SEARCH_LIMIT]
         )
-        topic_ids = {hit.topic_id for hit in hits}
-        hit_topics = {
-            t.pk: t for t in topics_queryset(languages).filter(pk__in=topic_ids)
-        }
-        # Every hit topic's lectures in one query, numbered per topic.
-        positions = {}
-        ordered = (
-            Lecture.objects.filter(in_languages, topic_id__in=topic_ids)
-            .order_by("topic_id", *LECTURE_ORDER)
-            .values_list("topic_id", "id")
-        )
-        for _, rows in groupby(ordered, key=itemgetter(0)):
-            for index, (_, lecture_id) in enumerate(rows):
-                positions[lecture_id] = index
 
         return Response(
             {
                 "lecturers": LecturerSerializer(lecturers, many=True, context=context).data,
                 "topics": TopicSerializer(topics, many=True, context=context).data,
-                "lectures": [
-                    lecture_hit(hit, positions[hit.pk], hit_topics[hit.topic_id], context)
-                    for hit in hits
-                ],
+                "lectures": lecture_hits(hits, languages, context),
             }
         )
 
 
 class HomeView(APIView):
-    """The home page: the lecture of the day, then rows of five cards: the
-    topics most played lately, the newest topics, and the newest selections
-    of every lecturer, each naming its lecturer. `?lang=` narrows them all
-    like the lists."""
+    """The home page: the lecture of the day, the lectures most played lately,
+    then rows of five cards: the newest topics and the newest selections of
+    every lecturer, each naming its lecturer. `?lang=` narrows them all like
+    the lists. `trending` (the topics of those lectures) is kept for apps
+    from before `trending_lectures`."""
 
     def get(self, request):
         languages = requested_languages(request)
         context = {"request": request}
-        topics = topics_with_lectures_in(languages)
         since = timezone.localdate() - timedelta(days=TRENDING_DAYS - 1)
-        # A subquery: joined in, the plays would multiply the lecture counts.
-        recent_plays = (
-            TopicPlays.objects.filter(topic=OuterRef("pk"), day__gte=since)
-            .values("topic")
-            .annotate(total=Sum("count"))
-            .values("total")
-        )
-        trending = (
-            topics.annotate(recent_plays=Subquery(recent_plays))
-            .filter(recent_plays__gt=0)
+        # Filtered first, the sum counts only the recent plays.
+        trending_lectures = list(
+            Lecture.objects.filter(lectures_in(languages), plays__day__gte=since)
+            .annotate(recent_plays=Sum("plays__count"))
+            .select_related("language")
             .order_by("-recent_plays", "-id")[:HOME_LIMIT]
         )
+        # Their topics, for apps from before: one grouped query over the
+        # recent plays, not one per topic.
+        ranked = list(
+            LecturePlays.objects.filter(lectures_in(languages, "lecture__"), day__gte=since)
+            .values("lecture__topic")
+            .annotate(total=Sum("count"))
+            .order_by("-total", "-lecture__topic")
+            .values_list("lecture__topic", flat=True)[:HOME_LIMIT]
+        )
+        by_id = topics_queryset(languages).in_bulk(ranked)
+        trending = [by_id[pk] for pk in ranked]
+        topics = topics_with_lectures_in(languages)
         newest = topics.order_by("-created_at", "-id")[:HOME_LIMIT]
         return Response(
             {
+                "trending_lectures": lecture_hits(trending_lectures, languages, context),
                 "trending": TopicSerializer(trending, many=True, context=context).data,
                 "new": TopicSerializer(newest, many=True, context=context).data,
                 "selections": self.selections(languages, context),
@@ -505,13 +518,7 @@ class HomeView(APIView):
             return None
         seed = hashlib.sha256(timezone.localdate().isoformat().encode()).digest()
         lecture = candidates.select_related("language")[int.from_bytes(seed[:8]) % count]
-        order = list(
-            Lecture.objects.filter(in_languages, topic_id=lecture.topic_id)
-            .order_by(*LECTURE_ORDER)
-            .values_list("id", flat=True)
-        )
-        topic = topics_queryset(languages).get(pk=lecture.topic_id)
-        return lecture_hit(lecture, order.index(lecture.pk), topic, context)
+        return lecture_hits([lecture], languages, context)[0]
 
     @staticmethod
     def selections(languages, context):
@@ -552,7 +559,7 @@ class PlaySerializer(serializers.Serializer):
 
 class PlayView(APIView):
     """`POST {"lecture": id}`: a lecture was started. Counts towards its
-    topic's plays today, once per listener, lecture and day. Without a token
+    plays today, once per listener, lecture and day. Without a token
     (apps from before listeners) every play counts."""
 
     authentication_classes = [ListenerTokenAuthentication]
@@ -569,6 +576,6 @@ class PlayView(APIView):
                 )
                 if not first:
                     return Response(status=status.HTTP_204_NO_CONTENT)
-            plays, _ = TopicPlays.objects.get_or_create(topic_id=lecture.topic_id, day=day)
-            TopicPlays.objects.filter(pk=plays.pk).update(count=F("count") + 1)
+            plays, _ = LecturePlays.objects.get_or_create(lecture=lecture, day=day)
+            LecturePlays.objects.filter(pk=plays.pk).update(count=F("count") + 1)
         return Response(status=status.HTTP_204_NO_CONTENT)
